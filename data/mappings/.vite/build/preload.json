@@ -1,1 +1,25 @@
-[["r3v_1", "electronModule"]]
+[
+  ["r3v_1", "electronModule"],
+  ["r3v_2", "showContextMenuChannel"],
+  ["r3v_3", "showApplicationMenuChannel"],
+  ["r3v_4", "getSentryInitOptionsChannel"],
+  ["r3v_5", "getBuildFlavorChannel"],
+  ["r3v_6", "getSystemThemeVariantChannel"],
+  ["r3v_7", "getFastModeRolloutMetricsChannel"],
+  ["r3v_8", "systemThemeVariantUpdatedChannel"],
+  ["r3v_9", "triggerSentryTestChannel"],
+  ["r3v_10", "workerMessageFromViewChannel"],
+  ["r3v_12", "workerMessageForViewChannel"],
+  ["r3v_14", "codexWindowType"],
+  ["r3v_15", "viewToMainMessageChannel"],
+  ["r3v_16", "mainToViewMessageChannel"],
+  ["r3v_17", "sentryInitOptions"],
+  ["r3v_18", "buildFlavor"],
+  ["r3v_19", "sharedObjectSnapshot"],
+  ["r3v_20", "systemThemeVariant"],
+  ["r3v_21", "getSystemThemeVariant"],
+  ["r3v_22", "updateSharedObjectSnapshot"],
+  ["r3v_25", "workerSubscribersByName"],
+  ["r3v_26", "workerChannelListenersByName"],
+  ["r3v_27", "electronBridge"]
+]

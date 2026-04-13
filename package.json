@@ -4,7 +4,10 @@
   "main": "index.js",
   "scripts": {
     "attach-anchors": "tsx src/bin/attachAnchors.ts",
-    "replace-anchors": "tsx src/bin/replaceAnchors.ts"
+    "build:bridge": "vite build --config vite.bridge.config.ts",
+    "predevserver": "yarn build:bridge",
+    "replace-anchors": "tsx src/bin/replaceAnchors.ts",
+    "devserver": "tsx src/bin/devserver.ts"
   },
   "repository": "git@github.com:0xcaff/codex-hosted.git",
   "author": "martin <martincharles07@gmail.com>",
@@ -17,6 +20,7 @@
     "@electron/asar": "^4.2.0",
     "prettier": "^3.8.2",
     "tsx": "^4.21.0",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "vite": "^8.0.8"
   }
 }
