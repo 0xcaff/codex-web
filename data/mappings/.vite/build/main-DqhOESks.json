@@ -1,0 +1,20 @@
+[
+  ["r3v_1", "deeplinksModule"],
+  ["r3v_2", "electronModule"],
+  ["r3v_4", "nodeOsModule"],
+  ["r3v_6", "nodePathModule"],
+  ["r3v_8", "nodeUtilModule"],
+  ["r3v_9", "nodeFsModule"],
+  ["r3v_11", "nodeCryptoModule"],
+  ["r3v_13", "nodeNetModule"],
+  ["r3v_15", "nodeTimersPromisesModule"],
+  ["r3v_16", "nodeChildProcessModule"],
+  ["r3v_17", "nodeProcessModule"],
+  ["r3v_19", "nodeFsPromisesModule"],
+  ["r3v_20", "nodeUrlModule"],
+  ["r3v_21", "nodeWorkerThreadsModule"],
+  ["r3v_22", "nodeModuleModule"],
+  ["r3v_23", "nodeZlibModule"],
+  ["r3v_24", "nodePerfHooksModule"],
+  ["r3v_25", "nodeInspectorModule"]
+]
