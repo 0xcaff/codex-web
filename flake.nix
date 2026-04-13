@@ -29,7 +29,7 @@
 
           asarOfflineCache = pkgs.fetchYarnDeps {
             yarnLock = ./yarn.lock;
-            hash = "sha256-3zTR1Fv0kV1iwg1cMcbv/O/n8GLD+Bb1RStmRwbyHqE=";
+            hash = "sha256-PwMr78hxbKHbHPPhOxZLb6JXr5+DtWlTvHX5j6pwbz8=";
           };
 
           asarFromYarn = pkgs.stdenvNoCC.mkDerivation {
@@ -71,6 +71,7 @@
             scratch_dir="$PWD/scratch"
             app_dir="$scratch_dir/Codex.app"
             asar_dir="$scratch_dir/asar"
+            prettier_bin="${asarFromYarn}/lib/node_modules/.bin/prettier"
 
             mkdir -p "$scratch_dir"
             rm -rf "$app_dir" "$asar_dir"
@@ -81,8 +82,23 @@
               "$app_dir/Contents/Resources/app.asar" \
               "$asar_dir"
 
+            if [ -d "$asar_dir/.vite/build" ]; then
+              if [ ! -x "$prettier_bin" ]; then
+                echo "Expected prettier from package.json deps at: $prettier_bin" >&2
+                exit 1
+              fi
+
+              find "$asar_dir/.vite/build" -type f \( \
+                -name "*.js" -o \
+                -name "*.mjs" -o \
+                -name "*.cjs" -o \
+                -name "*.json" \
+              \) -print0 | xargs -0 -r "$prettier_bin" --ignore-path /dev/null --write
+            fi
+
             echo "Extracted Codex.app to $app_dir"
             echo "Extracted app.asar to $asar_dir"
+            echo "Prettier applied to $asar_dir/.vite/build"
           '';
         in
         {
