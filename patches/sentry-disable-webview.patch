@@ -1,0 +1,10 @@
+--- a/webview/assets/large-empty-state-DEvsPXBF.js
++++ b/webview/assets/large-empty-state-DEvsPXBF.js
+@@ -57742,6 +57742,7 @@
+     n = je(e.appVersion),
+     r = e.buildFlavor !== `prod`;
+   (BY({
++    enabled: !1,
+     dsn: j,
+     environment: UY,
+     release: Le(n.version),

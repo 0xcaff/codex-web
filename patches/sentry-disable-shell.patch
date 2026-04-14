@@ -1,0 +1,10 @@
+--- a/.vite/build/product-name-CKRilA27.js
++++ b/.vite/build/product-name-CKRilA27.js
+@@ -92255,6 +92255,7 @@
+     n = Rh(e.version);
+   return (
+     initSentryElectronSdk({
++      enabled: !1,
+       dsn: desktopSentryDsn,
+       environment: desktopSentryInitOptions.buildFlavor,
+       release: n,

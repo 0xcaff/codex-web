@@ -116,7 +116,7 @@ function applyRenames(
   });
 
   return {
-    code: generate(ast, { comments: true }).code,
+    code: generate(ast, { comments: false }).code,
     didRename,
   };
 }

@@ -2,8 +2,10 @@
 set -euox pipefail
 shopt -s globstar
 
-unzip -o $HOSTED_CODEX_APP_ZIP -d scratch/
+unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
 asar extract "scratch/Codex.app/Contents/Resources/app.asar" "scratch/asar"
 tsx src/bin/attachAnchors.ts --inPlace scratch/asar/.vite/**/*.js
 tsx src/bin/replaceAnchors.ts data/mappings/.vite scratch/asar/.vite
 prettier --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
+patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
+patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch

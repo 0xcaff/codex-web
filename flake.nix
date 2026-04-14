@@ -34,6 +34,7 @@
               pkgs.nodejs
               pkgs.yarn
               pkgs.unzip
+              pkgs.patch
             ];
           };
         }
