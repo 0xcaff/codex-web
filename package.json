@@ -1,34 +1,48 @@
 {
   "name": "codex-hosted",
   "version": "1.0.0",
-  "main": "index.js",
+  "files": [
+    "README.md",
+    "scratch/asar/**/*",
+    "src/server/main.js",
+    "src/server/electron/index.js",
+    "!**/*.ts"
+  ],
+  "bin": {
+    "codex-hosted-server": "src/server/main.js"
+  },
   "scripts": {
-    "build:bridge": "vite build --config vite.bridge.config.ts",
-    "build:main-bridge": "vite build --config vite.main.config.ts",
+    "build": "yarn prepare:asar && yarn build:browser && yarn build:server",
     "launch:unpacked:server": "http-server ./scratch/asar/webview -a localhost -p 5175 -c-1",
     "launch:unpacked": "NODE_ENV=development CODEX_CLI_PATH=$(which codex) electron ./scratch/asar",
+    "dev:browser": "vite --config vite.browser.config.ts",
+    "build:browser": "vite build --config vite.browser.config.ts",
+    "build:server": "tsc src/server/main.ts src/server/electron/index.ts --module commonjs --target es2022 --moduleResolution node --types node,ws --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 --rootDir src/server --outDir src/server",
     "prepare:asar": "bash ./scripts/prepare_asar",
-    "predevserver": "yarn build:bridge && yarn build:main-bridge",
-    "devserver": "CODEX_CLI_PATH=$(which codex) tsx src/bin/devserver.ts"
+    "preserver": "yarn build:server",
+    "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
   },
   "repository": "git@github.com:0xcaff/codex-hosted.git",
   "author": "martin <martincharles07@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "better-sqlite3": "^12.9.0",
+    "ws": "^8.20.0"
+  },
+  "devDependencies": {
     "@babel/generator": "^7.29.1",
     "@babel/parser": "^7.29.2",
     "@babel/traverse": "^7.29.0",
     "@babel/types": "^7.29.0",
     "@electron/asar": "^4.2.0",
     "@openai/codex": "^0.120.0",
-    "better-sqlite3": "^12.9.0",
+    "@types/ws": "^8.18.1",
     "electron": "41.2.0",
     "glob": "^13.0.6",
     "http-server": "^14.1.1",
     "prettier": "^3.8.2",
     "tsx": "^4.21.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8",
-    "ws": "^8.20.0"
+    "vite": "^8.0.8"
   }
 }

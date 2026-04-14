@@ -296,11 +296,11 @@ const appBase = {
       log("app.commandLine.appendSwitch", [name, value]);
     },
   },
-  on(event: string, listener: (...args: unknown[]) => void): typeof appBase {
+  on(event: string, listener: (...args: unknown[]) => void): unknown {
     log("app.on", [event, listener]);
     return app;
   },
-  once(event: string, listener: (...args: unknown[]) => void): typeof appBase {
+  once(event: string, listener: (...args: unknown[]) => void): unknown {
     log("app.once", [event, listener]);
     return app;
   },
@@ -617,7 +617,7 @@ const crashReporter = {
 
 const net = {
   async fetch(input: string | URL, init?: RequestInit): Promise<Response> {
-    log("net.fetch", [input, init]);
+    // log("net.fetch", [input, init]);
     if (typeof globalThis.fetch === "function") {
       return globalThis.fetch(input as URL | RequestInfo, init);
     }
@@ -628,19 +628,19 @@ const net = {
     once: (event: string, listener: StubListener) => unknown;
     setHeader: (name: string, value: string) => void;
   } {
-    log("net.request", args);
+    // log("net.request", args);
     const headers = new Map<string, string>();
     const request = {
       setHeader(name: string, value: string): void {
-        log("net.request.setHeader", [name, value]);
+        // log("net.request.setHeader", [name, value]);
         headers.set(name.toLowerCase(), value);
       },
       getHeader(name: string): string | undefined {
-        log("net.request.getHeader", [name]);
+        // log("net.request.getHeader", [name]);
         return headers.get(name.toLowerCase());
       },
       once(event: string, listener: StubListener): unknown {
-        log("net.request.once", [event, listener]);
+        // log("net.request.once", [event, listener]);
         return request;
       },
     };

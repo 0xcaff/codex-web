@@ -4,8 +4,11 @@ shopt -s globstar
 
 unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
 asar extract "scratch/Codex.app/Contents/Resources/app.asar" "scratch/asar"
-tsx src/bin/attachAnchors.ts --inPlace scratch/asar/.vite/**/*.js
-tsx src/bin/replaceAnchors.ts data/mappings/.vite scratch/asar/.vite
+tsx scripts/anchors/attach.ts --inPlace scratch/asar/.vite/**/*.js
+tsx scripts/anchors/replace.ts data/mappings/.vite scratch/asar/.vite
 prettier --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
+patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch
+patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-preload.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
+rm -rf scratch/asar/node_modules/better-sqlite3
