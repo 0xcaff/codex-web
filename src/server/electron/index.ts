@@ -149,11 +149,13 @@ function createMessagePortStub(label: string): {
 }
 
 function createIpcMainEvent(): IpcMainEvent {
+  const rendererUrl = "http://localhost:5175/";
+  const mainFrame = {
+    url: rendererUrl,
+  };
   const sender: StubWebContents = {
     id: 1001,
-    mainFrame: {
-      url: "about:blank",
-    },
+    mainFrame,
     isDestroyed: () => false,
     send: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
@@ -169,9 +171,7 @@ function createIpcMainEvent(): IpcMainEvent {
     processId: 1,
     frameId: 1,
     sender,
-    senderFrame: {
-      url: "about:blank",
-    },
+    senderFrame: mainFrame,
     reply: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
         type: "ipc-main-event",
