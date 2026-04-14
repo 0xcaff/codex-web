@@ -27,6 +27,7 @@
       system:
       let
         pkgs = import nixpkgs { inherit system; };
+        nodeSources = pkgs.srcOnly pkgs.nodejs;
         treefmtEval = treefmt-nix.lib.evalModule pkgs {
           projectRootFile = "flake.nix";
           programs.nixfmt.enable = true;
@@ -74,7 +75,29 @@
             pkgs.yarn
             pkgs.unzip
             pkgs.patch
-          ];
+            pkgs.python3
+            pkgs.removeReferencesTo
+          ]
+          ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.cctools ];
+
+          preInstall = ''
+            # Keep only extracted asar artifacts for packaging.
+            rm -rf scratch/Codex.app
+
+            # yarn pack drops any directory named node_modules, so rename the
+            # nested asar tree in-place to keep it in the package output.
+            mv scratch/asar/node_modules scratch/asar/asar_node_modules
+          '';
+
+          postInstall = ''
+            mv $out/lib/node_modules/codex-hosted/scratch/asar/{asar_,}node_modules
+
+            pushd $out/lib/node_modules/codex-hosted/node_modules/better-sqlite3
+            npm run build-release --offline --nodedir="${nodeSources}"
+            rm -rf build/Release/{.deps,obj,obj.target,test_extension.node}
+            find build -type f -exec ${pkgs.lib.getExe pkgs.removeReferencesTo} -t "${nodeSources}" {} \;
+            popd
+          '';
         };
 
         packages.codex_remote_proxy = pkgs.stdenvNoCC.mkDerivation {
