@@ -1,5 +1,51 @@
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
+type StubWebContents = {
+  id: number;
+  mainFrame: {
+    url: string;
+  };
+  isDestroyed: () => boolean;
+  send: (channel: string, ...args: unknown[]) => void;
+};
+type IpcMainEvent = {
+  returnValue: unknown;
+  processId: number;
+  frameId: number;
+  sender: StubWebContents;
+  senderFrame: {
+    url: string;
+  };
+  reply: (channel: string, ...args: unknown[]) => void;
+};
+
+type IpcMainBridgeState = {
+  broadcastToRenderer?: (message: {
+    type: "ipc-main-event";
+    channel: string;
+    args: unknown[];
+  }) => void;
+  handleRendererInvoke?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => Promise<unknown>;
+  handleRendererSend?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => void;
+};
+
+function getIpcMainBridgeState(): IpcMainBridgeState {
+  const globals = globalThis as typeof globalThis & {
+    __codexElectronIpcBridge?: IpcMainBridgeState;
+  };
+  if (!globals.__codexElectronIpcBridge) {
+    globals.__codexElectronIpcBridge = {};
+  }
+  return globals.__codexElectronIpcBridge;
+}
 
 function log(method: string, args: unknown[]): void {
   console.log(`[electron-main-stub] ${method}`, args);
@@ -102,11 +148,48 @@ function createMessagePortStub(label: string): {
   };
 }
 
+function createIpcMainEvent(sourceUrl?: string): IpcMainEvent {
+  const frameUrl = sourceUrl ?? "about:blank";
+  const mainFrame = {
+    url: frameUrl,
+  };
+  const sender: StubWebContents = {
+    id: 1001,
+    mainFrame,
+    isDestroyed: () => false,
+    send: (channel: string, ...args: unknown[]): void => {
+      getIpcMainBridgeState().broadcastToRenderer?.({
+        type: "ipc-main-event",
+        channel,
+        args,
+      });
+    },
+  };
+
+  const event: IpcMainEvent = {
+    returnValue: undefined,
+    processId: 1,
+    frameId: 1,
+    sender,
+    senderFrame: mainFrame,
+    reply: (channel: string, ...args: unknown[]): void => {
+      getIpcMainBridgeState().broadcastToRenderer?.({
+        type: "ipc-main-event",
+        channel,
+        args,
+      });
+    },
+  };
+
+  return event;
+}
+
 function createIpcMainStub(): {
   handle: (
     channel: string,
     handler: (event: unknown, ...args: unknown[]) => unknown,
   ) => void;
+  off: (event: string, listener: StubListener) => unknown;
   on: (event: string, listener: StubListener) => unknown;
   removeHandler: (channel: string) => void;
 } {
@@ -115,9 +198,33 @@ function createIpcMainStub(): {
     string,
     (event: unknown, ...args: unknown[]) => unknown
   >();
+  const bridgeState = getIpcMainBridgeState();
+
+  bridgeState.handleRendererInvoke = async (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ): Promise<unknown> => {
+    const handler = handlers.get(channel);
+    if (!handler) {
+      throw new Error(`[electron-main-stub] No ipcMain.handle for ${channel}`);
+    }
+    const event = createIpcMainEvent(sourceUrl);
+    return await Promise.resolve(handler(event, ...args));
+  };
+
+  bridgeState.handleRendererSend = (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ): void => {
+    const event = createIpcMainEvent(sourceUrl);
+    emitter.emit(channel, event, ...args);
+  };
 
   return {
     on: emitter.on,
+    off: emitter.off,
     handle(
       channel: string,
       handler: (event: unknown, ...args: unknown[]) => unknown,
@@ -251,6 +358,15 @@ class BrowserWindow {
         },
         send: (...sendArgs: unknown[]): void => {
           log(`BrowserWindow#${this.id}.webContents.send`, sendArgs);
+          if (sendArgs.length === 0 || typeof sendArgs[0] !== "string") {
+            return;
+          }
+          const [channel, ...args] = sendArgs as [string, ...unknown[]];
+          getIpcMainBridgeState().broadcastToRenderer?.({
+            type: "ipc-main-event",
+            channel,
+            args,
+          });
         },
       } as Record<string, unknown>,
       {

@@ -5,12 +5,61 @@ import fs from "node:fs";
 import path from "node:path";
 import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import { pathToFileURL } from "node:url";
+import { WebSocket, WebSocketServer } from "ws";
 
 type ServerOptions = {
   rootDir: string;
   host: string;
   port: number;
   spaFallback: boolean;
+};
+
+type RendererToMainMessage =
+  | {
+      type: "ipc-renderer-invoke";
+      requestId: string;
+      channel: string;
+      args: unknown[];
+      sourceUrl: string;
+    }
+  | {
+      type: "ipc-renderer-send";
+      channel: string;
+      args: unknown[];
+      sourceUrl: string;
+    };
+
+type MainToRendererMessage =
+  | {
+      type: "ipc-main-event";
+      channel: string;
+      args: unknown[];
+    }
+  | {
+      type: "ipc-renderer-invoke-result";
+      requestId: string;
+      ok: true;
+      result: unknown;
+    }
+  | {
+      type: "ipc-renderer-invoke-result";
+      requestId: string;
+      ok: false;
+      errorMessage: string;
+    };
+
+type IpcMainBridgeState = {
+  broadcastToRenderer?: (message: MainToRendererMessage) => void;
+  handleRendererInvoke?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => Promise<unknown>;
+  handleRendererSend?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => void;
 };
 
 const MIME_TYPES: Record<string, string> = {
@@ -33,10 +82,107 @@ const MIME_TYPES: Record<string, string> = {
 
 const BRIDGE_MODULE_RELATIVE_PATH = "assets/dev-bridge.js";
 const BRIDGE_MODULE_SCRIPT_TAG = `<script type="module" src="./${BRIDGE_MODULE_RELATIVE_PATH}"></script>`;
+const IPC_BRIDGE_PATH = "/__electron_ipc";
 const MAIN_BRIDGE_PATH = path.resolve(
   process.cwd(),
   "scratch/asar/.vite/build/dev-main.js",
 );
+
+function getIpcMainBridgeState(): IpcMainBridgeState {
+  const globals = globalThis as typeof globalThis & {
+    __codexElectronIpcBridge?: IpcMainBridgeState;
+  };
+  if (!globals.__codexElectronIpcBridge) {
+    globals.__codexElectronIpcBridge = {};
+  }
+  return globals.__codexElectronIpcBridge;
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.stack ?? error.message;
+  }
+  return String(error);
+}
+
+function createIpcBridgeServer(server: http.Server): void {
+  const bridgeState = getIpcMainBridgeState();
+  const websocketServer = new WebSocketServer({
+    server,
+    path: IPC_BRIDGE_PATH,
+  });
+  const sockets = new Set<WebSocket>();
+
+  bridgeState.broadcastToRenderer = (message: MainToRendererMessage): void => {
+    const payload = JSON.stringify(message);
+    for (const socket of sockets) {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(payload);
+      }
+    }
+  };
+
+  websocketServer.on("connection", (socket) => {
+    sockets.add(socket);
+
+    socket.on("close", () => {
+      sockets.delete(socket);
+    });
+
+    socket.on("message", (rawData) => {
+      let message: RendererToMainMessage;
+      try {
+        message = JSON.parse(String(rawData)) as RendererToMainMessage;
+      } catch (error) {
+        console.error("[ipc-bridge] invalid JSON payload", error);
+        return;
+      }
+
+      if (message.type === "ipc-renderer-send") {
+        bridgeState.handleRendererSend?.(
+          message.channel,
+          message.args,
+          message.sourceUrl,
+        );
+        return;
+      }
+
+      if (message.type === "ipc-renderer-invoke") {
+        const { channel, requestId, args, sourceUrl } = message;
+        Promise.resolve(
+          bridgeState.handleRendererInvoke?.(channel, args, sourceUrl) ??
+            Promise.reject(
+              new Error(
+                `[ipc-bridge] no ipcMain.handle for channel ${channel}`,
+              ),
+            ),
+        )
+          .then((result) => {
+            const payload: MainToRendererMessage = {
+              type: "ipc-renderer-invoke-result",
+              requestId,
+              ok: true,
+              result,
+            };
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          })
+          .catch((error) => {
+            const payload: MainToRendererMessage = {
+              type: "ipc-renderer-invoke-result",
+              requestId,
+              ok: false,
+              errorMessage: errorMessage(error),
+            };
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          });
+      }
+    });
+  });
+}
 
 function printUsage(): void {
   console.log(
@@ -318,6 +464,10 @@ function loadMainBridgeModule(modulePath: string): void {
 
 function main(args: string[]): void {
   const options = parseArgs(args);
+  if (!process.env.ELECTRON_RENDERER_URL) {
+    const trustedHost = options.host === "0.0.0.0" ? "127.0.0.1" : options.host;
+    process.env.ELECTRON_RENDERER_URL = `http://${trustedHost}:${options.port}`;
+  }
 
   const rootStat = statIfExists(options.rootDir);
   if (!rootStat?.isDirectory()) {
@@ -341,6 +491,7 @@ function main(args: string[]): void {
   }
 
   const server = http.createServer(createHandler(options));
+  createIpcBridgeServer(server);
   server.listen(options.port, options.host, () => {
     console.log(`Serving: ${options.rootDir}`);
     console.log(`URL: http://${options.host}:${options.port}`);
