@@ -6,13 +6,11 @@ type RendererToMainMessage =
       requestId: string;
       channel: string;
       args: unknown[];
-      sourceUrl: string;
     }
   | {
       type: "ipc-renderer-send";
       channel: string;
       args: unknown[];
-      sourceUrl: string;
     };
 
 type MainToRendererMessage =
@@ -169,7 +167,6 @@ export const ipcRenderer = {
         requestId,
         channel,
         args,
-        sourceUrl: window.location.href,
       });
     });
   },
@@ -201,7 +198,6 @@ export const ipcRenderer = {
       type: "ipc-renderer-send",
       channel,
       args,
-      sourceUrl: window.location.href,
     });
   },
   sendSync(channel: string, ..._args: unknown[]): unknown {

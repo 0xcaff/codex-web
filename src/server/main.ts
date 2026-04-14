@@ -8,7 +8,6 @@ import { WebSocket, WebSocketServer } from "ws";
 type ServerOptions = {
   host: string;
   port: number;
-  rendererUrl: string;
 };
 
 type RendererToMainMessage =
@@ -50,18 +49,14 @@ type IpcMainBridgeState = {
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
   ) => Promise<unknown>;
   handleRendererSend?: (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
   ) => void;
 };
 
 const IPC_BRIDGE_PATH = "/__electron_ipc";
-
-const DEFAULT_RENDERER_URL = "http://127.0.0.1:4173";
 
 function printUsage(): void {
   console.log(
@@ -72,12 +67,10 @@ function printUsage(): void {
       "Defaults:",
       "  --host 127.0.0.1",
       "  --port 8214",
-      `  --renderer-url ${DEFAULT_RENDERER_URL}`,
       "",
       "Examples:",
       "  yarn server",
       "  yarn server --port 9000",
-      "  yarn server --renderer-url http://127.0.0.1:4173",
     ].join("\n"),
   );
 }
@@ -105,9 +98,6 @@ function parseServerArgs(args: string[]): ServerOptions {
       port: {
         type: "string",
       },
-      "renderer-url": {
-        type: "string",
-      },
     },
     strict: true,
   });
@@ -120,10 +110,6 @@ function parseServerArgs(args: string[]): ServerOptions {
   return {
     host: parsed.values.host ?? "127.0.0.1",
     port: parsed.values.port ? parsePort(parsed.values.port) : 8214,
-    rendererUrl:
-      parsed.values["renderer-url"] ??
-      process.env.ELECTRON_RENDERER_URL ??
-      DEFAULT_RENDERER_URL,
   };
 }
 
@@ -276,15 +262,14 @@ function startIpcBridgeServer(
         bridgeState.handleRendererSend?.(
           message.channel,
           message.args,
-          message.sourceUrl,
         );
         return;
       }
 
       if (message.type === "ipc-renderer-invoke") {
-        const { channel, requestId, args, sourceUrl } = message;
+        const { channel, requestId, args } = message;
         Promise.resolve(
-          bridgeState.handleRendererInvoke?.(channel, args, sourceUrl) ??
+          bridgeState.handleRendererInvoke?.(channel, args) ??
             Promise.reject(
               new Error(
                 `[ipc-bridge] no ipcMain.handle for channel ${channel}`,
@@ -327,7 +312,6 @@ function startIpcBridgeServer(
 
 function main(args: string[]): void {
   const options = parseServerArgs(args);
-  process.env.ELECTRON_RENDERER_URL ??= options.rendererUrl;
 
   startIpcBridgeServer(options);
 }

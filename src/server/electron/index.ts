@@ -148,14 +148,12 @@ function createMessagePortStub(label: string): {
   };
 }
 
-function createIpcMainEvent(sourceUrl?: string): IpcMainEvent {
-  const frameUrl = sourceUrl ?? "about:blank";
-  const mainFrame = {
-    url: frameUrl,
-  };
+function createIpcMainEvent(): IpcMainEvent {
   const sender: StubWebContents = {
     id: 1001,
-    mainFrame,
+    mainFrame: {
+      url: "about:blank",
+    },
     isDestroyed: () => false,
     send: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
@@ -171,7 +169,9 @@ function createIpcMainEvent(sourceUrl?: string): IpcMainEvent {
     processId: 1,
     frameId: 1,
     sender,
-    senderFrame: mainFrame,
+    senderFrame: {
+      url: "about:blank",
+    },
     reply: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
         type: "ipc-main-event",
@@ -203,13 +203,12 @@ function createIpcMainStub(): {
   bridgeState.handleRendererInvoke = async (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
   ): Promise<unknown> => {
     const handler = handlers.get(channel);
     if (!handler) {
       throw new Error(`[electron-main-stub] No ipcMain.handle for ${channel}`);
     }
-    const event = createIpcMainEvent(sourceUrl);
+    const event = createIpcMainEvent();
     return await Promise.resolve(handler(event, ...args));
   };
 
@@ -218,7 +217,7 @@ function createIpcMainStub(): {
     args: unknown[],
     sourceUrl?: string,
   ): void => {
-    const event = createIpcMainEvent(sourceUrl);
+    const event = createIpcMainEvent();
     emitter.emit(channel, event, ...args);
   };
 
