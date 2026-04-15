@@ -157,6 +157,8 @@ function addIpcListener(channel: string, listener: IpcListener): void {
   rendererListeners.set(channel, listeners);
 }
 
+const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
+
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     const requestId = nextRequestId();
@@ -256,12 +258,18 @@ export const ipcRenderer = {
     }
 
     if (channel === "codex_desktop:get-system-theme-variant") {
-      return "light";
+      return themeMediaQuery.matches ? "dark" : "light";
     }
 
     return unimplemented("ipcRenderer.sendSync");
   },
 };
+
+themeMediaQuery.addEventListener("change", () => {
+  ipcRenderer.send("codex_desktop:system-theme-variant-changed", {
+    variant: themeMediaQuery.matches ? "dark" : "light",
+  });
+});
 
 ensureSocket();
 
