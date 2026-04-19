@@ -28,22 +28,6 @@ to the codex desktop app can be integrated quickly.
   - editor sidepanel
   - transcription
 
-## broken but want to fix
-
-- terminal
-- git worker is not hooked up yet
-- browser panel, which might be possible to rebuild around iframes
-- probably more (file an issue please)
-
-## non-features
-
-this project is meant to stay small and scrappy. the focus is on wrapping the
-codex app as simply as possible.
-
-- built-in auth. put it behind a reverse proxy like caddy.
-- direct exposure to the public internet. use tailscale or roll your own
-  wireguard if you want to reach it outside your lan.
-
 ## usage
 
 `codex-web` serves the browser client and hosts the desktop-side bridge. by
@@ -100,3 +84,29 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
   codex-web
 '
 ```
+
+## non-features
+
+this project is meant to stay small and scrappy. the focus is on wrapping the
+codex app as simply as possible.
+
+- built-in auth. put it behind a reverse proxy like caddy.
+- direct exposure to the public internet. use tailscale or roll your own
+  wireguard if you want to reach it outside your lan.
+
+## broken but want to fix
+
+- terminal
+- git worker is not hooked up yet
+- browser panel, which might be possible to rebuild around iframes
+- probably more (file an issue please)
+
+## issues welcome
+
+is there something broken you'd like to see fixed? file an issue!
+
+using this in an interesting way and want to share? post on X and tag me
+(@0xcaff).
+
+using this at a company and need something more than offered here? send me an
+email and we can talk.
