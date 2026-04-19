@@ -16,6 +16,25 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
+    packages =
+      (with pkgs; [
+        cacert
+        coreutils
+        bashInteractive
+        gnugrep
+        gawk
+        findutils
+        procps
+        curl
+        jq
+        tree
+        vim
+        tmux
+        ripgrep
+      ])
+      ++ [
+        self.packages.${system}.codex
+      ];
   in
   {
     packages = pkgs.lib.optionalAttrs pkgs.stdenv.hostPlatform.isLinux {
@@ -24,10 +43,12 @@ flake-utils.lib.eachSystem systems (
         tag = "latest";
         contents = [
           self.packages.${system}.default
-          self.packages.${system}.codex
-          pkgs.cacert
-          pkgs.coreutils
-        ];
+        ] ++ packages;
+        fakeRootCommands = ''
+          mkdir -p bin
+          ln -sf ${pkgs.bashInteractive}/bin/bash bin/bash
+          ln -sf ${pkgs.bashInteractive}/bin/bash bin/sh
+        '';
         config = {
           Cmd = [
             "${pkgs.coreutils}/bin/env"
@@ -44,7 +65,7 @@ flake-utils.lib.eachSystem systems (
           Env = [
             "NODE_ENV=production"
             "HOME=/tmp"
-            "PATH=${pkgs.lib.makeBinPath [ self.packages.${system}.codex ]}"
+            "PATH=${pkgs.lib.makeBinPath packages}"
             "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt"
           ];
         };
