@@ -11,7 +11,6 @@
     inputs@{ flake-utils, ... }:
     flake-utils.lib.meld inputs [
       ./default.nix
-      ./nix/docker.nix
       ./nix/fmt.nix
     ];
 }

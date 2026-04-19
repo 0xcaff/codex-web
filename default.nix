@@ -84,65 +84,14 @@ flake-utils.lib.eachSystem systems (
           '';
         };
 
-      codex = pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
-        pname = "codex-app-server";
-        version = cliVersion;
-
-        src = pkgs.fetchurl {
-          url = "https://registry.npmjs.org/@openai/codex/-/codex-${finalAttrs.version}-linux-x64.tgz";
-          hash = "sha256-suRePMCtRmK+csvAwNAdMDwbHbfvbIYlZt5rSoGk7yU";
-        };
-
-        nativeBuildInputs = [ pkgs.makeWrapper ];
-        dontConfigure = true;
-        dontBuild = true;
-
-        installPhase = ''
-          runHook preInstall
-
-          tar -xzf "$src"
-
-          install -Dm755 package/vendor/x86_64-unknown-linux-musl/codex/codex "$out/libexec/codex/codex"
-          install -Dm755 package/vendor/x86_64-unknown-linux-musl/path/rg "$out/libexec/codex/rg"
-
-          makeWrapper "$out/libexec/codex/codex" "$out/bin/codex" \
-            --prefix PATH : "$out/libexec/codex"
-
-          runHook postInstall
-        '';
-
-        meta = {
-          description = "Pinned Codex CLI binary used to run the app-server";
-          homepage = "https://www.npmjs.com/package/@openai/codex";
-          license = pkgs.lib.licenses.asl20;
-          platforms = [ "x86_64-linux" ];
-          mainProgram = "codex";
-        };
-      });
-
-      codex_remote_proxy = pkgs.stdenvNoCC.mkDerivation {
-        pname = "codex-remote-proxy";
-        version = "1.0.0";
-        src = ./scripts/codex_remote_proxy;
-
-        nativeBuildInputs = [ pkgs.makeWrapper ];
-
-        installPhase = ''
-          runHook preInstall
-
-          install -D "$src" "$out/bin/codex_remote_proxy"
-
-          wrapProgram "$out/bin/codex_remote_proxy" \
-            --prefix PATH : ${
-              pkgs.lib.makeBinPath [
-                pkgs.bash
-                pkgs.coreutils
-                pkgs.websocat
-              ]
-            }
-
-          runHook postInstall
-        '';
+      codex_remote_proxy = pkgs.writeShellApplication {
+        name = "codex_remote_proxy";
+        runtimeInputs = with pkgs; [
+          bash
+          coreutils
+          websocat
+        ];
+        text = builtins.readFile ./scripts/codex_remote_proxy;
       };
     };
   }
