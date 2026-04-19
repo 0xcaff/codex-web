@@ -64,6 +64,10 @@ flake-utils.lib.eachSystem systems (
           ]
           ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.cctools ];
 
+          preBuild = ''
+            patchShebangs scripts
+          '';
+
           preInstall = ''
             # Keep only extracted asar artifacts for packaging.
             rm -rf scratch/Codex.app
