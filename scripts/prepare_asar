@@ -1,6 +1,5 @@
-#!/bin/sh
-set -euox pipefail
-shopt -s globstar
+#!/usr/bin/env bash
+set -euxo pipefail
 
 unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
 asar extract "scratch/Codex.app/Contents/Resources/app.asar" "scratch/asar"

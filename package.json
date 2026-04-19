@@ -4,7 +4,7 @@
   "files": [
     "README.md",
     "scratch/asar/**/*",
-    "src/server/main.js",
+    "src/server/**/*.js",
     "src/server/electron/index.js",
     "!**/*.ts"
   ],
@@ -12,14 +12,15 @@
     "codex-hosted-server": "src/server/main.js"
   },
   "scripts": {
-    "build": "yarn prepare:asar && yarn build:browser && yarn build:server",
+    "prepare": "./scripts/prepare && npm run build:browser && npm run build:server",
+    "build": "npm run prepare:asar && npm run build:browser && npm run build:server",
     "launch:unpacked:server": "http-server ./scratch/asar/webview -a localhost -p 5175 -c-1",
     "launch:unpacked": "NODE_ENV=development CODEX_CLI_PATH=$(which codex) electron ./scratch/asar --remote-debugging-port=9222",
     "dev:browser": "vite --config vite.browser.config.ts",
     "build:browser": "vite build --config vite.browser.config.ts",
-    "build:server": "tsc src/server/main.ts src/server/electron/index.ts --module commonjs --target es2022 --moduleResolution node --types node,ws --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 --rootDir src/server --outDir src/server",
+    "build:server": "tsc src/server/main.ts src/server/module.ts src/server/electron/index.ts --module commonjs --target es2022 --moduleResolution node --types node,ws --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 --rootDir src/server --outDir src/server",
     "prepare:asar": "./scripts/prepare_asar",
-    "preserver": "yarn build:server",
+    "preserver": "npm run build:server",
     "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
   },
   "repository": "git@github.com:0xcaff/codex-hosted.git",
@@ -29,16 +30,16 @@
     "@fastify/static": "^9.1.1",
     "better-sqlite3": "^12.9.0",
     "fastify": "^5.8.5",
-    "ws": "^8.20.0"
-  },
-  "devDependencies": {
+    "ws": "^8.20.0",
     "@electron/asar": "^4.2.0",
-    "@openai/codex": "^0.121.0",
     "@types/ws": "^8.18.1",
-    "electron": "41.2.0",
-    "http-server": "^14.1.1",
     "prettier": "^3.8.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.8"
+  },
+  "devDependencies": {
+    "@openai/codex": "^0.121.0",
+    "electron": "41.2.0",
+    "http-server": "^14.1.1"
   }
 }

@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import path from "node:path";
 import { parseArgs as parseCliArgs } from "node:util";
 import { WebSocket, WebSocketServer } from "ws";
