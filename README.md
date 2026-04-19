@@ -8,10 +8,10 @@ the agents were never meant to stay trapped in a terminal window for long.
 codex desktop brought the power of the agents to your local computer, where
 your files, credentials and tools already live.
 
-codex-web brings that same capability to the browser while hosting the backend
-on a machine you control. that means your agents can keep working after the lid
-shuts on your laptop, remaining reachable from mobile or any other platform that
-can run a browser.
+codex-web brings codex desktop to the browser while keeping the backend on a
+machine you control (a linux box in the cloud, your home lab, or a desktop / mac
+mini). agents keep running after your laptop closes, and you can reconnect from
+mobile or any browser-capable device.
 
 this project aims to be as thin a wrapper as possible to ensure upstream changes
 to the codex desktop app can be integrated quickly.
