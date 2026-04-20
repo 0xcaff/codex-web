@@ -18,7 +18,7 @@
     "build:browser": "vite build --config vite.browser.config.ts",
     "build:server": "tsc src/server/main.ts src/server/module.ts src/server/electron/index.ts --module commonjs --target es2022 --moduleResolution node --types node,ws --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 --rootDir src/server --outDir src/server",
     "prepare:asar": "./scripts/prepare_asar",
-    "preserver": "npm run build:server",
+    "preserver": "npm run build:server && npm run build:browser",
     "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
   },
   "repository": "git@github.com:0xcaff/codex-web.git",
