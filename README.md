@@ -85,14 +85,26 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
 '
 ```
 
-## non-features
+## security
 
-this project is meant to stay small and scrappy. the focus is on wrapping the
-codex app as simply as possible.
+`codex-web` is not intended to be exposed directly to the public internet.
+treat anyone who can reach the `codex-web` server as someone who can operate
+codex on the host machine as that user.
 
-- built-in auth. put it behind a reverse proxy like caddy.
-- direct exposure to the public internet. use tailscale or roll your own
-  wireguard if you want to reach it outside your lan.
+someone with access to the web ui may be able to:
+
+- run commands on the host, limited only by the permissions of the `codex-web`
+  server process.
+- read or modify files, environment variables, credentials, ssh keys, and other
+  local resources that are accessible to that process.
+- use the codex / chatgpt account already signed in on the host. this may
+  consume usage quota or billing credits, and may expose account metadata shown
+  by the app or cli, such as name or email address.
+
+run `codex-web` only on a trusted network. do not expose it directly to the
+internet. prefer access through wireguard, tailscale, or an ssh tunnel, and put
+an authentication gateway or reverse proxy in front if other people or devices
+can reach it.
 
 ## broken but want to fix
 
