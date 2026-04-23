@@ -5,9 +5,7 @@ description: update codex-web to a specific upstream codex desktop app version
 
 # workflow
 
-use this skill when updating `codex-web` to a new upstream codex desktop app
-build. see `b289baf26042686283d371411a512c1252455c0a` as an example of what an
-update looks like.
+use this skill when updating `codex-web` to a new upstream codex desktop app build.
 
 ## preparing devshell
 
