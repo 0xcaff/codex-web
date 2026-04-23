@@ -1,10 +1,10 @@
---- a/.vite/build/product-name-BA584x_m.js
-+++ b/.vite/build/product-name-BA584x_m.js
-@@ -84989,6 +84989,7 @@
-     n = Ah(e.version);
+--- a/.vite/build/workspace-root-drop-handler-Cne_iOBj.js
++++ b/.vite/build/workspace-root-drop-handler-Cne_iOBj.js
+@@ -35804,6 +35804,7 @@
+     i = e.y(n.version);
    return (
-     M9({
+     e.r({
 +      enabled: !1,
-       dsn: kh,
-       environment: L9.buildFlavor,
-       release: n,
+       dsn: e.v,
+       environment: jE.buildFlavor,
+       release: i,

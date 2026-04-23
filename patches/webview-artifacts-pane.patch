@@ -1,5 +1,5 @@
---- a/webview/assets/statsig-axnzwuK0.js
-+++ b/webview/assets/statsig-axnzwuK0.js
+--- a/webview/assets/statsig-Cfm6F2aM.js
++++ b/webview/assets/statsig-Cfm6F2aM.js
 @@ -4251,6 +4251,7 @@
        getContextHandle() {
          return this._contextHandle;

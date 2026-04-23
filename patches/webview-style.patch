@@ -1,9 +1,9 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -600,6 +600,7 @@
-       href="./assets/use-personality-D82knaKt.css"
+@@ -617,6 +617,7 @@
+       href="./assets/codex-avatar-D82knaKt.css"
      />
-     <link rel="stylesheet" crossorigin href="./assets/index-CMhGK1g0.css" />
+     <link rel="stylesheet" crossorigin href="./assets/index-B8iKrQC-.css" />
 +    <style>.main-surface { --spacing-token-safe-header-left: 0px; }</style>
    </head>
    <body tabindex="0" style="outline: none">

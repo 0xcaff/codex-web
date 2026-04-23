@@ -324,10 +324,15 @@ const app = new Proxy(appBase as Record<string, unknown>, {
 class BrowserWindow {
   static nextId = 1;
   static allWindows: BrowserWindow[] = [];
+  static focusedWindow: BrowserWindow | null = null;
+  static windowsByWebContents = new WeakMap<object, BrowserWindow>();
   id: number;
   private destroyed = false;
+  private visible = false;
+  private minimized = false;
   private title = "Codex";
   private bounds = { x: 0, y: 0, width: 1280, height: 820 };
+  private parentWindow: BrowserWindow | null = null;
   webContents: Record<string, unknown>;
   private readonly emitter: ReturnType<typeof createEmitterStub>;
 
@@ -335,6 +340,11 @@ class BrowserWindow {
     log("new BrowserWindow", args);
     this.id = BrowserWindow.nextId++;
     this.emitter = createEmitterStub(`BrowserWindow#${this.id}`);
+    const options = args[0] as
+      | { parent?: BrowserWindow; show?: boolean }
+      | undefined;
+    this.parentWindow = options?.parent ?? null;
+    this.visible = options?.show ?? false;
 
     const webContentsEmitter = createEmitterStub(
       `BrowserWindow#${this.id}.webContents`,
@@ -380,6 +390,7 @@ class BrowserWindow {
       },
     );
 
+    BrowserWindow.windowsByWebContents.set(this.webContents, this);
     BrowserWindow.allWindows.push(this);
     return new Proxy(this, {
       get: (target, prop) => {
@@ -394,6 +405,19 @@ class BrowserWindow {
   static getAllWindows(): BrowserWindow[] {
     log("BrowserWindow.getAllWindows", []);
     return BrowserWindow.allWindows.filter((window) => !window.destroyed);
+  }
+
+  static getFocusedWindow(): BrowserWindow | null {
+    log("BrowserWindow.getFocusedWindow", []);
+    const focusedWindow = BrowserWindow.focusedWindow;
+    return focusedWindow != null && !focusedWindow.destroyed
+      ? focusedWindow
+      : null;
+  }
+
+  static fromWebContents(webContents: object): BrowserWindow | null {
+    log("BrowserWindow.fromWebContents", [webContents]);
+    return BrowserWindow.windowsByWebContents.get(webContents) ?? null;
   }
 
   on(event: string, listener: StubListener): unknown {
@@ -423,6 +447,11 @@ class BrowserWindow {
   destroy(): void {
     log(`BrowserWindow#${this.id}.destroy`, []);
     this.destroyed = true;
+    this.visible = false;
+    this.minimized = false;
+    if (BrowserWindow.focusedWindow === this) {
+      BrowserWindow.focusedWindow = null;
+    }
     this.emitter.emit("closed");
   }
 
@@ -450,6 +479,16 @@ class BrowserWindow {
     return { ...this.bounds };
   }
 
+  getContentBounds(): { height: number; width: number; x: number; y: number } {
+    log(`BrowserWindow#${this.id}.getContentBounds`, []);
+    return { ...this.bounds };
+  }
+
+  getParentWindow(): BrowserWindow | null {
+    log(`BrowserWindow#${this.id}.getParentWindow`, []);
+    return this.parentWindow;
+  }
+
   setBounds(nextBounds: {
     height?: number;
     width?: number;
@@ -467,14 +506,60 @@ class BrowserWindow {
 
   show(): void {
     log(`BrowserWindow#${this.id}.show`, []);
+    this.visible = true;
+    this.minimized = false;
+  }
+
+  showInactive(): void {
+    log(`BrowserWindow#${this.id}.showInactive`, []);
+    this.visible = true;
+    this.minimized = false;
   }
 
   hide(): void {
     log(`BrowserWindow#${this.id}.hide`, []);
+    this.visible = false;
+    if (BrowserWindow.focusedWindow === this) {
+      BrowserWindow.focusedWindow = null;
+    }
+  }
+
+  minimize(): void {
+    log(`BrowserWindow#${this.id}.minimize`, []);
+    this.minimized = true;
+    this.emitter.emit("minimize");
+  }
+
+  restore(): void {
+    log(`BrowserWindow#${this.id}.restore`, []);
+    this.minimized = false;
+    this.visible = true;
   }
 
   focus(): void {
     log(`BrowserWindow#${this.id}.focus`, []);
+    if (BrowserWindow.focusedWindow !== this) {
+      BrowserWindow.focusedWindow?.emitter.emit("blur");
+    }
+    BrowserWindow.focusedWindow = this;
+    this.visible = true;
+    this.minimized = false;
+    this.emitter.emit("focus");
+  }
+
+  isFocused(): boolean {
+    log(`BrowserWindow#${this.id}.isFocused`, []);
+    return BrowserWindow.focusedWindow === this && !this.destroyed;
+  }
+
+  isVisible(): boolean {
+    log(`BrowserWindow#${this.id}.isVisible`, []);
+    return this.visible && !this.destroyed;
+  }
+
+  isMinimized(): boolean {
+    log(`BrowserWindow#${this.id}.isMinimized`, []);
+    return this.minimized && !this.destroyed;
   }
 }
 

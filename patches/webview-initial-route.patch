@@ -21,14 +21,14 @@
        },
        [l],
      );
---- a/webview/assets/use-model-settings-BXpE6yHZ.js
-+++ b/webview/assets/use-model-settings-BXpE6yHZ.js
-@@ -1795,7 +1795,7 @@
-   Pee = zc.entries$,
-   Fee = Bc.entries$,
-   Iee = { center: zc, left: Bc },
--  Vc = x(g, !0),
-+  Vc = x(g, window.__ELECTRON_SHIM__.initialSidebarState),
-   Hc = x(Pa, !1),
-   Uc = x(Pa, () => new ja(0)),
-   Wc = x(Pa, !1),
+--- a/webview/assets/use-model-settings-BBeDroPt.js
++++ b/webview/assets/use-model-settings-BBeDroPt.js
+@@ -1950,7 +1950,7 @@
+   Yee = Pc.entries$,
+   Xee = Fc.entries$,
+   Zee = { center: Pc, left: Fc },
+-  Ic = ye(ue, !0),
++  Ic = ye(ue, window.__ELECTRON_SHIM__.initialSidebarState),
+   Lc = ye(Ki, !1),
+   Dc = ye(Ki, () => new Ha(0)),
+   Rc = ye(Ki, !1),

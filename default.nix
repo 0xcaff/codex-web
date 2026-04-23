@@ -15,11 +15,11 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.415.20818";
-    cliVersion = "0.121.0";
+    appVersion = "26.422.20832";
+    cliVersion = "0.124.0-alpha.2";
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-NQgcjVeR9ACr2ZinsWSlR8GTsak6zuv1Qv+OyPIMtUg=";
+      hash = "sha256-QbfCyF7QmdYtq+UnPMSj/j1nNaSDcLQbm896qE1LbRg=";
     };
   in
   {
@@ -48,7 +48,7 @@ flake-utils.lib.eachSystem systems (
 
           yarnOfflineCache = pkgs.fetchYarnDeps {
             yarnLock = ./yarn.lock;
-            hash = "sha256-T/sWEIHRtxtF5HUvBOGryK1mtnZ6mAcpyIhugeDWhbQ=";
+            hash = "sha256-/Q6Wzba9g7rLywwK3N3LHFP0uSNClxgCjFxLe8hdaMM=";
           };
 
           nativeBuildInputs = [

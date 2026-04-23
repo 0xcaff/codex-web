@@ -261,7 +261,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   installModuleAliasHook();
 
   const module = require(
-    path.resolve(__dirname, "../../scratch/asar/.vite/build/main-BnI_RVTn.js"),
+    path.resolve(__dirname, "../../scratch/asar/.vite/build/main-DPIxE_em.js"),
   );
   module.runMainAppStartup();
 }

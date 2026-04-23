@@ -129,47 +129,47 @@
   dependencies:
     "@tybys/wasm-util" "^0.10.1"
 
-"@openai/codex-darwin-arm64@npm:@openai/codex@0.121.0-darwin-arm64":
-  version "0.121.0-darwin-arm64"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0-darwin-arm64.tgz#1d0645f40deb741ebae896c65125f141560d9473"
-  integrity sha512-ZyBqIB6Fb4I0hGb/h65Vu7ePYjHSmGiqqfm+/1djEuxDPkqjfi4wkxYxNYNY+6najyNGN4UijOSTTf19eDCrqw==
+"@openai/codex-darwin-arm64@npm:@openai/codex@0.124.0-alpha.2-darwin-arm64":
+  version "0.124.0-alpha.2-darwin-arm64"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2-darwin-arm64.tgz#543b596da6fc63ec9254ed007f9e5cd8c367f6b2"
+  integrity sha512-0H7F4s0oceGATU8cuYYD+R01tgq+s39y/G9EbN9B7XziHtsWeVAvRq4skncF2vZoigji8/pVz34yZjwyEqiQoA==
 
-"@openai/codex-darwin-x64@npm:@openai/codex@0.121.0-darwin-x64":
-  version "0.121.0-darwin-x64"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0-darwin-x64.tgz#f807ceff862e3789df7b389b55cfa1739050d573"
-  integrity sha512-1/OAtdkAZ5yPI3xqaEFlHuPziS1yCqL2gOZdswE7HTmmwpIxi6Z3FCo60JWDPluIp89z4tftdjq73/OCN0YVcw==
+"@openai/codex-darwin-x64@npm:@openai/codex@0.124.0-alpha.2-darwin-x64":
+  version "0.124.0-alpha.2-darwin-x64"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2-darwin-x64.tgz#63678491c3fa526e4450052d5244c54a690fab86"
+  integrity sha512-J1u+/v9AcSxswW+RYYV9zJ9j90kcvs/4vg8f1EJLSrBkVmfvmTh36Mgk3eiIqaUutG9gVPGmslaUSRmP361bXg==
 
-"@openai/codex-linux-arm64@npm:@openai/codex@0.121.0-linux-arm64":
-  version "0.121.0-linux-arm64"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0-linux-arm64.tgz#d4953343cf259d4b171d7052b8ae0b62870dec28"
-  integrity sha512-2UgMmdo237o7SCMsfb529cOSEM2HFUgN6OBkv5SBLwfNY1NO2Ex6JnUjlppEXlX6/4cXfZ5qjDghVz5j/+B9zw==
+"@openai/codex-linux-arm64@npm:@openai/codex@0.124.0-alpha.2-linux-arm64":
+  version "0.124.0-alpha.2-linux-arm64"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2-linux-arm64.tgz#78fb123bce07495f68b1dc5ffcd6acd0a730c8f7"
+  integrity sha512-0noqkaVD8z1gaerUmh1CV3bna+C0aupiL4MmI514yE05q9maL1GwnVL/TLV655tapE5dsrwNoQzC8RqBSH0lpQ==
 
-"@openai/codex-linux-x64@npm:@openai/codex@0.121.0-linux-x64":
-  version "0.121.0-linux-x64"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0-linux-x64.tgz#1f3583d1b0bba90db0d230749887fcd4e90fc1bb"
-  integrity sha512-vlpNJXIqss800J+32Vy7TUZzv31n61b45OLxmsVQGFkTNLJcjFrj9jDUC7I62eC4F16gLioilefNfv4CdJQOEw==
+"@openai/codex-linux-x64@npm:@openai/codex@0.124.0-alpha.2-linux-x64":
+  version "0.124.0-alpha.2-linux-x64"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2-linux-x64.tgz#ce432da9523f42b1071f48f065bda6ad6adc8576"
+  integrity sha512-7YfTqlC3X9MnmD8uNbeqJGQKI65xjwK5vUUwMe33oCB0/ymnZ4SBxTigllMzv65ZLEm+LIMEaDYXl1DhLuX7bA==
 
-"@openai/codex-win32-arm64@npm:@openai/codex@0.121.0-win32-arm64":
-  version "0.121.0-win32-arm64"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0-win32-arm64.tgz#fcf3680d7058b67f18606551201dffd45090ea0a"
-  integrity sha512-m88q4f3XI5npn1t6OG0nWGHWWAjO5FgjRwxh4hdujbLO6t9CiCNfhfPZIOSsoATbrCNwLC+6S77m3cjbNToPNg==
+"@openai/codex-win32-arm64@npm:@openai/codex@0.124.0-alpha.2-win32-arm64":
+  version "0.124.0-alpha.2-win32-arm64"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2-win32-arm64.tgz#95a2448f10cae1fe143a1ab5d6d7badad1c18472"
+  integrity sha512-vX3B6Xx/W8Gb/9mlkG2qBheAxfQBx9vVhJXrfhJwPg0MfwqnYGIzq1fqZ4Uru88dcz+1PVKPLECWMatNxPVo5A==
 
-"@openai/codex-win32-x64@npm:@openai/codex@0.121.0-win32-x64":
-  version "0.121.0-win32-x64"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0-win32-x64.tgz#a4ef1e9254c51f56925c6a66d3e7eaef1a05ebb8"
-  integrity sha512-Fp0ecVOyM+VcBi/y4HVvRzhifO9YqRiHzhV3rhtAppC7flh22WPguLC4kmvXYAR0p3RPzbo35M2CedWnkOT+cw==
+"@openai/codex-win32-x64@npm:@openai/codex@0.124.0-alpha.2-win32-x64":
+  version "0.124.0-alpha.2-win32-x64"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2-win32-x64.tgz#4bb79705cd1c409d2b92aa6942777b54b83a129c"
+  integrity sha512-1udXmWXmrmvoaag0TsMVt611vskQ1JJzF1dnOrSG35manQldQ84Utu4PZO8sKNJ8ErED+xJmGjh721XmJJ42DQ==
 
-"@openai/codex@^0.121.0":
-  version "0.121.0"
-  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.121.0.tgz#4916f6a6239339c97d74e42dc6bb034e05a72e7e"
-  integrity sha512-kCJ2NeATd4QBQRmqV04ymdN1ZU3MSwnJQDm/KzjpuzGvCuUVEn7no/T2mRyxQ2x77AACqriNOyPPoM/yufyvNg==
+"@openai/codex@0.124.0-alpha.2":
+  version "0.124.0-alpha.2"
+  resolved "https://registry.npmjs.org/@openai/codex/-/codex-0.124.0-alpha.2.tgz#153ceb1420e60afb0a562e382e91428d59490934"
+  integrity sha512-RaV47zJP6bUauTiuugxU1R/7w7nSBwHf94dFM7hC4mDm/UezkovktqciZntLMEd/a8teR8rlYx0qu0oieVNOwA==
   optionalDependencies:
-    "@openai/codex-darwin-arm64" "npm:@openai/codex@0.121.0-darwin-arm64"
-    "@openai/codex-darwin-x64" "npm:@openai/codex@0.121.0-darwin-x64"
-    "@openai/codex-linux-arm64" "npm:@openai/codex@0.121.0-linux-arm64"
-    "@openai/codex-linux-x64" "npm:@openai/codex@0.121.0-linux-x64"
-    "@openai/codex-win32-arm64" "npm:@openai/codex@0.121.0-win32-arm64"
-    "@openai/codex-win32-x64" "npm:@openai/codex@0.121.0-win32-x64"
+    "@openai/codex-darwin-arm64" "npm:@openai/codex@0.124.0-alpha.2-darwin-arm64"
+    "@openai/codex-darwin-x64" "npm:@openai/codex@0.124.0-alpha.2-darwin-x64"
+    "@openai/codex-linux-arm64" "npm:@openai/codex@0.124.0-alpha.2-linux-arm64"
+    "@openai/codex-linux-x64" "npm:@openai/codex@0.124.0-alpha.2-linux-x64"
+    "@openai/codex-win32-arm64" "npm:@openai/codex@0.124.0-alpha.2-win32-arm64"
+    "@openai/codex-win32-x64" "npm:@openai/codex@0.124.0-alpha.2-win32-x64"
 
 "@oxc-project/types@=0.124.0":
   version "0.124.0"
