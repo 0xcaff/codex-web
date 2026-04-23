@@ -4,7 +4,7 @@
    let i = R(mh),
      a = d(),
      o = z(ur, e),
-+    codexHostedWindowTitle = z(ga, e),
++    codexHostedWindowTitle = z(yn, e),
      s = z(Cn, e),
      c = z(gn, e) ?? x5,
      l = z(wr, e),
