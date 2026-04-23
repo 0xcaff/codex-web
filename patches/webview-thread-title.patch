@@ -21,13 +21,3 @@
    let P = ea(),
      { agentMode: F } = If({ conversationId: e, hostId: l }),
      I = c ? ve(c) : null,
-@@ -147071,7 +147076,8 @@
-               scratchpadBlockedConversationIds: c,
-               scratchpadNavigationLockCount: l,
-             })) ||
--          n(e.path, { state: e.state });
-+          (window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e.path, e.state),
-+          n(e.path, { state: e.state }));
-       }),
-       (e[32] = n),
-       (e[33] = c),
