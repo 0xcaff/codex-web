@@ -15,11 +15,11 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.415.20818";
-    cliVersion = "0.121.0";
+    appVersion = "26.422.30944";
+    cliVersion = "0.125.0-alpha.3";
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-NQgcjVeR9ACr2ZinsWSlR8GTsak6zuv1Qv+OyPIMtUg=";
+      hash = "sha256-VwWwMMu1V8hP0v29fGRpOGfRfJxf9WowYIkcoF1V+FI=";
     };
   in
   {
