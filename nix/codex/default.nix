@@ -42,7 +42,9 @@ flake-utils.lib.eachSystem systems (
       };
     };
     rustyV8Archive = pkgs.fetchurl {
-      url = "https://github.com/denoland/rusty_v8/releases/download/v${rustyV8Version}/${rustyV8ArchiveInfo.${system}.file}";
+      url = "https://github.com/denoland/rusty_v8/releases/download/v${rustyV8Version}/${
+        rustyV8ArchiveInfo.${system}.file
+      }";
       hash = rustyV8ArchiveInfo.${system}.hash;
     };
   in
