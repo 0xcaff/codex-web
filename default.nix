@@ -1,6 +1,7 @@
 {
   flake-utils,
   nixpkgs,
+  self,
   ...
 }:
 let
@@ -16,17 +17,18 @@ flake-utils.lib.eachSystem systems (
   let
     pkgs = import nixpkgs { inherit system; };
     appVersion = "26.422.30944";
-    cliVersion = "0.125.0-alpha.3";
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${appVersion}.zip";
       hash = "sha256-VwWwMMu1V8hP0v29fGRpOGfRfJxf9WowYIkcoF1V+FI=";
     };
+    codex = self.packages.${system}.codex;
   in
   {
     devShells.default = pkgs.mkShell {
       HOSTED_CODEX_APP_ZIP = codexZip;
 
       packages = [
+        codex
         pkgs.nodejs
         pkgs.yarn
         pkgs.unzip
@@ -39,7 +41,7 @@ flake-utils.lib.eachSystem systems (
         nodeSources = pkgs.srcOnly pkgs.nodejs;
         yarnOfflineCache = pkgs.fetchYarnDeps {
           yarnLock = ./yarn.lock;
-          hash = "sha256-Vmgjs3QU++pMriU0ykOURwUUoRpwymtyE90xJHoXhGE=";
+          hash = "sha256-PPymV+XLEGj4JtqKUa+ctQIjnvbOQ0sFpTuRd34FEbM=";
         };
 
         betterSqlite3Native = pkgs.stdenv.mkDerivation {
@@ -110,6 +112,7 @@ flake-utils.lib.eachSystem systems (
             pkgs.yarn
             pkgs.unzip
             pkgs.patch
+            pkgs.makeWrapper
           ];
 
           preBuild = ''
@@ -131,6 +134,9 @@ flake-utils.lib.eachSystem systems (
             addon="$out/lib/node_modules/codex-web/node_modules/better-sqlite3"
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
+
+            wrapProgram "$out/bin/codex-web" \
+              --prefix PATH : "${pkgs.lib.makeBinPath [ codex ]}"
           '';
         };
 

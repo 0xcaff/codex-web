@@ -36,7 +36,6 @@
     "vite": "^8.0.8"
   },
   "devDependencies": {
-    "@openai/codex": "=0.125.0-alpha.3",
     "electron": "41.2.0",
     "http-server": "^14.1.1"
   }
