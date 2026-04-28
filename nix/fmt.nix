@@ -19,6 +19,7 @@ flake-utils.lib.eachSystem systems (
     pkgs = import nixpkgs { inherit system; };
     treefmtEval = treefmt-nix.lib.evalModule pkgs {
       projectRootFile = "flake.nix";
+      settings.excludes = [ "nix/codex/Cargo.nix" ];
       programs.nixfmt.enable = true;
     };
   in
