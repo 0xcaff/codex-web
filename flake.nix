@@ -8,6 +8,7 @@
   outputs =
     inputs@{ flake-utils, ... }:
     flake-utils.lib.meld inputs [
+      ./nix/codex
       ./default.nix
       ./nix/fmt.nix
     ];
