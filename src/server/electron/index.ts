@@ -324,6 +324,7 @@ const app = new Proxy(appBase as Record<string, unknown>, {
 class BrowserWindow {
   static nextId = 1;
   static allWindows: BrowserWindow[] = [];
+  static focusedWindow: BrowserWindow | null = null;
   id: number;
   private destroyed = false;
   private title = "Codex";
@@ -381,6 +382,7 @@ class BrowserWindow {
     );
 
     BrowserWindow.allWindows.push(this);
+    BrowserWindow.focusedWindow = this;
     return new Proxy(this, {
       get: (target, prop) => {
         if (prop in target) {
@@ -394,6 +396,17 @@ class BrowserWindow {
   static getAllWindows(): BrowserWindow[] {
     log("BrowserWindow.getAllWindows", []);
     return BrowserWindow.allWindows.filter((window) => !window.destroyed);
+  }
+
+  static getFocusedWindow(): BrowserWindow | null {
+    log("BrowserWindow.getFocusedWindow", []);
+    if (
+      BrowserWindow.focusedWindow &&
+      !BrowserWindow.focusedWindow.destroyed
+    ) {
+      return BrowserWindow.focusedWindow;
+    }
+    return BrowserWindow.getAllWindows()[0] ?? null;
   }
 
   on(event: string, listener: StubListener): unknown {
@@ -423,6 +436,9 @@ class BrowserWindow {
   destroy(): void {
     log(`BrowserWindow#${this.id}.destroy`, []);
     this.destroyed = true;
+    if (BrowserWindow.focusedWindow === this) {
+      BrowserWindow.focusedWindow = null;
+    }
     this.emitter.emit("closed");
   }
 
@@ -475,6 +491,8 @@ class BrowserWindow {
 
   focus(): void {
     log(`BrowserWindow#${this.id}.focus`, []);
+    BrowserWindow.focusedWindow = this;
+    this.emitter.emit("focus");
   }
 }
 
