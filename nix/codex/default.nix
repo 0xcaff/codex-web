@@ -27,6 +27,9 @@ flake-utils.lib.eachSystem systems (
         nativeBuildInputs = (attrs.nativeBuildInputs or [ ]) ++ [ pkgs.pkg-config ];
         buildInputs = (attrs.buildInputs or [ ]) ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libcap ];
       };
+      rmcp = _: {
+        CARGO_CRATE_NAME = "rmcp";
+      };
       v8 = attrs: {
         RUSTY_V8_ARCHIVE =
           let
