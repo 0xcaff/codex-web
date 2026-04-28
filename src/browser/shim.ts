@@ -300,6 +300,7 @@ export const ipcRenderer = {
           kind: "local",
         },
         remote_connections: [],
+        remote_control_connections: [],
         remote_control_connections_state: {
           available: false,
           authRequired: false,
@@ -311,12 +312,17 @@ export const ipcRenderer = {
           personality: true,
           request_rule: true,
           fast_mode: true,
+          image_generation: true,
           image_detail_original: true,
+          workspace_dependencies: true,
+          guardian_approval: true,
           apps: true,
           plugins: true,
           tool_search: true,
           tool_suggest: false,
           tool_call_mcp_elicitation: true,
+          memories: false,
+          realtime_conversation: false,
         },
       };
     }
