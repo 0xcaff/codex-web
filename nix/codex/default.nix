@@ -65,6 +65,7 @@ flake-utils.lib.eachSystem systems (
       ];
 
       doCheck = false;
+      auditable = false;
 
       postPatch = ''
         sed -i 's/^version = "0\.0\.0"$/version = "${version}"/' Cargo.toml
