@@ -1,0 +1,11 @@
+--- a/webview/assets/font-settings-C9TXXljS.js
++++ b/webview/assets/font-settings-C9TXXljS.js
+@@ -118,7 +118,7 @@ function He(e) {
+     : (f = t[3]);
+   let p;
+   t[4] !== n || t[5] !== u || t[6] !== i
+-    ? ((p = i.includes(n) && !u),
++    ? ((p = i.includes(n)),
+       (t[4] = n),
+       (t[5] = u),
+       (t[6] = i),

@@ -6,6 +6,10 @@ type StubWebContents = {
     url: string;
   };
   isDestroyed: () => boolean;
+  off: (event: string, listener: StubListener) => unknown;
+  on: (event: string, listener: StubListener) => unknown;
+  once: (event: string, listener: StubListener) => unknown;
+  removeListener: (event: string, listener: StubListener) => unknown;
   send: (channel: string, ...args: unknown[]) => void;
 };
 type IpcMainEvent = {
@@ -148,30 +152,35 @@ function createMessagePortStub(label: string): {
   };
 }
 
-function createIpcMainEvent(): IpcMainEvent {
-  const rendererUrl = "http://localhost:5175/";
-  const mainFrame = {
-    url: rendererUrl,
-  };
-  const sender: StubWebContents = {
-    id: 1001,
-    mainFrame,
-    isDestroyed: () => false,
-    send: (channel: string, ...args: unknown[]): void => {
-      getIpcMainBridgeState().broadcastToRenderer?.({
-        type: "ipc-main-event",
-        channel,
-        args,
-      });
-    },
-  };
+const rendererUrl = "http://localhost:5175/";
+const rendererMainFrame = {
+  url: rendererUrl,
+};
+const rendererWebContentsEmitter = createEmitterStub("ipcMainEvent.sender");
+const rendererWebContents: StubWebContents = {
+  id: 1001,
+  mainFrame: rendererMainFrame,
+  isDestroyed: () => false,
+  off: rendererWebContentsEmitter.off,
+  on: rendererWebContentsEmitter.on,
+  once: rendererWebContentsEmitter.once,
+  removeListener: rendererWebContentsEmitter.removeListener,
+  send: (channel: string, ...args: unknown[]): void => {
+    getIpcMainBridgeState().broadcastToRenderer?.({
+      type: "ipc-main-event",
+      channel,
+      args,
+    });
+  },
+};
 
+function createIpcMainEvent(): IpcMainEvent {
   const event: IpcMainEvent = {
     returnValue: undefined,
     processId: 1,
     frameId: 1,
-    sender,
-    senderFrame: mainFrame,
+    sender: rendererWebContents,
+    senderFrame: rendererMainFrame,
     reply: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
         type: "ipc-main-event",

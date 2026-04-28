@@ -22,6 +22,7 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-ini
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-electron-shim-close-sidebar.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-artifacts-pane.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prosemirror-inputmode.patch
+patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-model-list-auth-gate.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-app-logo-disable.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
