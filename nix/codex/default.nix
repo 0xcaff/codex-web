@@ -47,45 +47,65 @@ flake-utils.lib.eachSystem systems (
       }";
       hash = rustyV8ArchiveInfo.${system}.hash;
     };
-  in
-  {
-    packages.codex = pkgs.rustPlatform.buildRustPackage {
-      env.PKG_CONFIG_PATH = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
-        [ pkgs.openssl ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libcap ]
-      );
-      env.RUSTY_V8_ARCHIVE = rustyV8Archive;
-
+    pkgConfigPath = pkgs.lib.makeSearchPathOutput "dev" "lib/pkgconfig" (
+      [ pkgs.openssl ] ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libcap ]
+    );
+    codexCrateOverrides = pkgs.defaultCrateOverrides // {
+      aws-lc-sys = attrs: {
+        nativeBuildInputs = (attrs.nativeBuildInputs or [ ]) ++ [
+          pkgs.cmake
+          pkgs.perl
+        ];
+      };
+      codex-linux-sandbox = attrs: {
+        nativeBuildInputs = (attrs.nativeBuildInputs or [ ]) ++ [ pkgs.pkg-config ];
+        buildInputs = (attrs.buildInputs or [ ]) ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libcap ];
+      };
+      v8 = attrs: {
+        RUSTY_V8_ARCHIVE = rustyV8Archive;
+        nativeBuildInputs = (attrs.nativeBuildInputs or [ ]) ++ [
+          pkgs.python3
+          pkgs.pkg-config
+        ];
+      };
+    };
+    codexCrates = import ./Cargo.nix {
+      inherit pkgs;
+      workspaceSrc = codexSrc + "/codex-rs";
+      buildRustCrateForPkgs =
+        pkgs:
+        pkgs.buildRustCrate.override {
+          defaultCodegenUnits = 16;
+          defaultCrateOverrides = codexCrateOverrides;
+        };
+    };
+    codexCli = codexCrates.workspaceMembers."codex-cli".build.overrideAttrs (old: {
       pname = "codex";
-      inherit version;
-      src = codexSrc + "/codex-rs";
-      cargoHash = "sha256-fDVlj7zAZnwP9YBaYaSQZXYYWrBm5IEyLT9zoorvzFg=";
-      cargoBuildFlags = [
-        "-p"
-        "codex-cli"
-      ];
 
-      doCheck = false;
-      auditable = false;
+      LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+      PKG_CONFIG_PATH = pkgConfigPath;
+      RUSTY_V8_ARCHIVE = rustyV8Archive;
 
-      postPatch = ''
-        sed -i 's/^version = "0\.0\.0"$/version = "${version}"/' Cargo.toml
-      '';
-
-      nativeBuildInputs = [
+      nativeBuildInputs = (old.nativeBuildInputs or [ ]) ++ [
         pkgs.cmake
         pkgs.llvmPackages.clang
         pkgs.llvmPackages.libclang.lib
-        pkgs.openssl
         pkgs.pkg-config
-      ]
-      ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libcap ];
+      ];
+      buildInputs =
+        (old.buildInputs or [ ])
+        ++ [ pkgs.openssl ]
+        ++ pkgs.lib.optionals pkgs.stdenv.isLinux [ pkgs.libcap ];
 
-      meta = {
+      meta = (old.meta or { }) // {
         description = "OpenAI Codex command-line interface";
         homepage = "https://github.com/openai/codex";
         license = pkgs.lib.licenses.asl20;
         mainProgram = "codex";
       };
-    };
+    });
+  in
+  {
+    packages.codex = codexCli;
   }
 )
