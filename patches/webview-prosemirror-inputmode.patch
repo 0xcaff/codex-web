@@ -1,20 +1,20 @@
---- a/webview/assets/use-model-settings-BXpE6yHZ.js
-+++ b/webview/assets/use-model-settings-BXpE6yHZ.js
-@@ -54298,6 +54298,11 @@
+--- a/webview/assets/use-model-settings-D-IrMVLP.js
++++ b/webview/assets/use-model-settings-D-IrMVLP.js
+@@ -62034,6 +62034,11 @@
    let o = new EventTarget(),
-     s = new ble(),
+     s = new CR(),
      c = a,
 +    lre = !1,
 +    ure = () => (lre ? {} : { inputmode: `none` }),
 +    dre = (e) => {
 +      lre !== e && ((lre = e), l.isDestroyed || l.setProps({ attributes: ure }));
 +    },
-     l = new UM(null, {
-       state: fE.create({
-         schema: SN,
-@@ -54375,6 +54380,18 @@
+     l = new oL(null, {
+       state: Mse.create({
+         schema: bR,
+@@ -62111,6 +62116,18 @@
          let t = l.state.apply(e);
-         (l.updateState(t), o.dispatchEvent(new Event(yE)));
+         (l.updateState(t), o.dispatchEvent(new Event(Aj)));
        },
 +      attributes: ure,
 +      handleDOMEvents: {

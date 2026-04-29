@@ -1,7 +1,6 @@
---- a/webview/assets/statsig-axnzwuK0.js
-+++ b/webview/assets/statsig-axnzwuK0.js
+--- a/webview/assets/statsig-BdmfNNCa.js
++++ b/webview/assets/statsig-BdmfNNCa.js
 @@ -4251,6 +4251,7 @@
-       getContextHandle() {
          return this._contextHandle;
        }
        checkGate(e, t) {

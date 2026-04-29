@@ -6,6 +6,10 @@ type StubWebContents = {
     url: string;
   };
   isDestroyed: () => boolean;
+  off: (event: string, listener: StubListener) => unknown;
+  on: (event: string, listener: StubListener) => unknown;
+  once: (event: string, listener: StubListener) => unknown;
+  removeListener: (event: string, listener: StubListener) => unknown;
   send: (channel: string, ...args: unknown[]) => void;
 };
 type IpcMainEvent = {
@@ -148,30 +152,35 @@ function createMessagePortStub(label: string): {
   };
 }
 
-function createIpcMainEvent(): IpcMainEvent {
-  const rendererUrl = "http://localhost:5175/";
-  const mainFrame = {
-    url: rendererUrl,
-  };
-  const sender: StubWebContents = {
-    id: 1001,
-    mainFrame,
-    isDestroyed: () => false,
-    send: (channel: string, ...args: unknown[]): void => {
-      getIpcMainBridgeState().broadcastToRenderer?.({
-        type: "ipc-main-event",
-        channel,
-        args,
-      });
-    },
-  };
+const rendererUrl = "http://localhost:5175/";
+const rendererMainFrame = {
+  url: rendererUrl,
+};
+const rendererWebContentsEmitter = createEmitterStub("ipcMainEvent.sender");
+const rendererWebContents: StubWebContents = {
+  id: 1001,
+  mainFrame: rendererMainFrame,
+  isDestroyed: () => false,
+  off: rendererWebContentsEmitter.off,
+  on: rendererWebContentsEmitter.on,
+  once: rendererWebContentsEmitter.once,
+  removeListener: rendererWebContentsEmitter.removeListener,
+  send: (channel: string, ...args: unknown[]): void => {
+    getIpcMainBridgeState().broadcastToRenderer?.({
+      type: "ipc-main-event",
+      channel,
+      args,
+    });
+  },
+};
 
+function createIpcMainEvent(): IpcMainEvent {
   const event: IpcMainEvent = {
     returnValue: undefined,
     processId: 1,
     frameId: 1,
-    sender,
-    senderFrame: mainFrame,
+    sender: rendererWebContents,
+    senderFrame: rendererMainFrame,
     reply: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
         type: "ipc-main-event",
@@ -324,6 +333,7 @@ const app = new Proxy(appBase as Record<string, unknown>, {
 class BrowserWindow {
   static nextId = 1;
   static allWindows: BrowserWindow[] = [];
+  static focusedWindow: BrowserWindow | null = null;
   id: number;
   private destroyed = false;
   private title = "Codex";
@@ -381,6 +391,7 @@ class BrowserWindow {
     );
 
     BrowserWindow.allWindows.push(this);
+    BrowserWindow.focusedWindow = this;
     return new Proxy(this, {
       get: (target, prop) => {
         if (prop in target) {
@@ -394,6 +405,17 @@ class BrowserWindow {
   static getAllWindows(): BrowserWindow[] {
     log("BrowserWindow.getAllWindows", []);
     return BrowserWindow.allWindows.filter((window) => !window.destroyed);
+  }
+
+  static getFocusedWindow(): BrowserWindow | null {
+    log("BrowserWindow.getFocusedWindow", []);
+    if (
+      BrowserWindow.focusedWindow &&
+      !BrowserWindow.focusedWindow.destroyed
+    ) {
+      return BrowserWindow.focusedWindow;
+    }
+    return BrowserWindow.getAllWindows()[0] ?? null;
   }
 
   on(event: string, listener: StubListener): unknown {
@@ -423,6 +445,9 @@ class BrowserWindow {
   destroy(): void {
     log(`BrowserWindow#${this.id}.destroy`, []);
     this.destroyed = true;
+    if (BrowserWindow.focusedWindow === this) {
+      BrowserWindow.focusedWindow = null;
+    }
     this.emitter.emit("closed");
   }
 
@@ -475,6 +500,8 @@ class BrowserWindow {
 
   focus(): void {
     log(`BrowserWindow#${this.id}.focus`, []);
+    BrowserWindow.focusedWindow = this;
+    this.emitter.emit("focus");
   }
 }
 
