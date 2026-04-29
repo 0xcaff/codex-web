@@ -1,16 +1,14 @@
---- a/webview/assets/index-gATb9Tvd.js
-+++ b/webview/assets/index-gATb9Tvd.js
-@@ -121300,6 +121300,7 @@
-   let i = R(hh),
+--- a/webview/assets/index-D-3V455n.js
++++ b/webview/assets/index-D-3V455n.js
+@@ -121010,6 +121010,7 @@
+   let i = ue(hh),
      a = d(),
-     o = z(fr, e),
-+    codexHostedWindowTitle = z(xn, e),
-     s = z(Tn, e),
-     c = z(vn, e) ?? x5,
-     l = z(Er, e),
-@@ -121349,9 +121350,13 @@
-     ),
-     [e, u],
+     o = B(fr, e),
++    codexHostedWindowTitle = B(xn, e),
+     s = B(Tn, e),
+     c = B(vn, e) ?? x5,
+     l = B(Er, e),
+@@ -121060,7 +121061,11 @@
    ),
      (0, Z.useEffect)(() => {
        M?.id == null || M.readAt != null || j(M.id);
@@ -21,5 +19,5 @@
 +      t && (document.title = `${t} | Codex`);
 +    }, [codexHostedWindowTitle]));
    let F = ka(),
-     { agentMode: I } = _g({ conversationId: e, hostId: u }),
-     L = l ? Oe(l) : null,
+     { agentMode: I } = sg({ conversationId: e, hostId: u }),
+     L = l ? Ee(l) : null,

@@ -16,10 +16,10 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.422.30944";
+    appVersion = "26.422.71525";
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/Codex-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-VwWwMMu1V8hP0v29fGRpOGfRfJxf9WowYIkcoF1V+FI=";
+      hash = "sha256-riGX0oUG9qYN9F5xgxrgFh//saa/g6MEVnNAH4bO0tU=";
     };
     codex = self.packages.${system}.codex;
   in
@@ -41,7 +41,7 @@ flake-utils.lib.eachSystem systems (
         nodeSources = pkgs.srcOnly pkgs.nodejs;
         yarnOfflineCache = pkgs.fetchYarnDeps {
           yarnLock = ./yarn.lock;
-          hash = "sha256-Vmgjs3QU++pMriU0ykOURwUUoRpwymtyE90xJHoXhGE=";
+          hash = "sha256-PPymV+XLEGj4JtqKUa+ctQIjnvbOQ0sFpTuRd34FEbM=";
         };
 
         betterSqlite3Native = pkgs.stdenv.mkDerivation {

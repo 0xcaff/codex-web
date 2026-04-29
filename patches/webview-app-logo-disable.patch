@@ -1,6 +1,6 @@
---- a/webview/assets/use-model-settings-Ds_s4Jfi.js
-+++ b/webview/assets/use-model-settings-Ds_s4Jfi.js
-@@ -24971,41 +24971,7 @@ function wx(e) {
+--- a/webview/assets/use-model-settings-D-IrMVLP.js
++++ b/webview/assets/use-model-settings-D-IrMVLP.js
+@@ -24943,41 +24943,7 @@
    );
  }
  function Tx(e) {
@@ -18,7 +18,7 @@
 -  let s = wx(o),
 -    c = a ? (s.data ?? []) : [],
 -    l = Lx(c),
--    u = gn({ queries: l.map(Ex) }),
+-    u = _n({ queries: l.map(Ex) }),
 -    d = new Map();
 -  l.forEach((e, t) => {
 -    let n = u[t];

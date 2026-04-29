@@ -1,10 +1,10 @@
---- a/webview/assets/error-boundary-DF69epy7.js
-+++ b/webview/assets/error-boundary-DF69epy7.js
-@@ -7600,6 +7600,7 @@
+--- a/webview/assets/error-boundary-LK6T93zS.js
++++ b/webview/assets/error-boundary-LK6T93zS.js
+@@ -7598,6 +7598,7 @@
      n = c(e.appVersion),
      r = e.buildFlavor !== `prod`;
    (yf({
 +    enabled: !1,
      dsn: o,
      environment: Sf,
-     release: f(n.version),
+     release: d(n.version),

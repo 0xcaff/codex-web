@@ -1,6 +1,6 @@
---- a/webview/assets/use-model-settings-Ds_s4Jfi.js
-+++ b/webview/assets/use-model-settings-Ds_s4Jfi.js
-@@ -62058,6 +62058,11 @@
+--- a/webview/assets/use-model-settings-D-IrMVLP.js
++++ b/webview/assets/use-model-settings-D-IrMVLP.js
+@@ -62034,6 +62034,11 @@
    let o = new EventTarget(),
      s = new CR(),
      c = a,
@@ -12,7 +12,7 @@
      l = new oL(null, {
        state: Mse.create({
          schema: bR,
-@@ -62134,6 +62139,18 @@
+@@ -62111,6 +62116,18 @@
          let t = l.state.apply(e);
          (l.updateState(t), o.dispatchEvent(new Event(Aj)));
        },

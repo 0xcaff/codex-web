@@ -1,6 +1,6 @@
 --- a/webview/assets/chunk-OIYGIGL5-CJrBIAxA.js
 +++ b/webview/assets/chunk-OIYGIGL5-CJrBIAxA.js
-@@ -891,12 +891,17 @@
+@@ -891,11 +891,16 @@
  }
  function ze({ basename: e, children: t, initialEntries: n, initialIndex: a }) {
    let o = r.useRef();
@@ -14,20 +14,18 @@
      [c, l] = r.useState({ action: s.action, location: s.location }),
      u = r.useCallback(
        (e) => {
--        r.startTransition(() => l(e));
 +        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-+        r.startTransition(() => l(e));
+         r.startTransition(() => l(e));
        },
        [l],
-     );
---- a/webview/assets/use-model-settings-Ds_s4Jfi.js
-+++ b/webview/assets/use-model-settings-Ds_s4Jfi.js
-@@ -1967,7 +1967,7 @@
-   Yee = Pc.entries$,
-   Xee = Fc.entries$,
-   Zee = { center: Pc, left: Fc },
--  Ic = ye(ue, !0),
-+  Ic = ye(ue, window.__ELECTRON_SHIM__.initialSidebarState),
-   Lc = ye(Ki, !1),
-   Rc = ye(Ki, () => new _i(0)),
-   zc = ye(Ki, !1),
+--- a/webview/assets/use-model-settings-D-IrMVLP.js
++++ b/webview/assets/use-model-settings-D-IrMVLP.js
+@@ -1968,7 +1968,7 @@
+   Yee = Fc.entries$,
+   Xee = Ic.entries$,
+   Zee = { center: Fc, left: Ic },
+-  Lc = we(fe, !0),
++  Lc = we(fe, window.__ELECTRON_SHIM__.initialSidebarState),
+   Rc = we(qi, !1),
+   zc = we(qi, () => new vi(0)),
+   Bc = we(qi, !1),
