@@ -7,7 +7,10 @@ cp assets/* scratch/asar/webview/
 if [[ -n "${DEV:-}" ]]; then
   prettier --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
 else
-  mapfile -t patched_files < <(
+  patched_files=()
+  while IFS= read -r patched_file; do
+    patched_files+=("$patched_file")
+  done < <(
     awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
   )
   prettier --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
