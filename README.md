@@ -111,6 +111,7 @@ can reach it.
 - terminal
 - git worker is not hooked up yet
 - browser panel, which might be possible to rebuild around iframes
+- computer use on linux. this will be a very powerful feature
 - probably more (file an issue please)
 
 ## issues welcome
