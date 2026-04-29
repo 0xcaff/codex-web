@@ -23,7 +23,6 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-ele
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-artifacts-pane.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prosemirror-inputmode.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-app-logo-disable.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-coalesce-read-requests.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
 rm -rf scratch/asar/node_modules/better-sqlite3
