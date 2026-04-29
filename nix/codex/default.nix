@@ -47,7 +47,6 @@ flake-utils.lib.eachSystem systems (
         {
           pname = "codex";
           inherit src version;
-          meta.mainProgram = "codex";
         }
         ''
           tar -xzf "$src"
