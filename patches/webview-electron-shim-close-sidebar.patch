@@ -6,7 +6,7 @@
      ),
 +    (0, Z.useEffect)(() => {
 +      let t = () => {
-+        e.set(Ad, !1);
++        e.set(Tu, !1);
 +      };
 +      return (
 +        (window.__ELECTRON_SHIM__.closeSidebar = t),
