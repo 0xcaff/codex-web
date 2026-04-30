@@ -29,6 +29,7 @@ flake-utils.lib.eachSystem systems (
 
       packages = [
         codex
+        pkgs.imagemagick
         pkgs.nodejs
         pkgs.yarn
         pkgs.unzip
@@ -108,6 +109,7 @@ flake-utils.lib.eachSystem systems (
             pkgs.yarnConfigHook
             pkgs.yarnBuildHook
             pkgs.yarnInstallHook
+            pkgs.imagemagick
             pkgs.nodejs
             pkgs.yarn
             pkgs.unzip

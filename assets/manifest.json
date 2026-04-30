@@ -2,12 +2,13 @@
   "short_name": "Codex",
   "start_url": "/",
   "display": "standalone",
+  "background_color": "#ffffff",
   "icons": [
     {
-      "src": "/assets/app-D0g8sCle.png",
-      "sizes": "544x544",
+      "src": "/assets/pwa-icon-512.png",
+      "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     }
   ]
 }
