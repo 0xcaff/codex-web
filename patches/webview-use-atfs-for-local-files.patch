@@ -1,0 +1,11 @@
+--- a/webview/assets/use-model-settings-D-IrMVLP.js
++++ b/webview/assets/use-model-settings-D-IrMVLP.js
+@@ -22013,7 +22013,7 @@
+ var Ev = `app://fs`,
+   Dv = `/@fs`;
+ function Ov(e) {
+-  return `${Ev}${Av(e)}`;
++  return Av(e);
+ }
+ function kv(e) {
+   return Av(e);

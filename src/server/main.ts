@@ -157,6 +157,12 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   const sockets = new Set<WebSocket>();
 
   await app.register(fastifyStatic, {
+    root: "/",
+    prefix: "/@fs/",
+    decorateReply: false,
+  });
+
+  await app.register(fastifyStatic, {
     root: path.resolve(__dirname, "../../scratch/asar/webview"),
     prefix: "/",
   });
@@ -166,6 +172,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   });
 
   app.setNotFoundHandler((request, reply) => {
+    if (request.url.startsWith("/@fs/")) {
+      return reply.code(404).send({ error: "Not Found" });
+    }
+
     if (request.method === "GET") {
       return reply.sendFile("index.html");
     }
