@@ -438,12 +438,6 @@ export const ipcRenderer = {
   },
 };
 
-themeMediaQuery.addEventListener("change", () => {
-  ipcRenderer.send("codex_desktop:system-theme-variant-changed", {
-    variant: themeMediaQuery.matches ? "dark" : "light",
-  });
-});
-
 ensureSocket();
 
 export const contextBridge = {
