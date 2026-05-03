@@ -1,0 +1,82 @@
+--- a/webview/assets/index-D-3V455n.js
++++ b/webview/assets/index-D-3V455n.js
+@@ -163,7 +163,7 @@
+   c as l,
+   d as u,
+   f as d,
+-  h as f,
++  h as useSearchParams,
+   i as p,
+   l as m,
+   m as h,
+@@ -43178,7 +43178,7 @@
+     r = ue(et),
+     i = he(),
+     a = x().state,
+-    [o, s] = f(),
++    [o, s] = useSearchParams(),
+     [c, l] = (0, Z.useState)(!1),
+     [u, d] = (0, Z.useState)(!1),
+     p = (0, Z.useRef)(null),
+@@ -82581,6 +82581,8 @@
+     z = rt(RB),
+     V = xi(),
+     H = xB(j),
++    [searchParams] = useSearchParams(),
++    searchParamsPrompt = searchParams.get(`prompt`),
+     U = async (e, t, n, r, i) => {
+       switch (k?.type) {
+         case `local`:
+@@ -82762,6 +82764,7 @@
+       (0, $.jsx)(`div`, { id: cd, className: `relative px-5 empty:hidden` }),
+       (0, $.jsx)(`div`, { id: ru, className: `relative px-5 empty:hidden` }),
+       (0, $.jsxs)(tJ, {
++        defaultText: searchParamsPrompt ?? void 0,
+         children: [
+           !v && r && i === `floating`
+             ? (0, $.jsx)(`div`, {
+@@ -82801,6 +82804,7 @@
+             showHotkeyWindowHomeFooterControls: v,
+             showPlanKeywordSuggestion: y,
+             placeholderText: x,
++            initialPrompt: searchParamsPrompt ?? void 0,
+             hotkeyWindowHomeOverflowMenu: S,
+             surfaceClassName: u,
+             threadBranchName: f,
+@@ -82829,6 +82833,7 @@
+   showHotkeyWindowHomeFooterControls: u,
+   showPlanKeywordSuggestion: f,
+   placeholderText: p,
++  initialPrompt,
+   hotkeyWindowHomeOverflowMenu: m,
+   onSubmitLocal: h,
+   onSubmitWorktree: g,
+@@ -83101,9 +83106,16 @@
+     hr = Rn.selectedTextAttachments,
+     gr = Rn.pullRequestChecks;
+   (0, Z.useEffect)(() => {
+-    dr.current !== lr &&
+-      ((dr.current = lr), wu(pr) ? An.setPromptText(pr) : An.setText(pr));
+-  }, [lr, pr, An]);
++    if (dr.current !== lr) {
++      dr.current = lr;
++      let e = pr;
++      (e === `` &&
++        initialPrompt != null &&
++        initialPrompt !== `` &&
++        ((e = initialPrompt), zn((t) => DI(t, `prompt`, e))),
++        wu(e) ? An.setPromptText(e) : An.setText(e));
++    }
++  }, [lr, pr, An, initialPrompt, zn]);
+   let _r = (0, Z.useCallback)(
+       (e, t) => {
+         zn((n) => DI(n, e, t));
+@@ -133022,7 +133034,7 @@
+   let e = (0, Q.c)(38),
+     t = ka(),
+     n = d(),
+-    [r] = f(),
++    [r] = useSearchParams(),
+     [i, a] = kr(hhe),
+     o = r.get(`repoKey`),
+     s;
