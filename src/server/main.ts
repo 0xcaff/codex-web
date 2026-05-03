@@ -164,7 +164,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     path.join(os.tmpdir(), "codex-web-uploads-"),
   );
 
-  app.post("/__codex_upload_file", async (request, reply) => {
+  app.post("/__backend/upload", async (request, reply) => {
     if (!request.isMultipart()) {
       return reply.code(400).send({ error: "expected multipart upload body" });
     }
@@ -220,7 +220,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     const requestUrl = request.url ?? "/";
     const host = request.headers.host ?? "localhost";
     const url = new URL(requestUrl, `http://${host}`);
-    if (url.pathname !== "/__electron_ipc") {
+    if (url.pathname !== "/__backend/ipc") {
       socket.destroy();
       return;
     }

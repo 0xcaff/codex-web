@@ -146,7 +146,7 @@ function ensureSocket(): void {
   }
 
   socket = new WebSocket(
-    `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__electron_ipc`,
+    `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
   socket.addEventListener("open", () => {
     flushOutboundQueue();
