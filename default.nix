@@ -29,7 +29,6 @@ flake-utils.lib.eachSystem systems (
 
       packages = [
         codex
-        pkgs.imagemagick
         pkgs.nodejs
         pkgs.yarn
         pkgs.unzip
@@ -42,7 +41,7 @@ flake-utils.lib.eachSystem systems (
         nodeSources = pkgs.srcOnly pkgs.nodejs;
         yarnOfflineCache = pkgs.fetchYarnDeps {
           yarnLock = ./yarn.lock;
-          hash = "sha256-64ywtaREPlJcm+o2ab/oAognbVJa5L/x365M+Y165U0=";
+          hash = "sha256-J2yh4VZUxY0f0deXBJQbw33q2zNBCW4D58ju1jKQI/A=";
         };
 
         betterSqlite3Native = pkgs.stdenv.mkDerivation {
@@ -109,7 +108,6 @@ flake-utils.lib.eachSystem systems (
             pkgs.yarnConfigHook
             pkgs.yarnBuildHook
             pkgs.yarnInstallHook
-            pkgs.imagemagick
             pkgs.nodejs
             pkgs.yarn
             pkgs.unzip

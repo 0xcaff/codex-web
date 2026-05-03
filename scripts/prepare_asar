@@ -9,7 +9,10 @@ PWA_TARGET_ICON="scratch/asar/webview/assets/pwa-icon-512.png"
 PWA_ICON_SIZE=512
 PWA_TOTAL_PADDING_PERCENT=25
 PWA_CONTENT_SIZE=$((PWA_ICON_SIZE * (100 - PWA_TOTAL_PADDING_PERCENT) / 100))
-magick "$PWA_SOURCE_ICON" -resize "${PWA_CONTENT_SIZE}x${PWA_CONTENT_SIZE}" -background white -gravity center -extent "${PWA_ICON_SIZE}x${PWA_ICON_SIZE}" -alpha remove -alpha off "PNG24:$PWA_TARGET_ICON"
+PWA_PADDING_TOTAL=$((PWA_ICON_SIZE - PWA_CONTENT_SIZE))
+PWA_PADDING_BEFORE=$((PWA_PADDING_TOTAL / 2))
+PWA_PADDING_AFTER=$((PWA_PADDING_TOTAL - PWA_PADDING_BEFORE))
+sharp -i "$PWA_SOURCE_ICON" -o "$PWA_TARGET_ICON" -f png resize "$PWA_CONTENT_SIZE" "$PWA_CONTENT_SIZE" --fit inside -- flatten white -- extend "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" --background white -- removeAlpha
 if [[ -n "${DEV:-}" ]]; then
   prettier --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
 else

@@ -35,6 +35,7 @@
     "prettier": "^3.8.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "sharp-cli": "^5.2.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
     "ws": "^8.20.0"
