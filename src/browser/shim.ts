@@ -2,6 +2,10 @@ import {
   mapBrowserPathToInitialRoute,
   mapMemoryPathToBrowserPath,
 } from "./routes";
+import {
+  handleLocalFilePickerMessage,
+  isLocalFilePickerMessage,
+} from "./files";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
@@ -37,7 +41,6 @@ type MainToRendererMessage =
       errorMessage: string;
     };
 
-const IPC_BRIDGE_PATH = "/__electron_ipc";
 const RECONNECT_DELAY_MS = 1_000;
 
 type MemoryNavigationChange = {
@@ -83,7 +86,7 @@ function unimplemented(method: string): never {
   throw new Error(`[electron-stub] ${method} is not implemented`);
 }
 
-function emitRendererEvent(channel: string, args: unknown[]): void {
+export function emitRendererEvent(channel: string, args: unknown[]): void {
   const listeners = rendererListeners.get(channel);
   if (!listeners || listeners.size === 0) {
     return;
@@ -133,11 +136,6 @@ function scheduleReconnect(): void {
   }, RECONNECT_DELAY_MS);
 }
 
-function websocketUrl(): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}${IPC_BRIDGE_PATH}`;
-}
-
 function ensureSocket(): void {
   if (
     socket &&
@@ -147,7 +145,9 @@ function ensureSocket(): void {
     return;
   }
 
-  socket = new WebSocket(websocketUrl());
+  socket = new WebSocket(
+    `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
+  );
   socket.addEventListener("open", () => {
     flushOutboundQueue();
   });
@@ -201,7 +201,10 @@ const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
-const initialRoute = mapBrowserPathToInitialRoute(window.location.pathname, window.location.search);
+const initialRoute = mapBrowserPathToInitialRoute(
+  window.location.pathname,
+  window.location.search,
+);
 electronShim.initialRoute = initialRoute.memoryPath;
 
 if (initialRoute.browserPath) {
@@ -240,6 +243,14 @@ const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
+    if (
+      channel === "codex_desktop:message-from-view" &&
+      args.length === 1 &&
+      isLocalFilePickerMessage(args[0])
+    ) {
+      return handleLocalFilePickerMessage(args[0]);
+    }
+
     const requestId = nextRequestId();
     return new Promise((resolve, reject) => {
       pendingInvokes.set(requestId, { resolve, reject });

@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 
+import { randomUUID } from "node:crypto";
+import fs from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { parseArgs as parseCliArgs } from "node:util";
 import { WebSocket, WebSocketServer } from "ws";
 import Fastify from "fastify";
+import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
 
@@ -51,8 +55,6 @@ type IpcMainBridgeState = {
   handleRendererInvoke?: (channel: string, args: unknown[]) => Promise<unknown>;
   handleRendererSend?: (channel: string, args: unknown[]) => void;
 };
-
-const IPC_BRIDGE_PATH = "/__electron_ipc";
 
 function printUsage(): void {
   console.log(
@@ -156,6 +158,38 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   const websocketServer = new WebSocketServer({ noServer: true });
   const sockets = new Set<WebSocket>();
 
+  await app.register(fastifyMultipart);
+
+  const uploadRoot = await fs.mkdtemp(
+    path.join(os.tmpdir(), "codex-web-uploads-"),
+  );
+
+  app.post("/__backend/upload", async (request, reply) => {
+    if (!request.isMultipart()) {
+      return reply.code(400).send({ error: "expected multipart upload body" });
+    }
+
+    const files = await Array.fromAsync(
+      (async function* () {
+        for await (const part of request.files()) {
+          const label = part.filename?.trim() || "upload";
+
+          const uploadedPath = path.join(uploadRoot, randomUUID());
+
+          await fs.writeFile(uploadedPath, await part.toBuffer());
+
+          yield {
+            label,
+            path: uploadedPath,
+            fsPath: uploadedPath,
+          };
+        }
+      })(),
+    );
+
+    return reply.send({ files });
+  });
+
   await app.register(fastifyStatic, {
     root: "/",
     prefix: "/@fs/",
@@ -186,7 +220,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     const requestUrl = request.url ?? "/";
     const host = request.headers.host ?? "localhost";
     const url = new URL(requestUrl, `http://${host}`);
-    if (url.pathname !== IPC_BRIDGE_PATH) {
+    if (url.pathname !== "/__backend/ipc") {
       socket.destroy();
       return;
     }
@@ -263,9 +297,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   });
 
   await app.listen({ host: options.host, port: options.port });
-  console.log(
-    `IPC bridge listening at ws://${options.host}:${options.port}${IPC_BRIDGE_PATH}`,
-  );
+  console.log(`IPC bridge listening at ws://${options.host}:${options.port}`);
 
   ensureElectronLikeProcessContext();
   installModuleAliasHook();

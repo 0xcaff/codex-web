@@ -16,7 +16,7 @@
     "launch:unpacked": "NODE_ENV=development electron ./scratch/asar --remote-debugging-port=9222",
     "dev:browser": "vite --config vite.browser.config.ts",
     "build:browser": "vite build --config vite.browser.config.ts",
-    "build:server": "tsc src/server/main.ts src/server/module.ts src/server/electron/index.ts --module commonjs --target es2022 --moduleResolution node --types node,ws --esModuleInterop --skipLibCheck --ignoreDeprecations 6.0 --rootDir src/server --outDir src/server",
+    "build:server": "cd src/server && tsc",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
     "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
@@ -25,15 +25,16 @@
   "author": "martin <martincharles07@gmail.com>",
   "license": "MIT",
   "dependencies": {
+    "@electron/asar": "^4.2.0",
+    "@fastify/multipart": "^10.0.0",
     "@fastify/static": "^9.1.1",
+    "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.9.0",
     "fastify": "^5.8.5",
-    "ws": "^8.20.0",
-    "@electron/asar": "^4.2.0",
-    "@types/ws": "^8.18.1",
     "prettier": "^3.8.2",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8"
+    "vite": "^8.0.8",
+    "ws": "^8.20.0"
   },
   "devDependencies": {
     "electron": "41.2.0",
