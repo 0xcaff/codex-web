@@ -253,7 +253,7 @@ function shouldCloseSidebarForMemoryPath(path: string): boolean {
   );
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
@@ -405,7 +405,7 @@ export const ipcRenderer = {
         remote_connections: [],
         remote_control_connections: [],
         remote_control_connections_state: {
-          available: true,
+          available: false,
           authRequired: false,
         },
         pending_worktrees: [],

@@ -1,4 +1,4 @@
-import { emitRendererEvent } from "./shim";
+import { emitRendererEvent, isRecord } from "./shim";
 
 type CodexFetchMessage = {
   body?: string;
@@ -140,10 +140,6 @@ async function handleLocalFilePickerMessageInner(message: CodexFetchMessage) {
   return allowMultiple
     ? { files: uploadedFiles }
     : { file: uploadedFiles[0] ?? null };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function isCodexFetchMessage(value: unknown): value is CodexFetchMessage {
