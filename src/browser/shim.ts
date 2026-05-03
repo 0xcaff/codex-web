@@ -2,29 +2,12 @@ import {
   mapBrowserPathToInitialRoute,
   mapMemoryPathToBrowserPath,
 } from "./routes";
+import {
+  handleLocalFilePickerMessage,
+  isLocalFilePickerMessage,
+} from "./files";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
-
-type CodexFetchMessage = {
-  body?: string;
-  headers?: Record<string, string>;
-  hostId?: string;
-  method: string;
-  requestId: string;
-  type: "fetch";
-  url: string;
-};
-
-type PickFilesRequest = {
-  imagesOnly?: boolean;
-  pickerTitle?: string;
-};
-
-type UploadedFile = {
-  fsPath: string;
-  label: string;
-  path: string;
-};
 
 type RendererToMainMessage =
   | {
@@ -103,7 +86,7 @@ function unimplemented(method: string): never {
   throw new Error(`[electron-stub] ${method} is not implemented`);
 }
 
-function emitRendererEvent(channel: string, args: unknown[]): void {
+export function emitRendererEvent(channel: string, args: unknown[]): void {
   const listeners = rendererListeners.get(channel);
   if (!listeners || listeners.size === 0) {
     return;
@@ -204,252 +187,6 @@ function addIpcListener(channel: string, listener: IpcListener): void {
   rendererListeners.set(channel, listeners);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isCodexFetchMessage(value: unknown): value is CodexFetchMessage {
-  return (
-    isRecord(value) &&
-    value.type === "fetch" &&
-    typeof value.requestId === "string" &&
-    typeof value.method === "string" &&
-    typeof value.url === "string"
-  );
-}
-
-function isUploadedFile(value: unknown): value is UploadedFile {
-  return (
-    isRecord(value) &&
-    typeof value.path === "string" &&
-    typeof value.fsPath === "string" &&
-    typeof value.label === "string"
-  );
-}
-
-function isLocalFilePickerMessage(value: unknown): value is CodexFetchMessage {
-  return (
-    isCodexFetchMessage(value) &&
-    value.method.toUpperCase() === "POST" &&
-    (value.url === "vscode://codex/pick-files" ||
-      value.url === "vscode://codex/pick-file")
-  );
-}
-
-function parsePickFilesRequest(message: CodexFetchMessage): PickFilesRequest {
-  if (!message.body) {
-    return {};
-  }
-
-  try {
-    const parsed = JSON.parse(message.body) as unknown;
-    if (!isRecord(parsed)) {
-      return {};
-    }
-    return {
-      imagesOnly:
-        typeof parsed.imagesOnly === "boolean" ? parsed.imagesOnly : undefined,
-      pickerTitle:
-        typeof parsed.pickerTitle === "string" ? parsed.pickerTitle : undefined,
-    };
-  } catch {
-    return {};
-  }
-}
-
-function sendFetchResponse(
-  message: CodexFetchMessage,
-  response:
-    | {
-        responseType: "success";
-        body: unknown;
-        status?: number;
-      }
-    | {
-        responseType: "error";
-        error: string;
-        status?: number;
-      },
-): void {
-  const payload =
-    response.responseType === "success"
-      ? {
-          type: "fetch-response",
-          responseType: "success",
-          requestId: message.requestId,
-          status: response.status ?? 200,
-          headers: { "content-type": "application/json" },
-          bodyJsonString: JSON.stringify(response.body),
-        }
-      : {
-          type: "fetch-response",
-          responseType: "error",
-          requestId: message.requestId,
-          status: response.status ?? 432,
-          error: response.error,
-        };
-
-  emitRendererEvent("codex_desktop:message-for-view", [payload]);
-}
-
-function errorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return String(error);
-}
-
-function openBrowserFilePicker({
-  allowMultiple,
-  imagesOnly,
-}: {
-  allowMultiple: boolean;
-  imagesOnly?: boolean;
-}): Promise<File[]> {
-  return new Promise((resolve, reject) => {
-    const input = document.createElement("input");
-    let settled = false;
-
-    function cleanup(): void {
-      input.removeEventListener("cancel", handleCancel);
-      input.removeEventListener("change", handleChange);
-      input.remove();
-    }
-
-    function finish(files: File[]): void {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      resolve(files);
-    }
-
-    function fail(error: unknown): void {
-      if (settled) {
-        return;
-      }
-      settled = true;
-      cleanup();
-      reject(error);
-    }
-
-    function handleCancel(): void {
-      finish([]);
-    }
-
-    function handleChange(): void {
-      finish(Array.from(input.files ?? []));
-    }
-
-    input.type = "file";
-    input.multiple = allowMultiple;
-    if (imagesOnly) {
-      input.accept = "image/*";
-    }
-    Object.assign(input.style, {
-      height: "1px",
-      left: "-9999px",
-      opacity: "0",
-      position: "fixed",
-      top: "0",
-      width: "1px",
-    });
-    input.addEventListener("cancel", handleCancel);
-    input.addEventListener("change", handleChange);
-    document.body.append(input);
-
-    try {
-      input.click();
-    } catch (error) {
-      fail(error);
-    }
-  });
-}
-
-async function uploadFiles(files: File[]): Promise<UploadedFile[]> {
-  if (files.length === 0) {
-    return [];
-  }
-
-  const uploadUrl = new URL("/__codex_upload_file", window.location.href);
-  const formData = new FormData();
-  let totalBytes = 0;
-
-  for (const file of files) {
-    formData.append("files", file, file.name || "upload");
-    totalBytes += file.size;
-  }
-
-  console.info("[electron-stub] uploading selected files", {
-    count: files.length,
-    totalBytes,
-    uploadUrl: uploadUrl.toString(),
-  });
-
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    body: formData,
-  });
-
-  if (!response.ok) {
-    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
-  }
-
-  const uploadResponse = (await response.json()) as unknown;
-  if (!isRecord(uploadResponse) || !Array.isArray(uploadResponse.files)) {
-    throw new Error("Upload response was invalid");
-  }
-
-  const uploadedFiles = uploadResponse.files;
-  if (!uploadedFiles.every(isUploadedFile)) {
-    throw new Error("Upload response contained invalid files");
-  }
-
-  return uploadedFiles;
-}
-
-async function handleLocalFilePickerMessage(
-  message: CodexFetchMessage,
-): Promise<void> {
-  try {
-    const request = parsePickFilesRequest(message);
-    const allowMultiple = message.url === "vscode://codex/pick-files";
-    console.info("[electron-stub] handling browser file picker", {
-      allowMultiple,
-      imagesOnly: request.imagesOnly,
-      requestId: message.requestId,
-      url: message.url,
-    });
-    const selectedFiles = await openBrowserFilePicker({
-      allowMultiple,
-      imagesOnly: request.imagesOnly,
-    });
-    console.info("[electron-stub] browser file picker selection complete", {
-      count: selectedFiles.length,
-      requestId: message.requestId,
-    });
-    const uploadedFiles = await uploadFiles(selectedFiles);
-
-    sendFetchResponse(message, {
-      responseType: "success",
-      body: allowMultiple
-        ? { files: uploadedFiles }
-        : { file: uploadedFiles[0] ?? null },
-    });
-  } catch (error) {
-    console.error(
-      "[electron-stub] failed to handle browser file picker",
-      error,
-    );
-    sendFetchResponse(message, {
-      responseType: "error",
-      status: 432,
-      error: errorMessage(error),
-    });
-  }
-}
-
 function shouldCloseSidebarForMemoryPath(path: string): boolean {
   return (
     path === "/" ||
@@ -464,7 +201,10 @@ const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
-const initialRoute = mapBrowserPathToInitialRoute(window.location.pathname, window.location.search);
+const initialRoute = mapBrowserPathToInitialRoute(
+  window.location.pathname,
+  window.location.search,
+);
 electronShim.initialRoute = initialRoute.memoryPath;
 
 if (initialRoute.browserPath) {
