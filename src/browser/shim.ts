@@ -1,5 +1,5 @@
 import {
-  mapBrowserPathToRoute,
+  mapBrowserPathToInitialRoute,
   mapMemoryPathToBrowserPath,
 } from "./routes";
 
@@ -201,9 +201,14 @@ const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
-electronShim.initialRoute = mapBrowserPathToRoute(
-  window.location.pathname,
-);
+const initialRoute = mapBrowserPathToInitialRoute(window.location.pathname, window.location.search);
+electronShim.initialRoute = initialRoute.memoryPath;
+console.log(initialRoute.memoryPath);
+
+if (initialRoute.browserPath) {
+  window.history.pushState(undefined, "", initialRoute.browserPath);
+}
+
 electronShim.initialSidebarState = initialSidebarState;
 electronShim.onMemoryNavigationChanged = (navigation) => {
   const path = navigation.location.pathname;

@@ -1,4 +1,17 @@
-export function mapBrowserPathToRoute(pathname: string): string {
+export function mapBrowserPathToInitialRoute(pathname: string, search: string) {
+  if (pathname === "/share/receive" && search) {
+    return {
+      memoryPath: `/${search}`,
+      browserPath: '/',
+    };
+  }
+
+  return {
+    memoryPath: mapBrowserPathToRoute(pathname),
+  }
+}
+
+function mapBrowserPathToRoute(pathname: string): string {
   const match = pathname.match(/^\/thread\/([^/]+)$/);
   if (match) {
     try {
