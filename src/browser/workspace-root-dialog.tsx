@@ -37,7 +37,7 @@ function WorkspaceRootDialog({
   onClose: (value: string | null) => void;
 }): React.ReactElement {
   const [directoryPath, setDirectoryPath] = useState<string | null>(null);
-  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [userSelectedPath, setUserSelectedPath] = useState<string | null>(null);
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const directoryQuery = useQuery({
@@ -61,15 +61,9 @@ function WorkspaceRootDialog({
     : null;
 
   function navigateTo(nextDirectoryPath: string): void {
-    setSelectedPath(nextDirectoryPath);
+    setUserSelectedPath(nextDirectoryPath);
     setDirectoryPath(nextDirectoryPath);
   }
-
-  useEffect(() => {
-    if (directoryQuery.data) {
-      setSelectedPath(directoryQuery.data.directoryPath);
-    }
-  }, [directoryQuery.data]);
 
   useEffect(() => {
     dialogRef.current?.focus();
@@ -86,6 +80,8 @@ function WorkspaceRootDialog({
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
+
+  const selectedPath = userSelectedPath ?? directoryQuery.data?.directoryPath;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -389,7 +385,7 @@ function WorkspaceRootDialog({
                                 data-path={entry.path}
                                 key={entry.path}
                                 onClick={() => {
-                                  setSelectedPath(entry.path);
+                                  setUserSelectedPath(entry.path);
                                 }}
                                 onDoubleClick={() => {
                                   navigateTo(entry.path);
@@ -573,6 +569,8 @@ export async function openSelectWorkspaceRootDialog({
   );
 
   const result = await promise;
+
+  reactRoot.unmount();
 
   if (activeElement instanceof HTMLElement) {
     activeElement.focus();
