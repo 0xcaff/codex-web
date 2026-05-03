@@ -80,6 +80,31 @@ type WorkspaceDirectoryEntries = {
   entries: WorkspaceDirectoryEntry[];
 };
 
+function workspaceDirectoryEntryTypeRank(
+  entry: WorkspaceDirectoryEntry,
+): number {
+  return entry.type === "directory" ? 0 : 1;
+}
+
+function workspaceDirectoryEntryHiddenRank(
+  entry: WorkspaceDirectoryEntry,
+): number {
+  return entry.name.startsWith(".") ? 1 : 0;
+}
+
+function compareWorkspaceDirectoryEntries(
+  left: WorkspaceDirectoryEntry,
+  right: WorkspaceDirectoryEntry,
+): number {
+  return (
+    workspaceDirectoryEntryTypeRank(left) -
+      workspaceDirectoryEntryTypeRank(right) ||
+    workspaceDirectoryEntryHiddenRank(left) -
+      workspaceDirectoryEntryHiddenRank(right) ||
+    left.name.localeCompare(right.name)
+  );
+}
+
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: MainToRendererMessage) => void;
   handleRendererInvoke?: (channel: string, args: unknown[]) => Promise<unknown>;
@@ -187,19 +212,7 @@ async function getWorkspaceDirectoryEntries({
         },
       ];
     })
-    .sort((left, right) => {
-      if (left.type !== right.type) {
-        return left.type === "directory" ? -1 : 1;
-      }
-
-      const leftHidden = left.name.startsWith(".");
-      const rightHidden = right.name.startsWith(".");
-      if (leftHidden !== rightHidden) {
-        return leftHidden ? 1 : -1;
-      }
-
-      return left.name.localeCompare(right.name);
-    });
+    .sort(compareWorkspaceDirectoryEntries);
 
   const rootPath = path.parse(resolvedPath).root;
   const parentPath =
