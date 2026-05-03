@@ -91,6 +91,8 @@ declare global {
   }
 }
 
+declare const __CODEX_APP_VERSION__: string;
+
 let requestCounter = 0;
 let socket: WebSocket | null = null;
 let reconnectTimeoutId: number | null = null;
@@ -386,7 +388,7 @@ export const ipcRenderer = {
         codexAppSessionId: "42626fde-7064-471f-b44d-b1a7ad849c7f",
         buildFlavor,
         buildNumber: null,
-        appVersion: "26.409.20454",
+        appVersion: __CODEX_APP_VERSION__,
         enabled: false,
       };
     }
