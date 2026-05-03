@@ -1,5 +1,5 @@
 import {
-  mapBrowserPathToInitialRoute,
+  mapBrowserPathToRoute,
   mapMemoryPathToBrowserPath,
 } from "./routes";
 
@@ -201,7 +201,7 @@ const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
-electronShim.initialRoute = mapBrowserPathToInitialRoute(
+electronShim.initialRoute = mapBrowserPathToRoute(
   window.location.pathname,
 );
 electronShim.initialSidebarState = initialSidebarState;

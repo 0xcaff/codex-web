@@ -1,14 +1,14 @@
-export function mapBrowserPathToInitialRoute(pathname: string): string {
+export function mapBrowserPathToRoute(pathname: string): string {
   const match = pathname.match(/^\/thread\/([^/]+)$/);
-  if (!match) {
-    return "/";
+  if (match) {
+    try {
+      return `/local/${decodeURIComponent(match[1])}`;
+    } catch {
+      return "/";
+    }
   }
 
-  try {
-    return `/local/${decodeURIComponent(match[1])}`;
-  } catch {
-    return "/";
-  }
+  return "/";
 }
 
 export function mapMemoryPathToBrowserPath(pathname: string) {
@@ -37,6 +37,6 @@ export function dispatchNavigateToRoute(path: string): void {
 
 window.addEventListener("popstate", () => {
   dispatchNavigateToRoute(
-    mapBrowserPathToInitialRoute(window.location.pathname),
+    mapBrowserPathToRoute(window.location.pathname),
   );
 });
