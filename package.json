@@ -3,17 +3,10 @@
   "version": "0.0.1",
   "files": [
     "README.md",
-    "assets/**/*",
-    "patches/**/*",
-    "scripts/prepare",
-    "scripts/prepare_asar",
     "scratch/asar/**/*",
-    "src/browser/**/*",
-    "src/server/**/*.ts",
     "src/server/**/*.js",
     "src/server/electron/index.js",
-    "src/server/tsconfig.json",
-    "vite.browser.config.ts"
+    "!**/*.ts"
   ],
   "bin": "src/server/main.js",
   "scripts": {
