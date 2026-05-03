@@ -203,7 +203,6 @@ const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
 const initialRoute = mapBrowserPathToInitialRoute(window.location.pathname, window.location.search);
 electronShim.initialRoute = initialRoute.memoryPath;
-console.log(initialRoute.memoryPath);
 
 if (initialRoute.browserPath) {
   window.history.pushState(undefined, "", initialRoute.browserPath);
