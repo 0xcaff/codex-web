@@ -41,11 +41,18 @@ flake-utils.lib.eachSystem systems (
         npmDeps = pkgs.importNpmLock {
           npmRoot = ./.;
         };
+        npmMetadataSource = pkgs.lib.fileset.toSource {
+          root = ./.;
+          fileset = pkgs.lib.fileset.unions [
+            ./package.json
+            ./package-lock.json
+          ];
+        };
 
         betterSqlite3Native = pkgs.stdenv.mkDerivation {
           pname = "better-sqlite3-native";
           version = "12.9.0";
-          src = ./.;
+          src = npmMetadataSource;
 
           inherit npmDeps;
 
