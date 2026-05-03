@@ -6,6 +6,10 @@ import {
   handleLocalFilePickerMessage,
   isLocalFilePickerMessage,
 } from "./files";
+import {
+  installWorkspaceRootDialog,
+  type WorkspaceDirectoryEntries,
+} from "./workspace-root-dialog";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
@@ -20,6 +24,12 @@ type RendererToMainMessage =
       type: "ipc-renderer-send";
       channel: string;
       args: unknown[];
+    }
+  | {
+      type: "workspace-directory-entries-request";
+      requestId: string;
+      directoryPath: string | null;
+      directoriesOnly: boolean;
     };
 
 type MainToRendererMessage =
@@ -36,6 +46,18 @@ type MainToRendererMessage =
     }
   | {
       type: "ipc-renderer-invoke-result";
+      requestId: string;
+      ok: false;
+      errorMessage: string;
+    }
+  | {
+      type: "workspace-directory-entries-result";
+      requestId: string;
+      ok: true;
+      result: WorkspaceDirectoryEntries;
+    }
+  | {
+      type: "workspace-directory-entries-result";
       requestId: string;
       ok: false;
       errorMessage: string;
@@ -79,6 +101,13 @@ const pendingInvokes = new Map<
     resolve: (value: unknown) => void;
   }
 >();
+const pendingDirectoryEntries = new Map<
+  string,
+  {
+    reject: (reason?: unknown) => void;
+    resolve: (value: WorkspaceDirectoryEntries) => void;
+  }
+>();
 const rendererListeners = new Map<string, Set<IpcListener>>();
 
 function unimplemented(method: string): never {
@@ -109,6 +138,20 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
       return;
     }
     pendingInvokes.delete(message.requestId);
+    if (message.ok) {
+      pending.resolve(message.result);
+      return;
+    }
+    pending.reject(new Error(message.errorMessage));
+    return;
+  }
+
+  if (message.type === "workspace-directory-entries-result") {
+    const pending = pendingDirectoryEntries.get(message.requestId);
+    if (!pending) {
+      return;
+    }
+    pendingDirectoryEntries.delete(message.requestId);
     if (message.ok) {
       pending.resolve(message.result);
       return;
@@ -181,6 +224,19 @@ function nextRequestId(): string {
   return `ipc_bridge_${requestCounter}`;
 }
 
+function invokeMain(channel: string, args: unknown[]): Promise<unknown> {
+  const requestId = nextRequestId();
+  return new Promise((resolve, reject) => {
+    pendingInvokes.set(requestId, { resolve, reject });
+    enqueueMessage({
+      type: "ipc-renderer-invoke",
+      requestId,
+      channel,
+      args,
+    });
+  });
+}
+
 function addIpcListener(channel: string, listener: IpcListener): void {
   const listeners = rendererListeners.get(channel) ?? new Set<IpcListener>();
   listeners.add(listener);
@@ -194,6 +250,36 @@ function shouldCloseSidebarForMemoryPath(path: string): boolean {
     path === "/skills" ||
     path === "/automations"
   );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isUnhandledAddWorkspaceRootOptionMessage(value: unknown): value is {
+  root?: unknown;
+  type: "electron-add-new-workspace-root-option";
+} {
+  return (
+    isRecord(value) &&
+    value.type === "electron-add-new-workspace-root-option" &&
+    typeof value.root !== "string"
+  );
+}
+
+function requestWorkspaceDirectoryEntries(
+  directoryPath: string | null,
+): Promise<WorkspaceDirectoryEntries> {
+  const requestId = nextRequestId();
+  return new Promise((resolve, reject) => {
+    pendingDirectoryEntries.set(requestId, { resolve, reject });
+    enqueueMessage({
+      type: "workspace-directory-entries-request",
+      requestId,
+      directoryPath,
+      directoriesOnly: true,
+    });
+  });
 }
 
 const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
@@ -241,26 +327,29 @@ electronShim.onMemoryNavigationChanged = (navigation) => {
 
 const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
+const workspaceRootDialog = installWorkspaceRootDialog({
+  listDirectory: requestWorkspaceDirectoryEntries,
+});
+
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
-    if (
-      channel === "codex_desktop:message-from-view" &&
-      args.length === 1 &&
-      isLocalFilePickerMessage(args[0])
-    ) {
-      return handleLocalFilePickerMessage(args[0]);
+    if (channel === "codex_desktop:message-from-view" && args.length === 1) {
+      if (isLocalFilePickerMessage(args[0])) {
+        return handleLocalFilePickerMessage(args[0]);
+      }
+
+      if (isUnhandledAddWorkspaceRootOptionMessage(args[0])) {
+        return workspaceRootDialog.open().then((root) => {
+          if (!root) {
+            return undefined;
+          }
+
+          return invokeMain(channel, [{ ...args[0], root }]);
+        });
+      }
     }
 
-    const requestId = nextRequestId();
-    return new Promise((resolve, reject) => {
-      pendingInvokes.set(requestId, { resolve, reject });
-      enqueueMessage({
-        type: "ipc-renderer-invoke",
-        requestId,
-        channel,
-        args,
-      });
-    });
+    return invokeMain(channel, args);
   },
   on(channel: string, listener: IpcListener): unknown {
     addIpcListener(channel, listener);

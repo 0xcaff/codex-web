@@ -8,9 +8,13 @@ const preloadEntryPath = path.resolve(
   configDir,
   "scratch/asar/.vite/build/preload.js",
 );
+const browserNodeEnv = process.env.NODE_ENV ?? "production";
 
 export default defineConfig({
   root: webviewRoot,
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(browserNodeEnv),
+  },
   server: {
     host: "127.0.0.1",
     port: 4173,

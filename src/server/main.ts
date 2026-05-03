@@ -29,6 +29,12 @@ type RendererToMainMessage =
       channel: string;
       args: unknown[];
       sourceUrl: string;
+    }
+  | {
+      type: "workspace-directory-entries-request";
+      requestId: string;
+      directoryPath: string | null;
+      directoriesOnly: boolean;
     };
 
 type MainToRendererMessage =
@@ -48,7 +54,31 @@ type MainToRendererMessage =
       requestId: string;
       ok: false;
       errorMessage: string;
+    }
+  | {
+      type: "workspace-directory-entries-result";
+      requestId: string;
+      ok: true;
+      result: WorkspaceDirectoryEntries;
+    }
+  | {
+      type: "workspace-directory-entries-result";
+      requestId: string;
+      ok: false;
+      errorMessage: string;
     };
+
+type WorkspaceDirectoryEntry = {
+  name: string;
+  path: string;
+  type: "directory" | "file";
+};
+
+type WorkspaceDirectoryEntries = {
+  directoryPath: string;
+  parentPath: string | null;
+  entries: WorkspaceDirectoryEntry[];
+};
 
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: MainToRendererMessage) => void;
@@ -126,6 +156,60 @@ function errorMessage(error: unknown): string {
     return error.stack ?? error.message;
   }
   return String(error);
+}
+
+async function getWorkspaceDirectoryEntries({
+  directoryPath,
+  directoriesOnly,
+}: {
+  directoryPath: string | null;
+  directoriesOnly: boolean;
+}): Promise<WorkspaceDirectoryEntries> {
+  const requestedPath = directoryPath?.trim() || os.homedir();
+  const resolvedPath = path.resolve(requestedPath);
+  const stat = await fs.stat(resolvedPath);
+  if (!stat.isDirectory()) {
+    throw new Error(`Directory not found: ${requestedPath}`);
+  }
+
+  const entries = (await fs.readdir(resolvedPath, { withFileTypes: true }))
+    .flatMap((entry): WorkspaceDirectoryEntry[] => {
+      const type = entry.isDirectory() ? "directory" : "file";
+      if (directoriesOnly && type !== "directory") {
+        return [];
+      }
+
+      return [
+        {
+          name: entry.name,
+          path: path.join(resolvedPath, entry.name),
+          type,
+        },
+      ];
+    })
+    .sort((left, right) => {
+      if (left.type !== right.type) {
+        return left.type === "directory" ? -1 : 1;
+      }
+
+      const leftHidden = left.name.startsWith(".");
+      const rightHidden = right.name.startsWith(".");
+      if (leftHidden !== rightHidden) {
+        return leftHidden ? 1 : -1;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+
+  const rootPath = path.parse(resolvedPath).root;
+  const parentPath =
+    resolvedPath === rootPath ? null : path.dirname(resolvedPath);
+
+  return {
+    directoryPath: resolvedPath,
+    parentPath,
+    entries,
+  };
 }
 
 function ensureElectronLikeProcessContext(): void {
@@ -257,6 +341,34 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 
       if (message.type === "ipc-renderer-send") {
         bridgeState.handleRendererSend?.(message.channel, message.args);
+        return;
+      }
+
+      if (message.type === "workspace-directory-entries-request") {
+        const { requestId } = message;
+        getWorkspaceDirectoryEntries(message)
+          .then((result) => {
+            const payload: MainToRendererMessage = {
+              type: "workspace-directory-entries-result",
+              requestId,
+              ok: true,
+              result,
+            };
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          })
+          .catch((error) => {
+            const payload: MainToRendererMessage = {
+              type: "workspace-directory-entries-result",
+              requestId,
+              ok: false,
+              errorMessage: errorMessage(error),
+            };
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          });
         return;
       }
 
