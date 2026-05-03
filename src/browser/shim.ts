@@ -5,6 +5,27 @@ import {
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
+type CodexFetchMessage = {
+  body?: string;
+  headers?: Record<string, string>;
+  hostId?: string;
+  method: string;
+  requestId: string;
+  type: "fetch";
+  url: string;
+};
+
+type PickFilesRequest = {
+  imagesOnly?: boolean;
+  pickerTitle?: string;
+};
+
+type UploadedFile = {
+  fsPath: string;
+  label: string;
+  path: string;
+};
+
 type RendererToMainMessage =
   | {
       type: "ipc-renderer-invoke";
@@ -37,7 +58,6 @@ type MainToRendererMessage =
       errorMessage: string;
     };
 
-const IPC_BRIDGE_PATH = "/__electron_ipc";
 const RECONNECT_DELAY_MS = 1_000;
 
 type MemoryNavigationChange = {
@@ -133,11 +153,6 @@ function scheduleReconnect(): void {
   }, RECONNECT_DELAY_MS);
 }
 
-function websocketUrl(): string {
-  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-  return `${protocol}//${window.location.host}${IPC_BRIDGE_PATH}`;
-}
-
 function ensureSocket(): void {
   if (
     socket &&
@@ -147,7 +162,9 @@ function ensureSocket(): void {
     return;
   }
 
-  socket = new WebSocket(websocketUrl());
+  socket = new WebSocket(
+    `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__electron_ipc`,
+  );
   socket.addEventListener("open", () => {
     flushOutboundQueue();
   });
@@ -185,6 +202,252 @@ function addIpcListener(channel: string, listener: IpcListener): void {
   const listeners = rendererListeners.get(channel) ?? new Set<IpcListener>();
   listeners.add(listener);
   rendererListeners.set(channel, listeners);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isCodexFetchMessage(value: unknown): value is CodexFetchMessage {
+  return (
+    isRecord(value) &&
+    value.type === "fetch" &&
+    typeof value.requestId === "string" &&
+    typeof value.method === "string" &&
+    typeof value.url === "string"
+  );
+}
+
+function isUploadedFile(value: unknown): value is UploadedFile {
+  return (
+    isRecord(value) &&
+    typeof value.path === "string" &&
+    typeof value.fsPath === "string" &&
+    typeof value.label === "string"
+  );
+}
+
+function isLocalFilePickerMessage(value: unknown): value is CodexFetchMessage {
+  return (
+    isCodexFetchMessage(value) &&
+    value.method.toUpperCase() === "POST" &&
+    (value.url === "vscode://codex/pick-files" ||
+      value.url === "vscode://codex/pick-file")
+  );
+}
+
+function parsePickFilesRequest(message: CodexFetchMessage): PickFilesRequest {
+  if (!message.body) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(message.body) as unknown;
+    if (!isRecord(parsed)) {
+      return {};
+    }
+    return {
+      imagesOnly:
+        typeof parsed.imagesOnly === "boolean" ? parsed.imagesOnly : undefined,
+      pickerTitle:
+        typeof parsed.pickerTitle === "string" ? parsed.pickerTitle : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function sendFetchResponse(
+  message: CodexFetchMessage,
+  response:
+    | {
+        responseType: "success";
+        body: unknown;
+        status?: number;
+      }
+    | {
+        responseType: "error";
+        error: string;
+        status?: number;
+      },
+): void {
+  const payload =
+    response.responseType === "success"
+      ? {
+          type: "fetch-response",
+          responseType: "success",
+          requestId: message.requestId,
+          status: response.status ?? 200,
+          headers: { "content-type": "application/json" },
+          bodyJsonString: JSON.stringify(response.body),
+        }
+      : {
+          type: "fetch-response",
+          responseType: "error",
+          requestId: message.requestId,
+          status: response.status ?? 432,
+          error: response.error,
+        };
+
+  emitRendererEvent("codex_desktop:message-for-view", [payload]);
+}
+
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  return String(error);
+}
+
+function openBrowserFilePicker({
+  allowMultiple,
+  imagesOnly,
+}: {
+  allowMultiple: boolean;
+  imagesOnly?: boolean;
+}): Promise<File[]> {
+  return new Promise((resolve, reject) => {
+    const input = document.createElement("input");
+    let settled = false;
+
+    function cleanup(): void {
+      input.removeEventListener("cancel", handleCancel);
+      input.removeEventListener("change", handleChange);
+      input.remove();
+    }
+
+    function finish(files: File[]): void {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      resolve(files);
+    }
+
+    function fail(error: unknown): void {
+      if (settled) {
+        return;
+      }
+      settled = true;
+      cleanup();
+      reject(error);
+    }
+
+    function handleCancel(): void {
+      finish([]);
+    }
+
+    function handleChange(): void {
+      finish(Array.from(input.files ?? []));
+    }
+
+    input.type = "file";
+    input.multiple = allowMultiple;
+    if (imagesOnly) {
+      input.accept = "image/*";
+    }
+    Object.assign(input.style, {
+      height: "1px",
+      left: "-9999px",
+      opacity: "0",
+      position: "fixed",
+      top: "0",
+      width: "1px",
+    });
+    input.addEventListener("cancel", handleCancel);
+    input.addEventListener("change", handleChange);
+    document.body.append(input);
+
+    try {
+      input.click();
+    } catch (error) {
+      fail(error);
+    }
+  });
+}
+
+async function uploadFiles(files: File[]): Promise<UploadedFile[]> {
+  if (files.length === 0) {
+    return [];
+  }
+
+  const uploadUrl = new URL("/__codex_upload_file", window.location.href);
+  const formData = new FormData();
+  let totalBytes = 0;
+
+  for (const file of files) {
+    formData.append("files", file, file.name || "upload");
+    totalBytes += file.size;
+  }
+
+  console.info("[electron-stub] uploading selected files", {
+    count: files.length,
+    totalBytes,
+    uploadUrl: uploadUrl.toString(),
+  });
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+  }
+
+  const uploadResponse = (await response.json()) as unknown;
+  if (!isRecord(uploadResponse) || !Array.isArray(uploadResponse.files)) {
+    throw new Error("Upload response was invalid");
+  }
+
+  const uploadedFiles = uploadResponse.files;
+  if (!uploadedFiles.every(isUploadedFile)) {
+    throw new Error("Upload response contained invalid files");
+  }
+
+  return uploadedFiles;
+}
+
+async function handleLocalFilePickerMessage(
+  message: CodexFetchMessage,
+): Promise<void> {
+  try {
+    const request = parsePickFilesRequest(message);
+    const allowMultiple = message.url === "vscode://codex/pick-files";
+    console.info("[electron-stub] handling browser file picker", {
+      allowMultiple,
+      imagesOnly: request.imagesOnly,
+      requestId: message.requestId,
+      url: message.url,
+    });
+    const selectedFiles = await openBrowserFilePicker({
+      allowMultiple,
+      imagesOnly: request.imagesOnly,
+    });
+    console.info("[electron-stub] browser file picker selection complete", {
+      count: selectedFiles.length,
+      requestId: message.requestId,
+    });
+    const uploadedFiles = await uploadFiles(selectedFiles);
+
+    sendFetchResponse(message, {
+      responseType: "success",
+      body: allowMultiple
+        ? { files: uploadedFiles }
+        : { file: uploadedFiles[0] ?? null },
+    });
+  } catch (error) {
+    console.error(
+      "[electron-stub] failed to handle browser file picker",
+      error,
+    );
+    sendFetchResponse(message, {
+      responseType: "error",
+      status: 432,
+      error: errorMessage(error),
+    });
+  }
 }
 
 function shouldCloseSidebarForMemoryPath(path: string): boolean {
@@ -240,6 +503,14 @@ const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
+    if (
+      channel === "codex_desktop:message-from-view" &&
+      args.length === 1 &&
+      isLocalFilePickerMessage(args[0])
+    ) {
+      return handleLocalFilePickerMessage(args[0]);
+    }
+
     const requestId = nextRequestId();
     return new Promise((resolve, reject) => {
       pendingInvokes.set(requestId, { resolve, reject });

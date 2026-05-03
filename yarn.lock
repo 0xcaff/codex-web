@@ -62,6 +62,16 @@
     ajv-formats "^3.0.1"
     fast-uri "^3.0.0"
 
+"@fastify/busboy@^3.0.0":
+  version "3.2.0"
+  resolved "https://registry.npmjs.org/@fastify/busboy/-/busboy-3.2.0.tgz#13ed8212f3b9ba697611529d15347f8528058cea"
+  integrity sha512-m9FVDXU3GT2ITSe0UaMA5rU3QkfC/UXtCU8y0gSN/GugTqtVldOBWIB5V6V3sbmenVZUIpU6f+mPEO2+m5iTaA==
+
+"@fastify/deepmerge@^3.0.0":
+  version "3.2.1"
+  resolved "https://registry.npmjs.org/@fastify/deepmerge/-/deepmerge-3.2.1.tgz#0fe56a4ee3eec874556006439f7bc7d616f10dc1"
+  integrity sha512-N5Oqvltoa2r9z1tbx4xjky0oRR60v+T47Ic4J1ukoVQcptLOrIdRnCSdTGmOmajZuHVKlTnfcmrjyqsGEW1ztA==
+
 "@fastify/error@^4.0.0":
   version "4.2.0"
   resolved "https://registry.npmjs.org/@fastify/error/-/error-4.2.0.tgz#d40f46ba75f541fdcc4dc276b7308bbc8e8e6d7a"
@@ -85,6 +95,17 @@
   integrity sha512-OA3KGBCy6KtIvLf8DINC5880o5iBlDX4SxzLQS8HorJAbqluzLRn80UXU0bxZn7UOFhFgpRJDasfwn9nG4FG4A==
   dependencies:
     dequal "^2.0.3"
+
+"@fastify/multipart@^10.0.0":
+  version "10.0.0"
+  resolved "https://registry.npmjs.org/@fastify/multipart/-/multipart-10.0.0.tgz#216011a1f1404aae75abd151e829d27aa8ae2c66"
+  integrity sha512-pUx3Z1QStY7E7kwvDTIvB6P+rF5lzP+iqPgZyJyG3yBJVPvQaZxzDHYbQD89rbY0ciXrMOyGi8ezHDVexLvJDA==
+  dependencies:
+    "@fastify/busboy" "^3.0.0"
+    "@fastify/deepmerge" "^3.0.0"
+    "@fastify/error" "^4.0.0"
+    fastify-plugin "^5.0.0"
+    secure-json-parse "^4.0.0"
 
 "@fastify/proxy-addr@^5.0.0":
   version "5.1.0"
