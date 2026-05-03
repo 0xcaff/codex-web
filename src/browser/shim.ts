@@ -8,6 +8,7 @@ import {
 } from "./files";
 import {
   installWorkspaceRootDialog,
+  openSelectWorkspaceRootDialog,
   type WorkspaceDirectoryEntries,
 } from "./workspace-root-dialog";
 
@@ -327,10 +328,6 @@ electronShim.onMemoryNavigationChanged = (navigation) => {
 
 const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
-const workspaceRootDialog = installWorkspaceRootDialog({
-  listDirectory: requestWorkspaceDirectoryEntries,
-});
-
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     if (channel === "codex_desktop:message-from-view" && args.length === 1) {
@@ -339,7 +336,9 @@ export const ipcRenderer = {
       }
 
       if (isUnhandledAddWorkspaceRootOptionMessage(args[0])) {
-        return workspaceRootDialog.open().then((root) => {
+        return openSelectWorkspaceRootDialog({
+          listDirectory: requestWorkspaceDirectoryEntries,
+        }).then((root) => {
           if (!root) {
             return undefined;
           }
@@ -406,7 +405,7 @@ export const ipcRenderer = {
         remote_connections: [],
         remote_control_connections: [],
         remote_control_connections_state: {
-          available: false,
+          available: true,
           authRequired: false,
         },
         pending_worktrees: [],
