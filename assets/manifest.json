@@ -3,6 +3,15 @@
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
+  "share_target": {
+    "action": "/share/receive",
+    "method": "GET",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
   "icons": [
     {
       "src": "/assets/pwa-icon-512.png",

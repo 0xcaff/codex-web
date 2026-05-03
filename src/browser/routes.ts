@@ -1,14 +1,25 @@
 export function mapBrowserPathToInitialRoute(pathname: string, search: string) {
   if (pathname === "/share/receive" && search) {
+    const params = new URLSearchParams(search);
+
+    const prompt = ["title", "text", "url"]
+      .flatMap((name) => {
+        const value = params.get(name);
+        return value === null ? [] : [`${name}: ${value}`];
+      })
+      .join("\n");
+
     return {
-      memoryPath: `/${search}`,
-      browserPath: '/',
+      memoryPath: prompt
+        ? `/?${new URLSearchParams({ prompt }).toString()}`
+        : "/",
+      browserPath: "/",
     };
   }
 
   return {
     memoryPath: mapBrowserPathToRoute(pathname),
-  }
+  };
 }
 
 function mapBrowserPathToRoute(pathname: string): string {
@@ -49,7 +60,5 @@ export function dispatchNavigateToRoute(path: string): void {
 }
 
 window.addEventListener("popstate", () => {
-  dispatchNavigateToRoute(
-    mapBrowserPathToRoute(window.location.pathname),
-  );
+  dispatchNavigateToRoute(mapBrowserPathToRoute(window.location.pathname));
 });
