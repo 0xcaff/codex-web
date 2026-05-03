@@ -13,9 +13,70 @@ PWA_PADDING_TOTAL=$((PWA_ICON_SIZE - PWA_CONTENT_SIZE))
 PWA_PADDING_BEFORE=$((PWA_PADDING_TOTAL / 2))
 PWA_PADDING_AFTER=$((PWA_PADDING_TOTAL - PWA_PADDING_BEFORE))
 sharp -i "$PWA_SOURCE_ICON" -o "$PWA_TARGET_ICON" -f png resize "$PWA_CONTENT_SIZE" "$PWA_CONTENT_SIZE" --fit inside -- flatten white -- extend "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" --background white -- removeAlpha
-PRETTIER_BIN="$(node -e 'const path = require("node:path"); const pkgPath = require.resolve("prettier/package.json"); const pkg = require(pkgPath); const bin = typeof pkg.bin === "string" ? pkg.bin : pkg.bin.prettier; process.stdout.write(path.resolve(path.dirname(pkgPath), bin));')"
+format_with_prettier() {
+  node - "$@" <<'NODE'
+const { createRequire } = require("node:module");
+const fs = require("node:fs/promises");
+const path = require("node:path");
+
+const requireFromPackage = createRequire(path.resolve("package.json"));
+const prettier = requireFromPackage("prettier");
+const requestedPaths = process.argv.slice(2);
+const files = [];
+
+async function collectFiles(targetPath) {
+  const stat = await fs.lstat(targetPath);
+  if (stat.isSymbolicLink()) {
+    return;
+  }
+  if (!stat.isDirectory()) {
+    files.push(targetPath);
+    return;
+  }
+
+  for (const entry of await fs.readdir(targetPath)) {
+    if (entry === "node_modules") {
+      continue;
+    }
+    await collectFiles(path.join(targetPath, entry));
+  }
+}
+
+async function main() {
+  for (const requestedPath of requestedPaths) {
+    await collectFiles(requestedPath);
+  }
+
+  for (const file of files) {
+    const fileInfo = await prettier.getFileInfo(file, {
+      ignorePath: "/dev/null",
+      withNodeModules: true,
+    });
+    if (fileInfo.ignored || !fileInfo.inferredParser) {
+      continue;
+    }
+
+    const config = (await prettier.resolveConfig(file)) ?? {};
+    const source = await fs.readFile(file, "utf8");
+    const formatted = await prettier.format(source, {
+      ...config,
+      filepath: file,
+    });
+    if (formatted !== source) {
+      await fs.writeFile(file, formatted);
+    }
+    console.log(file);
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
+NODE
+}
 if [[ -n "${DEV:-}" ]]; then
-  node "$PRETTIER_BIN" --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
+  format_with_prettier "scratch/asar"
 else
   patched_files=()
   while IFS= read -r patched_file; do
@@ -23,7 +84,7 @@ else
   done < <(
     awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
   )
-  node "$PRETTIER_BIN" --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
+  format_with_prettier "${patched_files[@]}"
 fi
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-style.patch
