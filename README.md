@@ -124,3 +124,14 @@ using `codex-web` in an interesting way? post about it on x and tag me
 
 using this at a company and need something more tailored? email me and we can
 talk.
+
+## alternatives
+
+* [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels
+  fell off for my needs. i needed subagents and inline image viewer and this
+  didn't have it and also was having a hard time keeping up with upstream codex
+  updates.
+* the native codex remote feature (behind a feature flag) is great for
+  connecting to remote codex hosts over ssh to manage long running tasks but
+  this only works if you have codex desktop on your client device. this means it
+  doesn't work on mobile.
