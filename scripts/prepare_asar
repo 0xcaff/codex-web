@@ -13,8 +13,9 @@ PWA_PADDING_TOTAL=$((PWA_ICON_SIZE - PWA_CONTENT_SIZE))
 PWA_PADDING_BEFORE=$((PWA_PADDING_TOTAL / 2))
 PWA_PADDING_AFTER=$((PWA_PADDING_TOTAL - PWA_PADDING_BEFORE))
 sharp -i "$PWA_SOURCE_ICON" -o "$PWA_TARGET_ICON" -f png resize "$PWA_CONTENT_SIZE" "$PWA_CONTENT_SIZE" --fit inside -- flatten white -- extend "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" --background white -- removeAlpha
+PRETTIER_BIN="$(node -e 'const path = require("node:path"); const pkgPath = require.resolve("prettier/package.json"); const pkg = require(pkgPath); const bin = typeof pkg.bin === "string" ? pkg.bin : pkg.bin.prettier; process.stdout.write(path.resolve(path.dirname(pkgPath), bin));')"
 if [[ -n "${DEV:-}" ]]; then
-  prettier --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
+  node "$PRETTIER_BIN" --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
 else
   patched_files=()
   while IFS= read -r patched_file; do
@@ -22,7 +23,7 @@ else
   done < <(
     awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
   )
-  prettier --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
+  node "$PRETTIER_BIN" --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
 fi
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-style.patch
