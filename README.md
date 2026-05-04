@@ -74,12 +74,12 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
 
 ## security
 
-run `codex-web` only on a trusted network. treat anyone who can reach the
+run `codex-web` only on trusted networks. treat anyone who can reach the
 `codex-web` server as someone who can operate codex on the host machine as the
 same user running the server.
 
 if you need authn or authz, implement it outside of `codex-web`: proxy it through
-wireguard, tailscale, or an ssh tunnel, or put an authentication gateway or
+wireguard, tailscale, or an ssh tunnel and put an authentication gateway or
 reverse proxy in front.
 
 someone with access to the web ui may be able to:
@@ -94,24 +94,23 @@ someone with access to the web ui may be able to:
 
 ## features
 
-- can host on linux or macos
+- hostable on macOS, Linux (and anything codex cli + node will run on)
 - reachable from the browser
-- thin wrapper, so updates should stay fast and most desktop behavior already
-  comes along for the ride
+- thin wrapper, so updates should land fast
 - working today:
-    - subagents
-    - inline images
-    - editor sidepanel
-    - transcription
+  - subagents
+  - inline images
+  - editor sidepanel
+  - transcription
 
 ## roadmap
 
 some parts of the desktop experience are not wired up yet:
 
-- terminal support
-- git worker integration
 - browser panel support, likely rebuilt around iframes
 - computer use on linux, which could become a very powerful feature
+- terminal support
+- git worker integration
 - whatever else people find and file issues for
 
 ## issues welcome
@@ -128,13 +127,13 @@ talk.
 ## alternatives
 
 * [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels
-  fell off for my needs. i needed subagents and inline image viewer and this
-  didn't have it and also was having a hard time keeping up with upstream codex
-  updates.
+  fell off for my needs. i needed subagents and inline image viewer. this didn't
+  have it and was having a hard time keeping up with upstream codex updates.
 * the native codex remote feature (behind a feature flag) is great for
   connecting to remote codex hosts over ssh to manage long running tasks but
   this only works if you have codex desktop on your client device. this means it
   doesn't work on mobile.
-* upcoming first party mobile app from openai. this exists and works today. i
-  can't wait for the mobile app but judging by the other openai mobile apps, idk
-  how buggy they will be. time will tell.
+* upcoming first party mobile app from openai. `codex-web` exists and works
+  today. i can't wait for the mobile app but judging by the other openai mobile
+  apps, i'm a little bit skeptical about the quality of the mobile experience.
+  time will tell.
