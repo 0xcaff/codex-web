@@ -255,7 +255,11 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   const websocketServer = new WebSocketServer({ noServer: true });
   const sockets = new Set<WebSocket>();
 
-  await app.register(fastifyMultipart);
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: Infinity,
+    },
+  });
 
   const uploadRoot = await fs.mkdtemp(
     path.join(os.tmpdir(), "codex-web-uploads-"),
