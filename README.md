@@ -135,3 +135,6 @@ talk.
   connecting to remote codex hosts over ssh to manage long running tasks but
   this only works if you have codex desktop on your client device. this means it
   doesn't work on mobile.
+* upcoming first party mobile app from openai. this exists and works today. i
+  can't wait for the mobile app but judging by the other openai mobile apps, idk
+  how buggy they will be. time will tell.
