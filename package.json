@@ -38,6 +38,7 @@
     "sharp-cli": "^5.2.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
+    "vite-plugin-html": "^3.2.2",
     "ws": "^8.20.0"
   },
   "devDependencies": {

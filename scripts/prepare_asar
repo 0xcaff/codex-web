@@ -1,18 +1,37 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
+rm -rf scratch/Codex.app scratch/asar
+mkdir -p scratch
 unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
 asar extract "scratch/Codex.app/Contents/Resources/app.asar" "scratch/asar"
 cp assets/* scratch/asar/webview/
 PWA_SOURCE_ICON="scratch/asar/webview/assets/app-D0g8sCle.png"
-PWA_TARGET_ICON="scratch/asar/webview/assets/pwa-icon-512.png"
+PWA_TARGET_ICON_UNHASHED="scratch/asar/webview/assets/pwa-icon-512.png"
 PWA_ICON_SIZE=512
 PWA_TOTAL_PADDING_PERCENT=25
 PWA_CONTENT_SIZE=$((PWA_ICON_SIZE * (100 - PWA_TOTAL_PADDING_PERCENT) / 100))
 PWA_PADDING_TOTAL=$((PWA_ICON_SIZE - PWA_CONTENT_SIZE))
 PWA_PADDING_BEFORE=$((PWA_PADDING_TOTAL / 2))
 PWA_PADDING_AFTER=$((PWA_PADDING_TOTAL - PWA_PADDING_BEFORE))
-sharp -i "$PWA_SOURCE_ICON" -o "$PWA_TARGET_ICON" -f png resize "$PWA_CONTENT_SIZE" "$PWA_CONTENT_SIZE" --fit inside -- flatten white -- extend "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" --background white -- removeAlpha
+sharp -i "$PWA_SOURCE_ICON" -o "$PWA_TARGET_ICON_UNHASHED" -f png resize "$PWA_CONTENT_SIZE" "$PWA_CONTENT_SIZE" --fit inside -- flatten white -- extend "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" "$PWA_PADDING_BEFORE" "$PWA_PADDING_AFTER" --background white -- removeAlpha
+PWA_ICON_HASH="$(shasum -a 256 "$PWA_TARGET_ICON_UNHASHED" | awk '{print substr($1, 1, 8)}')"
+PWA_TARGET_ICON="scratch/asar/webview/assets/pwa-icon-512-$PWA_ICON_HASH.png"
+mv "$PWA_TARGET_ICON_UNHASHED" "$PWA_TARGET_ICON"
+node - "scratch/asar/webview/manifest.json" "/assets/$(basename "$PWA_TARGET_ICON")" <<'NODE'
+const fs = require("node:fs");
+
+const [manifestPath, iconSrc] = process.argv.slice(2);
+const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+
+for (const icon of manifest.icons ?? []) {
+  if (icon.sizes === "512x512" && icon.type === "image/png") {
+    icon.src = iconSrc;
+  }
+}
+
+fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+NODE
 if [[ -n "${DEV:-}" ]]; then
   prettier --ignore-path /dev/null --ignore-unknown --write "scratch/asar"
 else
@@ -24,11 +43,6 @@ else
   )
   prettier --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
 fi
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-style.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-preload.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-favicon.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-pwa.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-thread-title.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-initial-route.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-electron-shim-close-sidebar.patch

@@ -80,6 +80,30 @@ type WorkspaceDirectoryEntries = {
   entries: WorkspaceDirectoryEntry[];
 };
 
+const IMMUTABLE_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const REVALIDATE_CACHE_CONTROL = "no-cache";
+
+function isContentHashedFile(filePath: string): boolean {
+  const basename = path.basename(filePath);
+  const cacheKeyName = basename.endsWith(".map")
+    ? basename.slice(0, -".map".length)
+    : basename;
+
+  return /[-.][A-Za-z0-9_-]{8,}\.[^.]+$/.test(cacheKeyName);
+}
+
+function setWebviewCacheControl(
+  response: { setHeader(name: string, value: string): void },
+  filePath: string,
+): void {
+  response.setHeader(
+    "Cache-Control",
+    path.basename(filePath) === "index.html" || !isContentHashedFile(filePath)
+      ? REVALIDATE_CACHE_CONTROL
+      : IMMUTABLE_CACHE_CONTROL,
+  );
+}
+
 function workspaceDirectoryEntryTypeRank(
   entry: WorkspaceDirectoryEntry,
 ): number {
@@ -294,12 +318,18 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   await app.register(fastifyStatic, {
     root: "/",
     prefix: "/@fs/",
+    cacheControl: false,
     decorateReply: false,
+    setHeaders(response) {
+      response.setHeader("Cache-Control", REVALIDATE_CACHE_CONTROL);
+    },
   });
 
   await app.register(fastifyStatic, {
     root: path.resolve(__dirname, "../../scratch/asar/webview"),
     prefix: "/",
+    cacheControl: false,
+    setHeaders: setWebviewCacheControl,
   });
 
   app.get("/", async (_request, reply) => {
