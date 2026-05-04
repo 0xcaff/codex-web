@@ -59,7 +59,7 @@ start a long-lived app server somewhere:
 
 ```bash
 codex app-server --listen ws://127.0.0.1:9001
-# reachable now with `codex --remote  ws://127.0.0.1:9001` then `/resume`
+# reachable now with `codex --remote ws://127.0.0.1:9001` then `/resume`
 ```
 
 then run `codex-web` with the proxy helper:
