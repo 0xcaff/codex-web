@@ -126,9 +126,9 @@ talk.
 
 ## alternatives
 
-* [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels
-  fell off for my needs. i needed subagents and inline image viewer. this didn't
-  have it and was having a hard time keeping up with upstream codex updates.
+* [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels fell off. i needed subagents
+  and an inline image viewer. this didn't have them and was having a hard time
+  keeping up with upstream codex updates.
 * the native codex remote feature (behind a feature flag) is great for
   connecting to remote codex hosts over ssh to manage long running tasks but
   this only works if you have codex desktop on your client device. this means it
