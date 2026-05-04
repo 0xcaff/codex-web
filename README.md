@@ -16,18 +16,6 @@ any device with a browser.
 this project aims to be as thin a wrapper as possible to ensure upstream changes
 to the codex desktop app can be integrated quickly.
 
-## features
-
-- can host on linux or macos
-- reachable from the browser
-- thin wrapper, so updates should stay fast and most desktop behavior already
-  comes along for the ride
-- working today:
-  - subagents
-  - inline images
-  - editor sidepanel
-  - transcription
-
 ## usage
 
 `codex-web` serves the browser client and hosts the desktop-side bridge. by
@@ -103,6 +91,18 @@ someone with access to the web ui may be able to:
 - use the codex / chatgpt account already signed in on the host. this may
   consume usage quota or billing credits, and may expose account metadata shown
   by the app or cli, such as name or email address.
+
+## features
+
+- can host on linux or macos
+- reachable from the browser
+- thin wrapper, so updates should stay fast and most desktop behavior already
+  comes along for the ride
+- working today:
+    - subagents
+    - inline images
+    - editor sidepanel
+    - transcription
 
 ## roadmap
 
