@@ -6,15 +6,7 @@
   uv2nix,
   ...
 }:
-let
-  systems = [
-    "aarch64-darwin"
-    "x86_64-darwin"
-    "aarch64-linux"
-    "x86_64-linux"
-  ];
-in
-flake-utils.lib.eachSystem systems (
+flake-utils.lib.eachDefaultSystem (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
