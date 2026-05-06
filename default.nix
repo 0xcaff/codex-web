@@ -112,6 +112,16 @@ flake-utils.lib.eachSystem systems (
           '';
 
           preInstall = ''
+            # npm pack always runs the package prepare lifecycle. Nix already ran
+            # the explicit build script above, so remove prepare in the sandbox.
+            node -e '
+              const fs = require("fs");
+              const packageJsonPath = "package.json";
+              const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
+              delete packageJson.scripts.prepare;
+              fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
+            '
+
             # Keep only extracted asar artifacts for packaging.
             rm -rf scratch/Codex.app
 
