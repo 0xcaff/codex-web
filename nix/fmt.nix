@@ -19,6 +19,7 @@ flake-utils.lib.eachSystem systems (
     pkgs = import nixpkgs { inherit system; };
     treefmtEval = treefmt-nix.lib.evalModule pkgs {
       projectRootFile = "flake.nix";
+      programs.black.enable = true;
       programs.nixfmt.enable = true;
     };
   in

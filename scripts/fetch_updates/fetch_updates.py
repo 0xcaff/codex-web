@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import base64
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urljoin
 
@@ -52,6 +53,11 @@ def download_enclosure(enclosure: etree._Element, dest: Path) -> None:
     dest.write_bytes(data)
 
 
+def appcast_snapshot_path(output_root: Path) -> Path:
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return output_root / "xmls" / f"{timestamp}-appcast.xml"
+
+
 def process_item(version_dir, item):
     version_xml = version_dir / "version.xml"
 
@@ -67,14 +73,14 @@ def process_item(version_dir, item):
     download_enclosure(
         full_enclosure,
         version_dir / "update.zip",
-        )
+    )
 
     for delta in item.findall(f"{sparkle_name('deltas')}/enclosure"):
         delta_from = safe_path_component(delta.attrib[sparkle_name("deltaFrom")])
         download_enclosure(
             delta,
             version_dir / "deltas" / f"{delta_from}.delta",
-            )
+        )
 
     version_xml.write_text(
         etree.tostring(item, encoding="unicode", pretty_print=True),
@@ -83,12 +89,19 @@ def process_item(version_dir, item):
 
     print(f"Staged {version_dir}")
 
+
 def run(args: argparse.Namespace) -> None:
     output_root = Path(args.output).expanduser().resolve()
     output_root.mkdir(parents=True, exist_ok=True)
 
     resp = requests.get(APPCAST_URL, timeout=30)
     resp.raise_for_status()
+
+    snapshot_path = appcast_snapshot_path(output_root)
+    snapshot_path.parent.mkdir(parents=True, exist_ok=True)
+    with snapshot_path.open("xb") as snapshot:
+        snapshot.write(resp.content)
+    print(f"Archived appcast {snapshot_path}")
 
     root = etree.fromstring(
         resp.content, parser=etree.XMLParser(resolve_entities=False, no_network=True)
@@ -98,7 +111,7 @@ def run(args: argparse.Namespace) -> None:
         short_version = safe_path_component(
             item.find(sparkle_name("shortVersionString")).text
         )
-        version_dir = output_root / f"{sparkle_version}-{short_version}"
+        version_dir = output_root / "versions" / f"{sparkle_version}-{short_version}"
 
         try:
             process_item(version_dir, item)
