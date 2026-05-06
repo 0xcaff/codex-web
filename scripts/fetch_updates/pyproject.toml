@@ -1,0 +1,12 @@
+[project]
+name = "codex_desktop_fetch_updates"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "cryptography>=46.0.0",
+    "lxml>=5.4.0",
+    "requests>=2.32.5",
+]
+
+[project.scripts]
+fetch_updates = "fetch_updates:main"
