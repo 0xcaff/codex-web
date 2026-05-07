@@ -1,31 +1,31 @@
---- a/webview/assets/chunk-OIYGIGL5-CJrBIAxA.js
-+++ b/webview/assets/chunk-OIYGIGL5-CJrBIAxA.js
-@@ -891,11 +891,16 @@
- }
- function ze({ basename: e, children: t, initialEntries: n, initialIndex: a }) {
-   let o = r.useRef();
--  o.current ??= i({ initialEntries: n, initialIndex: a, v5Compat: !0 });
-+  o.current ??= i({
+--- a/webview/assets/chunk-LFPYN7LY-Cafl-tZa.js
++++ b/webview/assets/chunk-LFPYN7LY-Cafl-tZa.js
+@@ -1058,11 +1058,16 @@
+   unstable_useTransitions: o,
+ }) {
+   let s = r.useRef();
+-  s.current ??= a({ initialEntries: n, initialIndex: i, v5Compat: !0 });
++  s.current ??= a({
 +    initialEntries: n ?? [window.__ELECTRON_SHIM__.initialRoute],
-+    initialIndex: a,
++    initialIndex: i,
 +    v5Compat: !0,
 +  });
-   let s = o.current,
-     [c, l] = r.useState({ action: s.action, location: s.location }),
-     u = r.useCallback(
+   let c = s.current,
+     [l, u] = r.useState({ action: c.action, location: c.location }),
+     d = r.useCallback(
        (e) => {
 +        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-         r.startTransition(() => l(e));
+         o === !1 ? u(e) : r.startTransition(() => u(e));
        },
-       [l],
---- a/webview/assets/use-model-settings-D-IrMVLP.js
-+++ b/webview/assets/use-model-settings-D-IrMVLP.js
-@@ -1968,7 +1968,7 @@
-   Yee = Fc.entries$,
-   Xee = Ic.entries$,
-   Zee = { center: Fc, left: Ic },
--  Lc = we(fe, !0),
-+  Lc = we(fe, window.__ELECTRON_SHIM__.initialSidebarState),
-   Rc = we(qi, !1),
-   zc = we(qi, () => new vi(0)),
-   Bc = we(qi, !1),
+       [o],
+--- a/webview/assets/apps-ReuD7AbY.js
++++ b/webview/assets/apps-ReuD7AbY.js
+@@ -2380,7 +2380,7 @@
+   if (e == null) throw Error(`AppShellLayoutMotionContext is missing`);
+   return e;
+ }
+-var va = P(I, !0),
++var va = P(I, window.__ELECTRON_SHIM__.initialSidebarState),
+   ya = P(I, () => new Qt(1)),
+   ba = P(L, !1),
+   xa = P(L, () => new Qt(0)),

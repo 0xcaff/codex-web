@@ -1,21 +1,22 @@
---- a/webview/assets/index-D-3V455n.js
-+++ b/webview/assets/index-D-3V455n.js
-@@ -151626,6 +151626,18 @@
-         }),
-       [e],
-     ),
-+    (0, Z.useEffect)(() => {
-+      let t = () => {
-+        e.set(Tu, !1);
-+      };
-+      return (
-+        (window.__ELECTRON_SHIM__.closeSidebar = t),
-+        () => {
-+          window.__ELECTRON_SHIM__.closeSidebar === t &&
-+            delete window.__ELECTRON_SHIM__.closeSidebar;
-+        }
-+      );
-+    }, [e]),
-     (0, Z.useEffect)(() => {
-       let a = n.map((n) => {
-         let a = e.get(_ee, n.key);
+--- a/webview/assets/app-shell-1qbnxGYC.js
++++ b/webview/assets/app-shell-1qbnxGYC.js
+@@ -2498,7 +2498,19 @@
+         }
+       ),
+       [],
++    );
++  (0, $.useEffect)(() => {
++    let e = () => {
++      i.set(H, !1);
++    };
++    return (
++      (window.__ELECTRON_SHIM__.closeSidebar = e),
++      () => {
++        window.__ELECTRON_SHIM__.closeSidebar === e &&
++          delete window.__ELECTRON_SHIM__.closeSidebar;
++      }
+     );
++  }, [i]);
+   ze(z, `change`, (e) => {
+     let t = e - le.current;
+     if (((le.current = e), t !== 0)) for (let e of ue.current) e(t);
