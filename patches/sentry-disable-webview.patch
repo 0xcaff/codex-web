@@ -1,10 +1,10 @@
---- a/webview/assets/apps-ReuD7AbY.js
-+++ b/webview/assets/apps-ReuD7AbY.js
-@@ -30539,6 +30539,7 @@
-     n = l(e.appVersion),
+--- a/webview/assets/error-boundary-LK6T93zS.js
++++ b/webview/assets/error-boundary-LK6T93zS.js
+@@ -7598,6 +7598,7 @@
+     n = c(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (Qw({
+   (yf({
 +    enabled: !1,
-     dsn: h,
-     environment: tT,
+     dsn: o,
+     environment: Sf,
      release: d(n.version),

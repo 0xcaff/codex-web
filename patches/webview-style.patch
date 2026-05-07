@@ -1,14 +1,10 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -117,6 +117,11 @@
-         }
-       }
-     </style>
-+    <style>
-+      .main-surface {
-+        --spacing-token-safe-header-left: 0px;
-+      }
-+    </style>
-     <script type="module" crossorigin src="./assets/index-CN-by6ks.js"></script>
-     <link
-       rel="modulepreload"
+@@ -616,6 +616,7 @@
+       href="./assets/codex-avatar-D82knaKt.css"
+     />
+     <link rel="stylesheet" crossorigin href="./assets/index-Demj-qjn.css" />
++    <style>.main-surface { --spacing-token-safe-header-left: 0px; }</style>
+   </head>
+   <body tabindex="0" style="outline: none">
+     <div id="root">

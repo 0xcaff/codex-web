@@ -1,33 +1,31 @@
---- a/webview/assets/prompt-editor-BFzgDIHO.js
-+++ b/webview/assets/prompt-editor-BFzgDIHO.js
-@@ -24273,6 +24273,13 @@
+--- a/webview/assets/use-model-settings-D-IrMVLP.js
++++ b/webview/assets/use-model-settings-D-IrMVLP.js
+@@ -62034,6 +62034,11 @@
    let o = new EventTarget(),
-     s = new kd(),
+     s = new CR(),
      c = a,
-+    inputModeDisabled = !1,
-+    getAttributes = () => (inputModeDisabled ? {} : { inputmode: `none` }),
-+    setPointerInputMode = (e) => {
-+      inputModeDisabled !== e &&
-+        ((inputModeDisabled = e),
-+        l.isDestroyed || l.setProps({ attributes: getAttributes }));
++    lre = !1,
++    ure = () => (lre ? {} : { inputmode: `none` }),
++    dre = (e) => {
++      lre !== e && ((lre = e), l.isDestroyed || l.setProps({ attributes: ure }));
 +    },
-     l = new wu(null, {
-       state: pr.create({
-         schema: Od,
-@@ -24355,6 +24362,18 @@
+     l = new oL(null, {
+       state: Mse.create({
+         schema: bR,
+@@ -62111,6 +62116,18 @@
          let t = l.state.apply(e);
-         (l.updateState(t), o.dispatchEvent(new Event(br)));
+         (l.updateState(t), o.dispatchEvent(new Event(Aj)));
        },
-+      attributes: getAttributes,
++      attributes: ure,
 +      handleDOMEvents: {
 +        mousedown(e, t) {
-+          return (setPointerInputMode(!0), !1);
++          return dre(!0), !1;
 +        },
 +        touchstart(e, t) {
-+          return (setPointerInputMode(!0), !1);
++          return dre(!0), !1;
 +        },
 +        blur(e, t) {
-+          return (setPointerInputMode(!1), !1);
++          return dre(!1), !1;
 +        },
 +      },
        handlePaste(e, t) {

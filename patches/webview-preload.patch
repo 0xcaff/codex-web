@@ -1,11 +1,10 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -2,7 +2,9 @@
- <html lang="en">
+@@ -3,6 +3,8 @@
    <head>
      <!-- PROD_BASE_TAG_HERE -->
-+    <base href="/" />
      <!-- PROD_CSP_TAG_HERE -->
++    <base href="/" />
 +    <script type="module" src="./assets/preload.js"></script>
      <meta charset="UTF-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
