@@ -1,11 +1,11 @@
---- a/webview/assets/use-model-settings-D-IrMVLP.js
-+++ b/webview/assets/use-model-settings-D-IrMVLP.js
-@@ -22013,7 +22013,7 @@
- var Ev = `app://fs`,
-   Dv = `/@fs`;
- function Ov(e) {
--  return `${Ev}${Av(e)}`;
-+  return Av(e);
+--- a/webview/assets/filesystem-media-src-Bu6KQhIO.js
++++ b/webview/assets/filesystem-media-src-Bu6KQhIO.js
+@@ -2,7 +2,7 @@
+ var n = `app://fs`,
+   r = `/@fs`;
+ function i(e) {
+-  return `${n}${o(e)}`;
++  return o(e);
  }
- function kv(e) {
-   return Av(e);
+ function a(e) {
+   return o(e);
