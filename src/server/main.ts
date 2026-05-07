@@ -10,6 +10,7 @@ import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
+import { glob } from "glob";
 
 type ServerOptions = {
   host: string;
@@ -431,9 +432,20 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   ensureElectronLikeProcessContext();
   installModuleAliasHook();
 
-  const module = require(
-    path.resolve(__dirname, "../../scratch/asar/.vite/build/main-DjuaMcIZ.js"),
-  );
+  const matches = await glob("../../scratch/asar/.vite/build/main-*.js", {
+    nodir: true,
+    cwd: __dirname,
+  });
+
+  if (matches.length === 0) {
+    throw new Error("no main bundle found");
+  }
+
+  if (matches.length > 1) {
+    throw new Error("multiple main bundles found");
+  }
+
+  const module = require(matches[0]!);
   module.runMainAppStartup();
 }
 
