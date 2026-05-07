@@ -79,7 +79,8 @@ the patches were applied as expected.
 ## validation
 
 to validate things are still working, we'll first validate the server, then the
-client.
+client. before starting this step, make sure to wait for the
+`upgrading the codex-cli version` subagent to finish.
 
 to validate the server, run the following
 
