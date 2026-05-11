@@ -1,6 +1,6 @@
 --- a/webview/assets/settings-back-route-BP1PAtIA.js
 +++ b/webview/assets/settings-back-route-BP1PAtIA.js
-@@ -1,15 +1,19 @@
+@@ -1,10 +1,12 @@
 +import { s as g } from "./chunk-Bj-mKKzh.js";
  import { Kn as e, zn as t } from "./apps-ReuD7AbY.js";
 -import { t as n } from "./jsx-runtime-CtnhcczV.js";
@@ -13,42 +13,19 @@
 +var u = i(),
 +  v = g(_());
  function d() {
--  let n = (0, u.c)(3),
-+  let n = (0, u.c)(7),
+   let n = (0, u.c)(3),
      r = a(c),
-     i,
--    o;
-+    o,
-+    l,
-+    d;
-   (n[0] === r
-     ? ((i = n[1]), (o = n[2]))
-     : ((i = () => {
-@@ -19,7 +23,26 @@
+@@ -19,7 +21,12 @@
        (n[0] = r),
        (n[1] = i),
        (n[2] = o)),
 -    s(`toggle-sidebar`, i, o));
 +    s(`toggle-sidebar`, i, o),
-+    n[3] === r
-+      ? ((l = n[4]), (d = n[5]))
-+      : ((l = () => {
-+          let t = () => {
-+              e(r, !1);
-+            },
-+            n = (window.__ELECTRON_SHIM__ ??= {});
-+          return (
-+            (n.closeSidebar = t),
-+            () => {
-+              n.closeSidebar === t && delete n.closeSidebar;
-+            }
-+          );
-+        }),
-+        (d = [r]),
-+        (n[3] = r),
-+        (n[4] = l),
-+        (n[5] = d)),
-+    v.useEffect(l, d));
++    v.useEffect(() => {
++      window.__ELECTRON_SHIM__.closeSidebar = () => {
++        e(r, !1);
++      };
++    }, [r]));
  }
  var f = n();
  function p(e) {
