@@ -20,12 +20,14 @@
        [o],
 --- a/webview/assets/apps-ReuD7AbY.js
 +++ b/webview/assets/apps-ReuD7AbY.js
-@@ -2380,7 +2380,7 @@
+@@ -2380,8 +2380,8 @@
    if (e == null) throw Error(`AppShellLayoutMotionContext is missing`);
    return e;
  }
 -var va = P(I, !0),
+-  ya = P(I, () => new Qt(1)),
 +var va = P(I, window.__ELECTRON_SHIM__.initialSidebarState),
-   ya = P(I, () => new Qt(1)),
++  ya = P(I, () => new Qt(window.__ELECTRON_SHIM__.initialSidebarState)),
    ba = P(L, !1),
    xa = P(L, () => new Qt(0)),
+   Sa = P(L, !1),
