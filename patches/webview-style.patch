@@ -1,14 +1,10 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -117,6 +117,11 @@
+@@ -117,6 +117,7 @@
          }
        }
      </style>
-+    <style>
-+      .main-surface {
-+        --spacing-token-safe-header-left: 0px;
-+      }
-+    </style>
++    <style>.main-surface { --spacing-token-safe-header-left: 0px; }</style>
      <script type="module" crossorigin src="./assets/index-CN-by6ks.js"></script>
      <link
        rel="modulepreload"
