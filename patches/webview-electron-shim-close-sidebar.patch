@@ -1,22 +1,54 @@
---- a/webview/assets/app-shell-1qbnxGYC.js
-+++ b/webview/assets/app-shell-1qbnxGYC.js
-@@ -2498,7 +2498,19 @@
-         }
-       ),
-       [],
-+    );
-+  (0, $.useEffect)(() => {
-+    let e = () => {
-+      i.set(H, !1);
-+    };
-+    return (
-+      (window.__ELECTRON_SHIM__.closeSidebar = e),
-+      () => {
-+        window.__ELECTRON_SHIM__.closeSidebar === e &&
-+          delete window.__ELECTRON_SHIM__.closeSidebar;
-+      }
-     );
-+  }, [i]);
-   ze(z, `change`, (e) => {
-     let t = e - le.current;
-     if (((le.current = e), t !== 0)) for (let e of ue.current) e(t);
+--- a/webview/assets/settings-back-route-BP1PAtIA.js
++++ b/webview/assets/settings-back-route-BP1PAtIA.js
+@@ -1,15 +1,19 @@
++import { s as g } from "./chunk-Bj-mKKzh.js";
+ import { Kn as e, zn as t } from "./apps-ReuD7AbY.js";
+-import { t as n } from "./jsx-runtime-CtnhcczV.js";
++import { n as _, t as n } from "./jsx-runtime-CtnhcczV.js";
+ import { t as r } from "./clsx-DUH431RJ.js";
+ import { t as i } from "./compiler-runtime-DU4FoEWg.js";
+ import { B as a, K as o, _ as s, y as c } from "./vscode-api-CEWdDs3u.js";
+ import { t as l } from "./badge-BjR1bLlG.js";
+-var u = i();
++var u = i(),
++  v = g(_());
+ function d() {
+-  let n = (0, u.c)(3),
++  let n = (0, u.c)(7),
+     r = a(c),
+     i,
+-    o;
++    o,
++    l,
++    d;
+   (n[0] === r
+     ? ((i = n[1]), (o = n[2]))
+     : ((i = () => {
+@@ -19,7 +23,26 @@
+       (n[0] = r),
+       (n[1] = i),
+       (n[2] = o)),
+-    s(`toggle-sidebar`, i, o));
++    s(`toggle-sidebar`, i, o),
++    n[3] === r
++      ? ((l = n[4]), (d = n[5]))
++      : ((l = () => {
++          let t = () => {
++              e(r, !1);
++            },
++            n = (window.__ELECTRON_SHIM__ ??= {});
++          return (
++            (n.closeSidebar = t),
++            () => {
++              n.closeSidebar === t && delete n.closeSidebar;
++            }
++          );
++        }),
++        (d = [r]),
++        (n[3] = r),
++        (n[4] = l),
++        (n[5] = d)),
++    v.useEffect(l, d));
+ }
+ var f = n();
+ function p(e) {
