@@ -1,5 +1,5 @@
---- a/webview/assets/statsig-8HjEJSa2.js
-+++ b/webview/assets/statsig-8HjEJSa2.js
+--- a/webview/assets/statsig-C22dY4zM.js
++++ b/webview/assets/statsig-C22dY4zM.js
 @@ -4466,6 +4466,7 @@
          return this._contextHandle;
        }

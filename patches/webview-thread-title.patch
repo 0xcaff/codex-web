@@ -1,20 +1,20 @@
---- a/webview/assets/local-conversation-thread-CSj0yZak.js
-+++ b/webview/assets/local-conversation-thread-CSj0yZak.js
-@@ -151,6 +151,7 @@
-   n as Vt,
-   na as Ht,
-   ni as Ut,
+--- a/webview/assets/local-conversation-thread-C4DDoT1D.js
++++ b/webview/assets/local-conversation-thread-C4DDoT1D.js
+@@ -150,6 +150,7 @@
+   n as Bt,
+   na as Vt,
+   ni as Ht,
 +  nt as codexHostedWindowTitleAtom,
-   or as Wt,
-   p as Gt,
-   pt as Kt,
+   or as Ut,
+   p as Wt,
+   pt as Gt,
 @@ -34533,6 +34534,7 @@
-     f = $r($e, e),
-     p = $r(qt, e) ?? `needs_resume`,
-     m = $r(an, e),
-+    codexHostedWindowTitle = $r(codexHostedWindowTitleAtom, e),
-     h = $r(Tt, e) === `projectless`,
-     g = $r(It, e),
+     f = Qr(Qe, e),
+     p = Qr(Kt, e) ?? `needs_resume`,
+     m = Qr(rn, e),
++    codexHostedWindowTitle = Qr(codexHostedWindowTitleAtom, e),
+     h = Qr(wt, e) === `projectless`,
+     g = Qr(Ft, e),
      {
 @@ -34555,6 +34557,10 @@
    (0, Q.useEffect)(() => {
@@ -24,6 +24,6 @@
 +    let t = codexHostedWindowTitle?.trim();
 +    t && (document.title = `${t} | Codex`);
 +  }, [codexHostedWindowTitle]);
-   let F = wi(),
+   let F = Ci(),
      { agentMode: I } = eo({ conversationId: e, hostId: f }),
      L = d ? x(d) : null,
