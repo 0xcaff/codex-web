@@ -1,21 +1,31 @@
---- a/webview/assets/index-D-3V455n.js
-+++ b/webview/assets/index-D-3V455n.js
-@@ -151626,6 +151626,18 @@
-         }),
-       [e],
-     ),
-+    (0, Z.useEffect)(() => {
-+      let t = () => {
-+        e.set(Tu, !1);
+--- a/webview/assets/settings-back-route-BP1PAtIA.js
++++ b/webview/assets/settings-back-route-BP1PAtIA.js
+@@ -1,10 +1,12 @@
++import { s as g } from "./chunk-Bj-mKKzh.js";
+ import { Kn as e, zn as t } from "./apps-ReuD7AbY.js";
+-import { t as n } from "./jsx-runtime-CtnhcczV.js";
++import { n as _, t as n } from "./jsx-runtime-CtnhcczV.js";
+ import { t as r } from "./clsx-DUH431RJ.js";
+ import { t as i } from "./compiler-runtime-DU4FoEWg.js";
+ import { B as a, K as o, _ as s, y as c } from "./vscode-api-CEWdDs3u.js";
+ import { t as l } from "./badge-BjR1bLlG.js";
+-var u = i();
++var u = i(),
++  v = g(_());
+ function d() {
+   let n = (0, u.c)(3),
+     r = a(c),
+@@ -19,7 +21,12 @@
+       (n[0] = r),
+       (n[1] = i),
+       (n[2] = o)),
+-    s(`toggle-sidebar`, i, o));
++    s(`toggle-sidebar`, i, o),
++    v.useEffect(() => {
++      window.__ELECTRON_SHIM__.closeSidebar = () => {
++        e(r, !1);
 +      };
-+      return (
-+        (window.__ELECTRON_SHIM__.closeSidebar = t),
-+        () => {
-+          window.__ELECTRON_SHIM__.closeSidebar === t &&
-+            delete window.__ELECTRON_SHIM__.closeSidebar;
-+        }
-+      );
-+    }, [e]),
-     (0, Z.useEffect)(() => {
-       let a = n.map((n) => {
-         let a = e.get(_ee, n.key);
++    }, [r]));
+ }
+ var f = n();
+ function p(e) {

@@ -1,23 +1,29 @@
---- a/webview/assets/index-D-3V455n.js
-+++ b/webview/assets/index-D-3V455n.js
-@@ -121010,6 +121010,7 @@
-   let i = ue(hh),
-     a = d(),
-     o = B(fr, e),
-+    codexHostedWindowTitle = B(xn, e),
-     s = B(Tn, e),
-     c = B(vn, e) ?? x5,
-     l = B(Er, e),
-@@ -121060,7 +121061,11 @@
-   ),
-     (0, Z.useEffect)(() => {
-       M?.id == null || M.readAt != null || j(M.id);
--    }, [M?.id, M?.readAt, j]));
-+    }, [M?.id, M?.readAt, j]),
-+    (0, Z.useEffect)(() => {
-+      let t = codexHostedWindowTitle?.trim();
-+      t && (document.title = `${t} | Codex`);
-+    }, [codexHostedWindowTitle]));
-   let F = ka(),
-     { agentMode: I } = sg({ conversationId: e, hostId: u }),
-     L = l ? Ee(l) : null,
+--- a/webview/assets/local-conversation-thread-CSj0yZak.js
++++ b/webview/assets/local-conversation-thread-CSj0yZak.js
+@@ -151,6 +151,7 @@
+   n as Vt,
+   na as Ht,
+   ni as Ut,
++  nt as codexHostedWindowTitleAtom,
+   or as Wt,
+   p as Gt,
+   pt as Kt,
+@@ -34533,6 +34534,7 @@
+     f = $r($e, e),
+     p = $r(qt, e) ?? `needs_resume`,
+     m = $r(an, e),
++    codexHostedWindowTitle = $r(codexHostedWindowTitleAtom, e),
+     h = $r(Tt, e) === `projectless`,
+     g = $r(It, e),
+     {
+@@ -34555,6 +34557,10 @@
+   (0, Q.useEffect)(() => {
+     M?.id == null || M.readAt != null || j(M.id);
+   }, [M?.id, M?.readAt, j]);
++  (0, Q.useEffect)(() => {
++    let t = codexHostedWindowTitle?.trim();
++    t && (document.title = `${t} | Codex`);
++  }, [codexHostedWindowTitle]);
+   let F = wi(),
+     { agentMode: I } = eo({ conversationId: e, hostId: f }),
+     L = d ? x(d) : null,

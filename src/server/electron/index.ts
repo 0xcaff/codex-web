@@ -752,15 +752,35 @@ const protocol = {
     log("protocol.registerStringProtocol", args);
   },
 };
-const session = {
-  defaultSession: {
+function createSessionStub(label: string): {
+  getUserAgent: () => string;
+  loadExtension: (extensionPath: string) => Promise<{
+    id: string;
+    name: string;
+    path: string;
+    version: string;
+  }>;
+  off: (event: string, listener: StubListener) => unknown;
+  on: (event: string, listener: StubListener) => unknown;
+  once: (event: string, listener: StubListener) => unknown;
+  protocol: typeof protocol;
+  removeListener: (event: string, listener: StubListener) => unknown;
+  setPermissionCheckHandler: (...args: unknown[]) => void;
+  setPermissionRequestHandler: (...args: unknown[]) => void;
+  webRequest: {
+    onBeforeRequest: (...args: unknown[]) => void;
+    onBeforeSendHeaders: (...args: unknown[]) => void;
+  };
+} {
+  const emitter = createEmitterStub(label);
+  return {
     async loadExtension(extensionPath: string): Promise<{
       id: string;
       name: string;
       path: string;
       version: string;
     }> {
-      log("session.defaultSession.loadExtension", [extensionPath]);
+      log(`${label}.loadExtension`, [extensionPath]);
       return {
         id: "stub-extension",
         name: "Stub Extension",
@@ -768,7 +788,42 @@ const session = {
         version: "0.0.0",
       };
     },
+    getUserAgent(): string {
+      log(`${label}.getUserAgent`, []);
+      return "Mozilla/5.0 AppleWebKit/537.36 Chrome/120 Safari/537.36";
+    },
+    off: emitter.off,
+    on: emitter.on,
+    once: emitter.once,
     protocol,
+    removeListener: emitter.removeListener,
+    setPermissionCheckHandler(...args: unknown[]): void {
+      log(`${label}.setPermissionCheckHandler`, args);
+    },
+    setPermissionRequestHandler(...args: unknown[]): void {
+      log(`${label}.setPermissionRequestHandler`, args);
+    },
+    webRequest: {
+      onBeforeRequest(...args: unknown[]): void {
+        log(`${label}.webRequest.onBeforeRequest`, args);
+      },
+      onBeforeSendHeaders(...args: unknown[]): void {
+        log(`${label}.webRequest.onBeforeSendHeaders`, args);
+      },
+    },
+  };
+}
+const partitionSessions = new Map<string, ReturnType<typeof createSessionStub>>();
+const session = {
+  defaultSession: createSessionStub("session.defaultSession"),
+  fromPartition(partition: string): ReturnType<typeof createSessionStub> {
+    log("session.fromPartition", [partition]);
+    let partitionSession = partitionSessions.get(partition);
+    if (!partitionSession) {
+      partitionSession = createSessionStub(`session.fromPartition(${partition})`);
+      partitionSessions.set(partition, partitionSession);
+    }
+    return partitionSession;
   },
 };
 const utilityProcess = {

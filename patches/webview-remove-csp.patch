@@ -1,9 +1,9 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -616,10 +616,6 @@
-       href="./assets/codex-avatar-D82knaKt.css"
+@@ -130,10 +130,6 @@
+       href="./assets/path-browserify-fgDTXxoN.js"
      />
-     <link rel="stylesheet" crossorigin href="./assets/index-Demj-qjn.css" />
+     <link rel="modulepreload" crossorigin href="./assets/src-CqhfAN-Y.js" />
 -    <meta
 -      http-equiv="Content-Security-Policy"
 -      content="default-src &#39;none&#39;; img-src &#39;self&#39; app: blob: data: https:; child-src &#39;self&#39; blob: https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; frame-src &#39;self&#39; blob: https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; worker-src &#39;self&#39; blob:; script-src &#39;self&#39; &#39;sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk=&#39; &#39;wasm-unsafe-eval&#39;; style-src &#39;self&#39; &#39;unsafe-inline&#39;; font-src &#39;self&#39; data:; media-src &#39;self&#39; app: blob: data:; connect-src &#39;self&#39; https://ab.chatgpt.com https://cdn.openai.com;"
