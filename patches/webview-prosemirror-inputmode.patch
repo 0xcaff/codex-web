@@ -1,5 +1,5 @@
---- a/webview/assets/prompt-editor-BFzgDIHO.js
-+++ b/webview/assets/prompt-editor-BFzgDIHO.js
+--- a/webview/assets/prompt-editor-CKc_N6kw.js
++++ b/webview/assets/prompt-editor-CKc_N6kw.js
 @@ -24273,6 +24273,13 @@
    let o = new EventTarget(),
      s = new kd(),

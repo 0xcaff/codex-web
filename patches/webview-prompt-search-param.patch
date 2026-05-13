@@ -1,121 +1,121 @@
---- a/webview/assets/app-main-5BBxW9R3.js
-+++ b/webview/assets/app-main-5BBxW9R3.js
+--- a/webview/assets/app-main-Bucm979x.js
++++ b/webview/assets/app-main-Bucm979x.js
 @@ -716,6 +716,7 @@
-   c as Kr,
-   d as qr,
-   f as Jr,
+   c as Vr,
+   d as Hr,
+   f as Ur,
 +  h as useSearchParams,
-   i as Yr,
-   l as Xr,
-   n as Zr,
-@@ -21413,7 +21414,7 @@
+   i as Wr,
+   l as Gr,
+   n as Kr,
+@@ -21421,7 +21422,7 @@
    );
  }
  function QT(e) {
 -  let t = (0, Z.c)(156),
 +  let t = (0, Z.c)(158),
      { announcementStorybookOverride: n } = e,
-     r = U(xl),
-     i = U(K),
-@@ -21425,6 +21426,8 @@
-     m = No(),
-     h = Jr(),
-     g = ni(),
+     r = U(ml),
+     a = U(K),
+@@ -21433,6 +21434,8 @@
+     h = Oo(),
+     g = Ur(),
+     _ = Zr(),
 +    [searchParams] = useSearchParams(),
 +    searchParamsPrompt = searchParams.get(`prompt`),
-     _ = g.state,
-     v = _?.prefillArtifactPreviewFiles,
-     y;
-@@ -21936,13 +21939,16 @@
+     v = _.state,
+     y = v?.prefillArtifactPreviewFiles,
+     b;
+@@ -21944,13 +21947,16 @@
    t[120] !== be ||
-   t[121] !== k.kind ||
-   t[122] !== Be ||
--  t[123] !== Ve
-+  t[123] !== Ve ||
+   t[121] !== j.kind ||
+   t[122] !== ze ||
+-  t[123] !== He
++  t[123] !== He ||
 +  t[156] !== searchParamsPrompt
-     ? ((Et = Be
-         ? (0, $.jsx)(ba, {
+     ? ((Tt = ze
+         ? (0, $.jsx)(ha, {
              className: `w-full`,
              aboveComposerContent: be,
-             browserConversationId: V,
+             browserConversationId: ee,
              canStartRealtimeConversation: !0,
 +            defaultText: searchParamsPrompt ?? void 0,
 +            initialPrompt: searchParamsPrompt ?? void 0,
-             onLocalConversationCreated: te,
+             onLocalConversationCreated: ne,
              externalFooterVariant: `home`,
-             showExternalFooter: Ve,
-@@ -21955,6 +21961,7 @@
-       (t[121] = k.kind),
-       (t[122] = Be),
-       (t[123] = Ve),
+             showExternalFooter: He,
+@@ -21963,6 +21969,7 @@
+       (t[121] = j.kind),
+       (t[122] = ze),
+       (t[123] = He),
 +      (t[156] = searchParamsPrompt),
-       (t[124] = Et))
-     : (Et = t[124]);
-   let Dt;
-@@ -22023,13 +22030,18 @@
-       (t[140] = Mt))
-     : (Mt = t[140]);
-   let Nt;
--  t[141] !== te || t[142] !== ze || t[143] !== k.kind
-+  t[141] !== te ||
-+  t[142] !== ze ||
-+  t[143] !== k.kind ||
+       (t[124] = Tt))
+     : (Tt = t[124]);
+   let Et;
+@@ -22031,13 +22038,18 @@
+       (t[140] = jt))
+     : (jt = t[140]);
+   let Mt;
+-  t[141] !== ne || t[142] !== Re || t[143] !== j.kind
++  t[141] !== ne ||
++  t[142] !== Re ||
++  t[143] !== j.kind ||
 +  t[157] !== searchParamsPrompt
-     ? ((Nt = ze
-         ? (0, $.jsx)(ql, {
-             children: (0, $.jsx)(ba, {
-               browserConversationId: V,
+     ? ((Mt = Re
+         ? (0, $.jsx)(Vl, {
+             children: (0, $.jsx)(ha, {
+               browserConversationId: ee,
                canStartRealtimeConversation: !0,
                composerLayoutMode: `auto-single-line`,
 +              defaultText: searchParamsPrompt ?? void 0,
 +              initialPrompt: searchParamsPrompt ?? void 0,
-               onLocalConversationCreated: te,
+               onLocalConversationCreated: ne,
                showWorkspaceDropdownInFooter: !1,
-               hideRunLocationDropdownOverride: k.kind !== `git`,
-@@ -22041,6 +22053,7 @@
-       (t[141] = te),
-       (t[142] = ze),
-       (t[143] = k.kind),
+               hideRunLocationDropdownOverride: j.kind !== `git`,
+@@ -22049,6 +22061,7 @@
+       (t[141] = ne),
+       (t[142] = Re),
+       (t[143] = j.kind),
 +      (t[157] = searchParamsPrompt),
-       (t[144] = Nt))
-     : (Nt = t[144]);
-   let Pt;
---- a/webview/assets/composer-DSSvCaO6.js
-+++ b/webview/assets/composer-DSSvCaO6.js
-@@ -62795,6 +62795,7 @@
-   showPlanKeywordSuggestion: v,
+       (t[144] = Mt))
+     : (Mt = t[144]);
+   let Nt;
+--- a/webview/assets/composer-DawxvKsB.js
++++ b/webview/assets/composer-DawxvKsB.js
+@@ -62874,6 +62874,7 @@
+   showPlanKeywordSuggestion: g,
    composerModeAvailability: y,
-   placeholderText: S,
+   placeholderText: b,
 +  initialPrompt,
    composerLayoutMode: C,
    hotkeyWindowHomeOverflowMenu: w,
    onSubmitLocal: T,
-@@ -63204,7 +63205,14 @@
-       (fn && Nr(fn),
-         un && ji(un),
-         Mi != null && Di(Mi),
--        ln && ln !== Dn.getText() && Dn.setPromptText(ln),
-+        ln && ln !== Dn.getText()
-+          ? Dn.setPromptText(ln)
-+          : !ln &&
+@@ -63285,7 +63286,14 @@
+       (mn && Rr(mn),
+         dn && Ni(dn),
+         Pi != null && ji(Pi),
+-        un && un !== kn.getText() && kn.setPromptText(un),
++        un && un !== kn.getText()
++          ? kn.setPromptText(un)
++          : !un &&
 +              initialPrompt != null &&
 +              initialPrompt !== `` &&
-+              Dn.getText() === ``
-+            ? Dn.setPromptText(initialPrompt)
++              kn.getText() === ``
++            ? kn.setPromptText(initialPrompt)
 +            : null,
-         dn != null &&
-           dn.length > 0 &&
-           mi((e) => {
-@@ -63221,7 +63229,7 @@
+         fn != null &&
+           fn.length > 0 &&
+           _i((e) => {
+@@ -63302,7 +63310,7 @@
      });
    (0, Z.useEffect)(() => {
-     Pi();
--  }, [ln, un, dn, Mi]);
-+  }, [ln, un, dn, Mi, initialPrompt]);
-   let [Fi, Ii] = ai(`composer_prefill`),
-     Li = (0, Z.useEffectEvent)(() => {
-       Fi?.text &&
-@@ -64908,6 +64916,8 @@
+     Ii();
+-  }, [un, dn, fn, Pi]);
++  }, [un, dn, fn, Pi, initialPrompt]);
+   let [Li, Ri] = ai(`composer_prefill`),
+     zi = (0, Z.useEffectEvent)(() => {
+       Li?.text &&
+@@ -65002,6 +65010,8 @@
    hideRunLocationDropdownOverride: b = !1,
    composerModeAvailability: x,
    placeholderText: S,
@@ -124,9 +124,9 @@
    composerLayoutMode: C = `multiline`,
    hotkeyWindowHomeOverflowMenu: w,
    lockedCollaborationMode: T,
-@@ -65160,8 +65170,8 @@
+@@ -65254,8 +65264,8 @@
        (0, Q.jsxs)(
-         OU,
+         NU,
          {
 -          defaultText: I,
 -          defaultTextKind: ql(I) ? `prompt` : `plain`,
@@ -135,7 +135,7 @@
            children: [
              !v && r && i === `floating`
                ? (0, Q.jsx)(`div`, {
-@@ -65196,6 +65206,7 @@
+@@ -65290,6 +65300,7 @@
                placeholderText: S,
                composerLayoutMode: C,
                hotkeyWindowHomeOverflowMenu: w,

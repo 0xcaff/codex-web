@@ -1,5 +1,5 @@
---- a/webview/assets/filesystem-media-src-Bu6KQhIO.js
-+++ b/webview/assets/filesystem-media-src-Bu6KQhIO.js
+--- a/webview/assets/filesystem-media-src-BUaJcbAJ.js
++++ b/webview/assets/filesystem-media-src-BUaJcbAJ.js
 @@ -2,7 +2,7 @@
  var n = `app://fs`,
    r = `/@fs`;
