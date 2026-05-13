@@ -270,6 +270,17 @@ function isUnhandledAddWorkspaceRootOptionMessage(value: unknown): value is {
   );
 }
 
+function isOpenInBrowserMessage(value: unknown): value is {
+  type: "open-in-browser";
+  url: string;
+} {
+  return (
+    isRecord(value) &&
+    value.type === "open-in-browser" &&
+    typeof value.url === "string"
+  );
+}
+
 function requestWorkspaceDirectoryEntries(
   directoryPath: string | null,
 ): Promise<WorkspaceDirectoryEntries> {
@@ -333,6 +344,10 @@ const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     if (channel === "codex_desktop:message-from-view" && args.length === 1) {
+      if (isOpenInBrowserMessage(args[0])) {
+        window.open(args[0].url, "_blank", "noopener,noreferrer");
+      }
+
       if (isLocalFilePickerMessage(args[0])) {
         return handleLocalFilePickerMessage(args[0]);
       }
