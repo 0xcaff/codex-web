@@ -13,5 +13,24 @@ shift || true
 # message splitting for larger app-server payloads. Use a safer default while
 # still allowing runtime override.
 CODEX_REMOTE_WS_BUFFER_SIZE="${CODEX_REMOTE_WS_BUFFER_SIZE:-104857600}"
+CODEX_REMOTE_WS_URL="${CODEX_REMOTE_WS_URL:?CODEX_REMOTE_WS_URL must be set}"
 
-exec websocat -E -t -B "${CODEX_REMOTE_WS_BUFFER_SIZE}" "${CODEX_REMOTE_WS_URL}"
+case "${CODEX_REMOTE_WS_URL}" in
+  unix://*)
+    socket_path="${CODEX_REMOTE_WS_URL#unix://}"
+    if [[ -z "${socket_path}" ]]; then
+      echo "CODEX_REMOTE_WS_URL=unix:// requires a socket path" >&2
+      exit 64
+    fi
+    websocat_url="ws-c:unix:${socket_path}"
+    ;;
+  ws://* | wss://* | ws-c:unix:*)
+    websocat_url="${CODEX_REMOTE_WS_URL}"
+    ;;
+  *)
+    echo "unsupported CODEX_REMOTE_WS_URL: ${CODEX_REMOTE_WS_URL}" >&2
+    exit 64
+    ;;
+esac
+
+exec websocat -E -t -B "${CODEX_REMOTE_WS_BUFFER_SIZE}" - "${websocat_url}"
