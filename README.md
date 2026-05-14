@@ -60,13 +60,6 @@ it's possible to hook codex-web up to an already-running app server using the
 start a long-lived app server somewhere:
 
 ```bash
-codex app-server --listen ws://127.0.0.1:9001
-# reachable now with `codex --remote ws://127.0.0.1:9001` then `/resume`
-```
-
-newer codex versions can also listen on a Unix domain socket:
-
-```bash
 codex app-server --listen unix:///tmp/codex-app-server.sock
 ```
 
@@ -74,13 +67,11 @@ then run `codex-web` with the proxy helper:
 
 ```bash
 nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c bash -lc '
-  export CODEX_REMOTE_WS_URL=ws://127.0.0.1:9001
+  export CODEX_UNIX_SOCKET=/tmp/codex-app-server.sock
   export CODEX_CLI_PATH="$(command -v codex_remote_proxy)"
   codex-web
 '
 ```
-
-for a Unix socket, set `CODEX_REMOTE_WS_URL` to the same `unix://` URL.
 
 ## security
 
