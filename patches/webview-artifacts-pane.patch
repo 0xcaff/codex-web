@@ -1,10 +1,23 @@
---- a/webview/assets/statsig-C22dY4zM.js
-+++ b/webview/assets/statsig-C22dY4zM.js
-@@ -4466,6 +4466,7 @@
-         return this._contextHandle;
-       }
-       checkGate(e, t) {
-+        if (e === `3903742690`) return !0;
-         return this.getFeatureGate(e, t).value;
-       }
-       logEvent(e, t, n) {
+--- a/webview/assets/statsig-EqFD6GZR.js
++++ b/webview/assets/statsig-EqFD6GZR.js
+@@ -332,12 +332,14 @@
+       let { client: o, renderVersion: s } = (0, t.useContext)(a.default);
+       return (0, t.useMemo)(
+         () =>
+-          (0, i.isNoopClient)(o)
+-            ? (r.Log.warn(
+-                `useGateValue hook failed to find a valid StatsigClient for gate '${e}'.`,
+-              ),
+-              i.NoopEvaluationsClient.checkGate(e, n))
+-            : o.checkGate(e, n),
++          e === `3903742690`
++            ? !0
++            : (0, i.isNoopClient)(o)
++              ? (r.Log.warn(
++                  `useGateValue hook failed to find a valid StatsigClient for gate '${e}'.`,
++                ),
++                i.NoopEvaluationsClient.checkGate(e, n))
++              : o.checkGate(e, n),
+         [e, o, s, ...(n ? Object.values(n) : [])],
+       );
+     }

@@ -1,20 +1,20 @@
---- a/.vite/build/workspace-root-drop-handler-CVOJlSpQ.js
-+++ b/.vite/build/workspace-root-drop-handler-CVOJlSpQ.js
-@@ -38845,6 +38845,7 @@
+--- a/.vite/build/workspace-root-drop-handler-D1HnRjoH.js
++++ b/.vite/build/workspace-root-drop-handler-D1HnRjoH.js
+@@ -39485,6 +39485,7 @@
      i = e.y(n.version);
    return (
      e.r({
 +      enabled: !1,
        dsn: e.v,
-       environment: Yk.buildFlavor,
+       environment: vA.buildFlavor,
        release: i,
 --- a/.vite/build/worker.js
 +++ b/.vite/build/worker.js
-@@ -65673,6 +65673,7 @@
-   let n = iW(e.appVersion),
+@@ -66670,6 +66670,7 @@
+   let n = kU(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (XA({
+   (DA({
 +    enabled: !1,
-     dsn: aq,
+     dsn: jK,
      environment: e.buildFlavor,
-     release: oq(n.version),
+     release: MK(n.version),
