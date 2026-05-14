@@ -1,10 +1,10 @@
---- a/webview/assets/apps-Cel-9d-y.js
-+++ b/webview/assets/apps-Cel-9d-y.js
-@@ -30399,6 +30399,7 @@
-     n = C(e.appVersion),
+--- a/webview/assets/apps-Au-fp4y1.js
++++ b/webview/assets/apps-Au-fp4y1.js
+@@ -30402,6 +30402,7 @@
+     n = ne(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (Hw({
+   (Yw({
 +    enabled: !1,
-     dsn: S,
-     environment: Gw,
-     release: v(n.version),
+     dsn: re,
+     environment: Qw,
+     release: w(n.version),

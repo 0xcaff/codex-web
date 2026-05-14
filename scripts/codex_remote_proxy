@@ -12,6 +12,7 @@ shift || true
 # Websocat defaults to 64KiB max message size, which causes warnings and
 # message splitting for larger app-server payloads. Use a safer default while
 # still allowing runtime override.
-CODEX_REMOTE_WS_BUFFER_SIZE="${CODEX_REMOTE_WS_BUFFER_SIZE:-104857600}"
+CODEX_BUFFER_SIZE="${CODEX_BUFFER_SIZE:-104857600}"
+CODEX_UNIX_SOCKET="${CODEX_UNIX_SOCKET:?CODEX_UNIX_SOCKET must be set}"
 
-exec websocat -E -t -B "${CODEX_REMOTE_WS_BUFFER_SIZE}" "${CODEX_REMOTE_WS_URL}"
+exec websocat -E -t -B "${CODEX_BUFFER_SIZE}" - "ws-c:unix:${CODEX_UNIX_SOCKET}"

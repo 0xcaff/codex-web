@@ -1,5 +1,5 @@
---- a/webview/assets/chunk-LFPYN7LY-Cafl-tZa.js
-+++ b/webview/assets/chunk-LFPYN7LY-Cafl-tZa.js
+--- a/webview/assets/chunk-LFPYN7LY-CRkYzDF0.js
++++ b/webview/assets/chunk-LFPYN7LY-CRkYzDF0.js
 @@ -1058,11 +1058,16 @@
    unstable_useTransitions: o,
  }) {
@@ -18,16 +18,16 @@
          o === !1 ? u(e) : r.startTransition(() => u(e));
        },
        [o],
---- a/webview/assets/apps-Cel-9d-y.js
-+++ b/webview/assets/apps-Cel-9d-y.js
-@@ -2242,8 +2242,8 @@
+--- a/webview/assets/apps-Au-fp4y1.js
++++ b/webview/assets/apps-Au-fp4y1.js
+@@ -2058,8 +2058,8 @@
    if (e == null) throw Error(`AppShellLayoutMotionContext is missing`);
    return e;
  }
--var ca = P(I, !0),
--  la = P(I, () => new Zt(1)),
-+var ca = P(I, window.__ELECTRON_SHIM__.initialSidebarState),
-+  la = P(I, () => new Zt(window.__ELECTRON_SHIM__.initialSidebarState)),
-   ua = P(L, !1),
-   da = P(L, () => new Zt(0)),
-   fa = P(L, !1),
+-var Yi = j(M, !0),
+-  Xi = j(M, () => new Jt(1)),
++var Yi = j(M, window.__ELECTRON_SHIM__.initialSidebarState),
++  Xi = j(M, () => new Jt(window.__ELECTRON_SHIM__.initialSidebarState)),
+   Zi = j(F, !1),
+   Qi = j(F, () => new Jt(0)),
+   $i = j(F, !1),
