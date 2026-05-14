@@ -32,7 +32,6 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-pwa
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-thread-title.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-initial-route.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-electron-shim-close-sidebar.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-artifacts-pane.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prosemirror-inputmode.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-use-atfs-for-local-files.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prompt-search-param.patch
