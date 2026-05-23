@@ -1,5 +1,5 @@
---- a/webview/assets/chunk-LFPYN7LY-CRkYzDF0.js
-+++ b/webview/assets/chunk-LFPYN7LY-CRkYzDF0.js
+--- a/webview/assets/chunk-LFPYN7LY-CkfOxD5s.js
++++ b/webview/assets/chunk-LFPYN7LY-CkfOxD5s.js
 @@ -1058,11 +1058,16 @@
    unstable_useTransitions: o,
  }) {
@@ -18,16 +18,16 @@
          o === !1 ? u(e) : r.startTransition(() => u(e));
        },
        [o],
---- a/webview/assets/apps-Au-fp4y1.js
-+++ b/webview/assets/apps-Au-fp4y1.js
-@@ -2058,8 +2058,8 @@
-   if (e == null) throw Error(`AppShellLayoutMotionContext is missing`);
-   return e;
- }
--var Yi = j(M, !0),
--  Xi = j(M, () => new Jt(1)),
-+var Yi = j(M, window.__ELECTRON_SHIM__.initialSidebarState),
-+  Xi = j(M, () => new Jt(window.__ELECTRON_SHIM__.initialSidebarState)),
-   Zi = j(F, !1),
-   Qi = j(F, () => new Jt(0)),
-   $i = j(F, !1),
+--- a/webview/assets/app-shell-state-HP0T5lEX.js
++++ b/webview/assets/app-shell-state-HP0T5lEX.js
+@@ -543,8 +543,8 @@
+   ut = ot.entries$,
+   dt = { center: rt, left: it, right: at },
+   ft = `app-shell-bottom-panel-launcher-visible`,
+-  pt = c(o, !0),
+-  mt = c(o, () => new g(1)),
++  pt = c(o, window.__ELECTRON_SHIM__.initialSidebarState),
++  mt = c(o, () => new g(window.__ELECTRON_SHIM__.initialSidebarState)),
+   ht = t(ft, !0),
+   gt = c(l, !1),
+   _t = c(l, () => new g(0)),

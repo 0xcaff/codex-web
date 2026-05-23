@@ -1,8 +1,8 @@
---- a/webview/assets/prosemirror-DbRBBq50.js
-+++ b/webview/assets/prosemirror-DbRBBq50.js
-@@ -25553,6 +25553,13 @@
+--- a/webview/assets/prompt-editor-dZKGftNt.js
++++ b/webview/assets/prompt-editor-dZKGftNt.js
+@@ -19898,6 +19898,13 @@
    let o = new EventTarget(),
-     s = new Sp(),
+     s = new Bc(),
      c = a,
 +    inputModeDisabled = !1,
 +    getAttributes = () => (inputModeDisabled ? {} : { inputmode: `none` }),
@@ -11,12 +11,12 @@
 +        ((inputModeDisabled = e),
 +        l.isDestroyed || l.setProps({ attributes: getAttributes }));
 +    },
-     l = new of(null, {
-       state: zi.create({
-         schema: yp,
-@@ -25635,6 +25642,18 @@
+     l = new Ws(null, {
+       state: Ee.create({
+         schema: zc,
+@@ -19980,6 +19987,18 @@
          let t = l.state.apply(e);
-         (l.updateState(t), o.dispatchEvent(new Event(Ki)));
+         (l.updateState(t), o.dispatchEvent(new Event(we)));
        },
 +      attributes: getAttributes,
 +      handleDOMEvents: {
