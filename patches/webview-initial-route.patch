@@ -27,7 +27,7 @@
 -  pt = c(o, !0),
 -  mt = c(o, () => new g(1)),
 +  pt = c(o, window.__ELECTRON_SHIM__.initialSidebarState),
-+  mt = c(o, () => new g(window.__ELECTRON_SHIM__.initialSidebarState)),
++  mt = c(o, () => new g(window.__ELECTRON_SHIM__.initialSidebarState ? 1 : 0)),
    ht = t(ft, !0),
    gt = c(l, !1),
    _t = c(l, () => new g(0)),
