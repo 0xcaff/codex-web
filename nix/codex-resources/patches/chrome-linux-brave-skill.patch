@@ -1,20 +1,20 @@
 --- a/skills/chrome/SKILL.md
 +++ b/skills/chrome/SKILL.md
 @@ -11,89 +11,21 @@
-
+ 
  - Use Chrome directly for browser automation requests and for Chrome setup, detection, repair, or profile checks.
  - For bare or general `@chrome` requests, do not ask a clarification question just because the request is ambiguous. Proceed with browser automation in this skill using the `chrome` backend.
 -- If communication with the Codex Chrome Extension ultimately fails, even after checks, do not attempt to complete the user's request using applescript, bash commands or any other scripting methods.
 -- Do not install or repair the native host yourself. If native host setup appears broken, tell the user to reinstall the Chrome plugin from the Codex plugin UI.
-
+ 
  Before using this skill for the first time in the current conversation context, read the entire `SKILL.md` file in one read. Do not use a partial range such as `sed -n '1,220p'`; read through the end of the file. Do not mention this internal skill-loading step to the user.
-
+ 
 -## Chrome Extension Checks
 +## Running Chrome
-
+ 
 -On the first Chrome-backed browser task in a session, try a lightweight browser-client call such as listing open tabs after bootstrap. If the call fails, wait 2 seconds and retry the same lightweight browser-client call once. Any non-error response means the extension is installed and working.
 +To launch Chrome, run the following script
-
+ 
 -If browser-client still reports that it cannot communicate with Chrome after that retry, confirm that Chrome is installed, running and that the extension is present in the selected Chrome profile:
 -
 -From the plugin root, use `node_repl` to run:
@@ -26,7 +26,7 @@
 -scripts/check-native-host-manifest.js --json
 +scripts/open-chrome-window
  ```
-
+ 
 -Depending on the outcome follow the following checks. Be sure to ask the user permission when required, if it is stated in the check.
 -
 -
@@ -57,7 +57,7 @@
 -
 -If the Codex Chrome Extension is missing, tell the user:
 -
--`Cannot communicate with the Codex Chrome Extension. Confirm that the extension is installed and enabled in Chrome.`
+-`Cannot communicate with the Codex Chrome Extension. Confirm that the extension is installed and enabled in Chrome.` 
 -
 -Ask the User if you can open the Codex Chrome Extension webstore page so they can verify that the extension is installed. ALWAYS wait for a user response before taking action. ALWAYS refer to the extension as the [Codex Chrome Extension](https://chromewebstore.google.com/detail/codex/<<EXTENSION_ID>>), and not by it's extension ID.
 -
@@ -84,20 +84,20 @@
 -```
 -
  Then wait 2 seconds and retry the browser-client setup once.
-
+ 
 -After one successful setup check in a session, do not repeat extension detection unless browser-client reports an extension connection failure.
 +This script opens a browser window for the selected Chrome automation profile. Run this process from a long-running background terminal/tool session tied to the current Codex session, and keep that session alive until browser work is finished.
-
+ 
 -If the issue is specifically the native host or extension-backed install path, or if communication still fails after opening a Chrome window and retrying setup once, tell the user to reinstall the Chrome plugin from the Codex plugin UI. Never import or run `scripts/installManifest.mjs` yourself.
 -
 -
  ## Chrome Error handling
-
+ 
  ### File upload errors
 @@ -104,91 +36,6 @@
-
+ 
  `To enable file upload, go to chrome://extensions in Chrome, click Details under the Codex extension, and enable "Allow access to file URLs." See [here](https://developers.openai.com/codex/app/chrome-extension#upload-files) for details.`
-
+ 
 -
 -## Commands
 -
@@ -184,13 +184,13 @@
 -```
 -
  ## Chrome Safety
-
+ 
  - Do not inspect browser cookies, local storage, profiles, passwords, or session stores.
 @@ -749,7 +596,7 @@
  interface CUAAPI {
    click(options: ClickOptions): Promise<void>; // Click at a coordinate in the current viewport.
    double_click(options: DoubleClickOptions): Promise<void>; // Double click at a coordinate in the current viewport.
--
+-  
 +
    drag(options: DragOptions): Promise<void>; // Drag from a point to a point by the provided path.
    keypress(options: KeypressOptions): Promise<void>; // Press control characters at the current focused element (focus it first via click/dblclick).
@@ -199,7 +199,7 @@
  interface DomCUAAPI {
    click(options: DomClickOptions): Promise<void>; // Click a DOM node by its id from the visible DOM snapshot.
    double_click(options: DomClickOptions): Promise<void>; // Double-click a DOM node by its id.
--
+-  
 +
    get_visible_dom(): Promise<unknown>; // Return a filtered DOM with node ids for interactable elements.
    keypress(options: DomKeypressOptions): Promise<void>; // Press control characters at the currently focused element (focus it first via click/dblclick).
