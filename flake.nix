@@ -24,6 +24,7 @@
     inputs@{ flake-utils, ... }:
     flake-utils.lib.meld inputs [
       ./nix/codex
+      ./nix/codex-primary-runtime
       ./default.nix
       ./nix/fmt.nix
       ./scripts/fetch_updates
