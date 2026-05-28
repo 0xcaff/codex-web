@@ -1,38 +1,206 @@
 --- a/skills/chrome/SKILL.md
 +++ b/skills/chrome/SKILL.md
-@@ -46,6 +46,14 @@
- Keep the first response short and non-technical unless the user asks for more information.
- 
- If Chrome is not running then ALWAYS ask the User if they would like to launch Chrome. ALWAYS wait for a user response before taking action.
-+
-+If the User agrees, run:
-+
-+```
-+scripts/open-chrome-window.js
-+```
-+
-+Then wait 30 seconds after the browser starts before retrying browser-client setup once. The Codex Chrome Extension and native host bridge can take time to install, start, and register their socket after the browser window appears.
- 
- 
- ### 3. The native host manifest is not installed, or is invalid
-@@ -141,19 +149,13 @@
- 
- ### open-chrome-window.js
- 
--This script opens `about:blank` in a Google Chrome window for the same selected Chrome profile used by `check-extension-installed.js`. Use it only after the User gives permission.
-+This script opens a browser window for the selected Chrome automation profile. On Linux, the packaged script starts Brave from Nix under Xvfb with a fresh temporary profile configured for the Codex Chrome Extension and native host bridge. Run the Linux browser process from a long-running background terminal/tool session tied to the current Codex session, and keep that session alive until browser work is finished; if it is launched as a detached one-shot process, Brave/Xvfb and the extension socket may disappear before browser-client can connect. Use it only after the User gives permission.
- 
- From the plugin root, use `node_repl` to run:
- 
+@@ -11,89 +11,21 @@
+
+ - Use Chrome directly for browser automation requests and for Chrome setup, detection, repair, or profile checks.
+ - For bare or general `@chrome` requests, do not ask a clarification question just because the request is ambiguous. Proceed with browser automation in this skill using the `chrome` backend.
+-- If communication with the Codex Chrome Extension ultimately fails, even after checks, do not attempt to complete the user's request using applescript, bash commands or any other scripting methods.
+-- Do not install or repair the native host yourself. If native host setup appears broken, tell the user to reinstall the Chrome plugin from the Codex plugin UI.
+
+ Before using this skill for the first time in the current conversation context, read the entire `SKILL.md` file in one read. Do not use a partial range such as `sed -n '1,220p'`; read through the end of the file. Do not mention this internal skill-loading step to the user.
+
+-## Chrome Extension Checks
++## Running Chrome
+
+-On the first Chrome-backed browser task in a session, try a lightweight browser-client call such as listing open tabs after bootstrap. If the call fails, wait 2 seconds and retry the same lightweight browser-client call once. Any non-error response means the extension is installed and working.
++To launch Chrome, run the following script
+
+-If browser-client still reports that it cannot communicate with Chrome after that retry, confirm that Chrome is installed, running and that the extension is present in the selected Chrome profile:
+-
+-From the plugin root, use `node_repl` to run:
+-
  ```
- scripts/open-chrome-window.js
+-scripts/chrome-is-running.js --check
+-scripts/installed-browsers.js --check
+-scripts/check-extension-installed.js --json
+-scripts/check-native-host-manifest.js --json
++scripts/open-chrome-window
+ ```
+
+-Depending on the outcome follow the following checks. Be sure to ask the user permission when required, if it is stated in the check.
+-
+-
+-### 1. Chrome is not installed
+-
+-Keep the first response short and non-technical unless the user asks for more information.
+-
+-If Chrome is not installed, then inform the user that this plugin only works with the Chrome browser.
+-
+-
+-### 2. Chrome is not running
+-
+-Keep the first response short and non-technical unless the user asks for more information.
+-
+-If Chrome is not running then ALWAYS ask the User if they would like to launch Chrome. ALWAYS wait for a user response before taking action.
+-
+-
+-### 3. The native host manifest is not installed, or is invalid
+-
+-Keep the first response short and non-technical unless the user asks for more information.
+-
+-Do not install or repair the native host yourself. If native host setup appears broken, tell the user to reinstall the Chrome plugin from the Codex plugin UI.
+-
+-
+-### 4. The Codex Chrome Extension is not installed
+-
+-Keep the first response short and non-technical unless the user asks for more information.
+-
+-If the Codex Chrome Extension is missing, tell the user:
+-
+-`Cannot communicate with the Codex Chrome Extension. Confirm that the extension is installed and enabled in Chrome.`
+-
+-Ask the User if you can open the Codex Chrome Extension webstore page so they can verify that the extension is installed. ALWAYS wait for a user response before taking action. ALWAYS refer to the extension as the [Codex Chrome Extension](https://chromewebstore.google.com/detail/codex/<<EXTENSION_ID>>), and not by it's extension ID.
+-
+-You can construct the URL of the Codex Chrome extension webstore page by appending the `extensionId` from `scripts/extension-id.json` to `https://chromewebstore.google.com/detail/codex/`.
+-
+-
+-### 4. The Codex Chrome Extension is not enabled
+-
+-Keep the first response short and non-technical unless the user asks for more information.
+-
+-If the Codex Chrome Extension is not enabled ask the User if you can open the Google Chrome Extension Manager so they can verify that the extension is enabled. ALWAYS wait for a user response before taking action. Always refer to the Google Chrome Extension Manager as [Google Chrome Extension Manager](chrome://extensions/).
+-
+-
+-### 5. Codex Extension is installed and enabled, the manifest file is installed, but communication still fails
+-
+-Keep the first response short and non-technical unless the user asks for more information.
+-
+-If Chrome is running and the extension/native-host checks pass, ask the User if you can open a Chrome window for the selected Chrome profile and retry the connection. ALWAYS wait for a user response before taking action.
+-
+-If the User agrees, run:
+-
+-```
+-scripts/open-chrome-window.js
+-```
+-
+ Then wait 2 seconds and retry the browser-client setup once.
+
+-After one successful setup check in a session, do not repeat extension detection unless browser-client reports an extension connection failure.
++This script opens a browser window for the selected Chrome automation profile. Run this process from a long-running background terminal/tool session tied to the current Codex session, and keep that session alive until browser work is finished.
+
+-If the issue is specifically the native host or extension-backed install path, or if communication still fails after opening a Chrome window and retrying setup once, tell the user to reinstall the Chrome plugin from the Codex plugin UI. Never import or run `scripts/installManifest.mjs` yourself.
+-
+-
+ ## Chrome Error handling
+
+ ### File upload errors
+@@ -104,91 +36,6 @@
+
+ `To enable file upload, go to chrome://extensions in Chrome, click Details under the Codex extension, and enable "Allow access to file URLs." See [here](https://developers.openai.com/codex/app/chrome-extension#upload-files) for details.`
+
+-
+-## Commands
+-
+-### installed-browsers.js
+-
+-This script reports which browsers are installed.
+-
+-From the plugin root, use `node_repl` to run:
+-
+-```
+-scripts/installed-browsers.js
+-```
+-
+-Use JSON output when another tool or script needs structured data:
+-
+-```
+-scripts/installed-browsers.js --json
+-```
+-
+-### chrome-is-running.js
+-
+-This script checks whether Google Chrome is actively running. It exits `0` when Chrome is running, `1` when Chrome is not running, and `2` for usage or runtime errors.
+-
+-From the plugin root, use `node_repl` to run:
+-
+-```
+-scripts/chrome-is-running.js --check
+-```
+-
+-Use JSON output when another tool or script needs structured data:
+-
+-```
+-scripts/chrome-is-running.js --json
+-```
+-
+-### open-chrome-window.js
+-
+-This script opens `about:blank` in a Google Chrome window for the same selected Chrome profile used by `check-extension-installed.js`. Use it only after the User gives permission.
+-
+-From the plugin root, use `node_repl` to run:
+-
+-```
+-scripts/open-chrome-window.js
 -```
 -
 -Use dry-run JSON output when another tool or script needs to verify the selected launch command without opening Chrome:
 -
- ```
+-```
 -scripts/open-chrome-window.js --dry-run --json
 -```
- 
- ### check-extension-installed.js
- 
+-
+-### check-extension-installed.js
+-
+-This script checks whether the selected Google Chrome profile has the configured extension registered and present, either from installed version directories or a registered unpacked extension path. It exits `0` when installed and enabled, `1` when installed but not enabled, `2` when not installed, and `3` for usage or runtime errors.
+-
+-From the plugin root, use `node_repl` to run:
+-
+-```
+-scripts/check-extension-installed.js
+-```
+-
+-Use JSON output when another tool or script needs structured data:
+-
+-```
+-scripts/check-extension-installed.js --json
+-```
+-
+-The check reads the configured extension ID from `scripts/extension-id.json`. It detects the Chrome profile from `Local State`, then falls back to the highest-numbered `Profile X` or `Default` directory with `Preferences`. For debugging or tests, override profile selection with `CODEX_CHROME_USER_DATA_DIR=/path/to/chrome-root` or `CODEX_CHROME_PREFERENCES_PATH=/path/to/Profile/Preferences`.
+-
+-### check-native-host-manifest.js
+-
+-This script checks whether the Chrome Native Messaging Host manifest exists for the configured native host name and allows the Chrome extension ID from `scripts/extension-id.json`. On Windows it also checks the Chrome NativeMessagingHosts registry key. It exits `0` when correct, `1` when missing or incorrect, and `2` for usage or runtime errors.
+-
+-From the plugin root, use `node_repl` to run:
+-
+-```
+-scripts/check-native-host-manifest.js
+-```
+-
+-Use JSON output when another tool or script needs structured data:
+-
+-```
+-scripts/check-native-host-manifest.js --json
+-```
+-
+ ## Chrome Safety
+
+ - Do not inspect browser cookies, local storage, profiles, passwords, or session stores.
+@@ -749,7 +596,7 @@
+ interface CUAAPI {
+   click(options: ClickOptions): Promise<void>; // Click at a coordinate in the current viewport.
+   double_click(options: DoubleClickOptions): Promise<void>; // Double click at a coordinate in the current viewport.
+-
++
+   drag(options: DragOptions): Promise<void>; // Drag from a point to a point by the provided path.
+   keypress(options: KeypressOptions): Promise<void>; // Press control characters at the current focused element (focus it first via click/dblclick).
+   move(options: MoveOptions): Promise<void>; // Move the mouse to a point by the provided x and y coordinates.
+@@ -760,7 +607,7 @@
+ interface DomCUAAPI {
+   click(options: DomClickOptions): Promise<void>; // Click a DOM node by its id from the visible DOM snapshot.
+   double_click(options: DomClickOptions): Promise<void>; // Double-click a DOM node by its id.
+-
++
+   get_visible_dom(): Promise<unknown>; // Return a filtered DOM with node ids for interactable elements.
+   keypress(options: DomKeypressOptions): Promise<void>; // Press control characters at the currently focused element (focus it first via click/dblclick).
+   scroll(options: DomScrollOptions): Promise<void>; // Scroll either the page or a specific node (if node_id provided) by deltas.
