@@ -36,10 +36,6 @@ flake-utils.lib.eachSystem systems (
             path = chromeNativeHostManifest;
           }
           {
-            name = "home/.config/BraveSoftware/Brave-Browser/NativeMessagingHosts/${chromeNativeHostName}.json";
-            path = chromeNativeHostManifest;
-          }
-          {
             name = "user-data/External Extensions/${chromeExtensionId}.json";
             path = pkgs.writeText "codex-chrome-extension.json" (
               builtins.toJSON {
