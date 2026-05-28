@@ -22,6 +22,60 @@ flake-utils.lib.eachSystem systems (
       hash = "sha256-zSlRaoUJc4eRFbe08qS/oyqaBbfW2Epjj3hlbEmA6Cw=";
     };
     codex = self.packages.${system}.codex;
+    isAarch64Darwin = system == "aarch64-darwin";
+    isX86_64Linux = system == "x86_64-linux";
+    hasCodexWebResources = isAarch64Darwin || isX86_64Linux;
+    linuxNodeRepl = "${self.packages.${system}.codex-primary-runtime}/dependencies/bin/node_repl";
+    codexChromeExtensionHost = self.packages.${system}.codex_chrome_extension_host;
+    codexWebResources = pkgs.stdenvNoCC.mkDerivation {
+      pname = "codex-web-resources";
+      version = appVersion;
+
+      src = codexZip;
+
+      nativeBuildInputs = [ pkgs.unzip ];
+
+      dontConfigure = true;
+      dontBuild = true;
+
+      unpackPhase = ''
+        runHook preUnpack
+
+        unzip -q "$src"
+
+        runHook postUnpack
+      '';
+
+      installPhase =
+        ''
+          runHook preInstall
+
+          mkdir -p "$out"
+          cp -R Codex.app/Contents/Resources/plugins "$out/plugins"
+        ''
+        + pkgs.lib.optionalString hasCodexWebResources ''
+          chromeManifestScript="$out/plugins/openai-bundled/plugins/chrome/scripts/installManifest.mjs"
+          chromeExtensionHost="${codexChromeExtensionHost}/bin/codex-chrome-extension-host"
+          substituteInPlace "$chromeManifestScript" \
+            --replace-fail 'let t=a(o);' "let t=\"$chromeExtensionHost\";" \
+            --replace-fail 'path:a(o)' "path:\"$chromeExtensionHost\""
+        ''
+        + pkgs.lib.optionalString isAarch64Darwin ''
+          install -m755 Codex.app/Contents/Resources/node "$out/node"
+          install -m755 Codex.app/Contents/Resources/node_repl "$out/node_repl"
+        ''
+        + pkgs.lib.optionalString isX86_64Linux ''
+          install -m755 ${pkgs.nodejs}/bin/node "$out/node"
+          install -m755 ${linuxNodeRepl} "$out/node_repl"
+        ''
+        + pkgs.lib.optionalString (!hasCodexWebResources) ''
+          echo "codex-web resources are only packaged for aarch64-darwin and x86_64-linux" >&2
+          exit 1
+        ''
+        + ''
+          runHook postInstall
+        '';
+    };
   in
   {
     devShells.default = pkgs.mkShell {
@@ -111,6 +165,11 @@ flake-utils.lib.eachSystem systems (
             patchShebangs scripts
           '';
 
+          postBuild = ''
+            substituteInPlace src/server/main.js \
+              --replace-fail '@resourcesPath@' '${codexWebResources}'
+          '';
+
           preInstall = ''
             # npm pack always runs the package prepare lifecycle. Nix already ran
             # the explicit build script above, so remove prepare in the sandbox.
@@ -148,6 +207,8 @@ flake-utils.lib.eachSystem systems (
           ];
           text = builtins.readFile ./scripts/codex_remote_proxy;
         };
+
+        codex_web_resources = codexWebResources;
       };
   }
 )

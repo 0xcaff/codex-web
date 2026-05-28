@@ -1,0 +1,13 @@
+[package]
+name = "codex-chrome-extension-host"
+version = "0.2.3-linux-alpha1"
+edition = "2021"
+
+[[bin]]
+name = "codex-chrome-extension-host"
+path = "src/bin/codex-chrome-extension-host.rs"
+
+[dependencies]
+anyhow = "=1.0.102"
+libc = "=0.2.183"
+serde_json = "=1.0.149"

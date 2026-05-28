@@ -243,10 +243,7 @@ function ensureElectronLikeProcessContext(): void {
     resourcesPath?: string;
     type?: string;
   };
-  processWithElectronFields.resourcesPath ??= path.resolve(
-    __dirname,
-    "../../scratch/asar",
-  );
+  processWithElectronFields.resourcesPath ??= "@resourcesPath@";
   processWithElectronFields.type ??= "browser";
 }
 
