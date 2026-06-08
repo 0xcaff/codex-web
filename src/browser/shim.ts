@@ -83,6 +83,18 @@ type ElectronShimState = {
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
   onMemoryNavigationChanged?: (navigation: MemoryNavigationChange) => void;
+  overrideAdapter?: {
+    getGateOverride?: (
+      e: StatsigGateEvaluation,
+      ...args: unknown[]
+    ) => StatsigGateEvaluation | null;
+  };
+};
+
+type StatsigGateEvaluation = {
+  name: string;
+  value: boolean;
+  [key: string]: unknown;
 };
 
 declare global {
@@ -300,6 +312,19 @@ const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
 const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
+
+electronShim.overrideAdapter = {
+  getGateOverride(e) {
+    if (e.name === "2929582856") { // codex_app_sunset
+      return {
+        ...e,
+        value: false,
+      };
+    }
+
+    return null;
+  },
+};
 
 const initialRoute = mapBrowserPathToInitialRoute(
   window.location.pathname,
