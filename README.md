@@ -75,6 +75,10 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
 '
 ```
 
+`codex app-server proxy --sock ...` is a raw stdio protocol bridge for another
+program to use; when run directly in a terminal it will wait for protocol input
+rather than opening an interactive prompt.
+
 ## security
 
 run `codex-web` only on trusted networks. treat anyone who can reach the
