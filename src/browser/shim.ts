@@ -143,29 +143,6 @@ const pendingDirectoryEntries = new Map<
 >();
 const rendererListeners = new Map<string, Set<IpcListener>>();
 
-function inferPlatform(): "darwin" | "linux" | "win32" | "unknown" {
-  const platform = navigator.platform.toLowerCase();
-  const userAgent = navigator.userAgent.toLowerCase();
-  if (platform.includes("mac") || userAgent.includes("mac")) {
-    return "darwin";
-  }
-  if (platform.includes("win") || userAgent.includes("win")) {
-    return "win32";
-  }
-  if (platform.includes("linux") || userAgent.includes("linux")) {
-    return "linux";
-  }
-  return "unknown";
-}
-
-function inferArch(platform: string): "arm64" | "x64" {
-  const userAgent = navigator.userAgent.toLowerCase();
-  if (userAgent.includes("x86_64") || userAgent.includes("x64")) {
-    return "x64";
-  }
-  return platform === "darwin" ? "arm64" : "x64";
-}
-
 function installProcessShim(): void {
   const globalWithProcess = globalThis as typeof globalThis & {
     process?: {
@@ -178,10 +155,9 @@ function installProcessShim(): void {
     return;
   }
 
-  const platform = inferPlatform();
   globalWithProcess.process = {
-    arch: inferArch(platform),
-    platform,
+    arch: "arm64",
+    platform: "darwin",
     versions: {
       electron: "41.2.0",
     },
