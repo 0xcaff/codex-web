@@ -1,33 +1,40 @@
---- a/webview/assets/chunk-LFPYN7LY-CRkYzDF0.js
-+++ b/webview/assets/chunk-LFPYN7LY-CRkYzDF0.js
-@@ -1058,11 +1058,16 @@
-   unstable_useTransitions: o,
+--- a/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
++++ b/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
+@@ -47305,11 +47305,16 @@
+   unstable_useTransitions: i,
  }) {
-   let s = r.useRef();
--  s.current ??= a({ initialEntries: n, initialIndex: i, v5Compat: !0 });
-+  s.current ??= a({
+   let a = Zq.useRef();
+-  a.current ??= KG({ initialEntries: n, initialIndex: r, v5Compat: !0 });
++  a.current ??= KG({
 +    initialEntries: n ?? [window.__ELECTRON_SHIM__.initialRoute],
-+    initialIndex: i,
++    initialIndex: r,
 +    v5Compat: !0,
 +  });
-   let c = s.current,
-     [l, u] = r.useState({ action: c.action, location: c.location }),
-     d = r.useCallback(
+   let o = a.current,
+     [s, c] = Zq.useState({ action: o.action, location: o.location }),
+     l = Zq.useCallback(
        (e) => {
 +        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-         o === !1 ? u(e) : r.startTransition(() => u(e));
+         i === !1 ? c(e) : Zq.startTransition(() => c(e));
        },
-       [o],
---- a/webview/assets/apps-Au-fp4y1.js
-+++ b/webview/assets/apps-Au-fp4y1.js
-@@ -2058,8 +2058,8 @@
-   if (e == null) throw Error(`AppShellLayoutMotionContext is missing`);
-   return e;
- }
--var Yi = j(M, !0),
--  Xi = j(M, () => new Jt(1)),
-+var Yi = j(M, window.__ELECTRON_SHIM__.initialSidebarState),
-+  Xi = j(M, () => new Jt(window.__ELECTRON_SHIM__.initialSidebarState)),
-   Zi = j(F, !1),
-   Qi = j(F, () => new Jt(0)),
-   $i = j(F, !1),
+       [i],
+--- a/webview/assets/app-initial~app-main~onboarding-page-CNHnOMz8.js
++++ b/webview/assets/app-initial~app-main~onboarding-page-CNHnOMz8.js
+@@ -44887,7 +44887,7 @@
+       fb(),
+       (vb = `app-shell-bottom-panel-launcher-visible`),
+       (Abe = 100),
+-      (yb = jn(Ve, !0)),
++      (yb = jn(Ve, window.__ELECTRON_SHIM__.initialSidebarState)),
+       (bb = jn(Ve, !1)),
+       (xb = jn(Ve, !1)),
+       (Sb = jn(Ve, !1)),
+@@ -44913,7 +44913,7 @@
+           };
+         },
+       })),
+-      (Tb = jn(Ve, () => new _i(1))),
++      (Tb = jn(Ve, () => new _i(window.__ELECTRON_SHIM__.initialSidebarState))),
+       (Eb = jn(Ve, Cbe)),
+       (Db = Vs(vb, !0)),
+       (Ob = jn(rd, !1)),

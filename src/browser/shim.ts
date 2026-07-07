@@ -82,6 +82,24 @@ type ElectronShimState = {
   initialRoute?: string;
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
+  services?: {
+    requestUserInputAutoResolution?: {
+      recordConversationActivity?: (args: {
+        conversationId: string;
+        hostId: string;
+      }) => void;
+      setConversationPresented?: (args: {
+        conversationId: string;
+        hostId: string;
+        presented: boolean;
+      }) => void;
+      snooze?: (args: {
+        conversationId: string;
+        hostId: string;
+        requestId: string;
+      }) => void;
+    };
+  };
   onMemoryNavigationChanged?: (navigation: MemoryNavigationChange) => void;
   overrideAdapter?: {
     getGateOverride?: (
@@ -124,6 +142,51 @@ const pendingDirectoryEntries = new Map<
   }
 >();
 const rendererListeners = new Map<string, Set<IpcListener>>();
+
+function inferPlatform(): "darwin" | "linux" | "win32" | "unknown" {
+  const platform = navigator.platform.toLowerCase();
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (platform.includes("mac") || userAgent.includes("mac")) {
+    return "darwin";
+  }
+  if (platform.includes("win") || userAgent.includes("win")) {
+    return "win32";
+  }
+  if (platform.includes("linux") || userAgent.includes("linux")) {
+    return "linux";
+  }
+  return "unknown";
+}
+
+function inferArch(platform: string): "arm64" | "x64" {
+  const userAgent = navigator.userAgent.toLowerCase();
+  if (userAgent.includes("x86_64") || userAgent.includes("x64")) {
+    return "x64";
+  }
+  return platform === "darwin" ? "arm64" : "x64";
+}
+
+function installProcessShim(): void {
+  const globalWithProcess = globalThis as typeof globalThis & {
+    process?: {
+      arch: string;
+      platform: string;
+      versions?: Record<string, string>;
+    };
+  };
+  if (globalWithProcess.process) {
+    return;
+  }
+
+  const platform = inferPlatform();
+  globalWithProcess.process = {
+    arch: inferArch(platform),
+    platform,
+    versions: {
+      electron: "41.2.0",
+    },
+  };
+}
 
 function unimplemented(method: string): never {
   debugger;
@@ -313,6 +376,18 @@ const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
+installProcessShim();
+
+electronShim.services = {
+  ...electronShim.services,
+  requestUserInputAutoResolution: {
+    ...electronShim.services?.requestUserInputAutoResolution,
+    recordConversationActivity: () => undefined,
+    setConversationPresented: () => undefined,
+    snooze: () => undefined,
+  },
+};
+
 electronShim.overrideAdapter = {
   getGateOverride(e) {
     if (e.name === "2929582856") { // codex_app_sunset
@@ -422,6 +497,21 @@ export const ipcRenderer = {
       args,
     });
   },
+  postMessage(
+    channel: string,
+    message: unknown,
+    transfer?: Transferable[],
+  ): void {
+    if (transfer && transfer.length > 0) {
+      return;
+    }
+
+    enqueueMessage({
+      type: "ipc-renderer-send",
+      channel,
+      args: [message],
+    });
+  },
   sendSync(channel: string, ..._args: unknown[]): unknown {
     if (channel === "codex_desktop:get-sentry-init-options") {
       return {
@@ -435,6 +525,10 @@ export const ipcRenderer = {
 
     if (channel === "codex_desktop:get-build-flavor") {
       return buildFlavor;
+    }
+
+    if (channel === "codex_desktop:get-uses-owl-app-shell") {
+      return false;
     }
 
     if (channel === "codex_desktop:get-shared-object-snapshot") {

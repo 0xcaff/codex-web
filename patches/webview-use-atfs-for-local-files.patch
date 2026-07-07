@@ -1,10 +1,10 @@
---- a/webview/assets/filesystem-media-src-BngrzgPI.js
-+++ b/webview/assets/filesystem-media-src-BngrzgPI.js
-@@ -2,7 +2,7 @@
- var n = `app://fs`,
-   r = `/@fs`;
+--- a/webview/assets/app-initial~app-main~worktree-init-v2-page~appgen-publication-terms-route~remote-conversati~k7k1x9vf-MA9xugXE.js
++++ b/webview/assets/app-initial~app-main~worktree-init-v2-page~appgen-publication-terms-route~remote-conversati~k7k1x9vf-MA9xugXE.js
+@@ -5,7 +5,7 @@
+   Va as r,
+ } from "./app-initial~app-main~worktree-init-v2-page~appgen-settings-page~page~appgen-publication-ter~fzo5ij6p-BKVLyD1q.js";
  function i(e) {
--  return `${n}${o(e)}`;
+-  return `${s}${o(e)}`;
 +  return o(e);
  }
  function a(e) {

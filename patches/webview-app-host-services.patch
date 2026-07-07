@@ -1,0 +1,32 @@
+--- a/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
++++ b/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
+@@ -12688,8 +12688,17 @@
+         constructor(e) {
+           (super(), (this.#e = e));
+         }
+       }),
+-      (iu = new ru({ appActions: Nl, appUpdates: zl, downloads: tu })));
++      (iu = new ru({
++        appActions: Nl,
++        appUpdates: zl,
++        downloads: tu,
++        requestUserInputAutoResolution: {
++          recordConversationActivity: () => undefined,
++          setConversationPresented: () => undefined,
++          snooze: () => undefined,
++        },
++      })));
+   });
+ function jte() {
+   let { port1: e, port2: t } = new MessageChannel();
+@@ -12704,6 +12715,10 @@
+   );
+ }
+ async function Mte() {
++  if (window.__ELECTRON_SHIM__ != null) {
++    ((au = iu), (ou = iu.services));
++    return;
++  }
+   ((au = jte()), (ou = await au.services));
+ }
+ var au,

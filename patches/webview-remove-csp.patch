@@ -1,12 +1,12 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -125,10 +125,6 @@
+@@ -134,10 +134,6 @@
+       crossorigin
+       href="./assets/app-initial~app-main~worktree-init-v2-page~appgen-settings-page~page~appgen-publication-ter~fzo5ij6p-BKVLyD1q.js"
      />
-     <link rel="modulepreload" crossorigin href="./assets/chunk-Bj-mKKzh.js" />
-     <link rel="modulepreload" crossorigin href="./assets/src-CdfxiY-T.js" />
 -    <meta
 -      http-equiv="Content-Security-Policy"
--      content="default-src &#39;none&#39;; img-src &#39;self&#39; app: blob: data: https:; child-src &#39;self&#39; blob: https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; frame-src &#39;self&#39; blob: https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; worker-src &#39;self&#39; blob:; script-src &#39;self&#39; &#39;sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk=&#39; &#39;wasm-unsafe-eval&#39;; style-src &#39;self&#39; &#39;unsafe-inline&#39;; font-src &#39;self&#39; data:; media-src &#39;self&#39; app: blob: data:; connect-src &#39;self&#39; https://ab.chatgpt.com https://cdn.openai.com;"
+-      content="default-src &#39;none&#39;; img-src &#39;self&#39; app: blob: data: https:; child-src &#39;self&#39; blob: https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; frame-src &#39;self&#39; blob: https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; worker-src &#39;self&#39; blob:; script-src &#39;self&#39; &#39;sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk=&#39; &#39;wasm-unsafe-eval&#39;; style-src &#39;self&#39; &#39;unsafe-inline&#39;; font-src &#39;self&#39; data:; media-src &#39;self&#39; app: blob: data:; connect-src &#39;self&#39; https://ab.chatgpt.com https://api.mapbox.com https://cdn.openai.com https://events.mapbox.com wss://chatgpt.com wss://ws.chatgpt-staging.com wss://ws.chatgpt.com;"
 -    />
    </head>
    <body tabindex="0" style="outline: none">
