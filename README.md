@@ -60,7 +60,9 @@ it's possible to hook codex-web up to an already-running app server using the
 start a long-lived app server somewhere:
 
 ```bash
-codex app-server --listen unix:///tmp/codex-app-server.sock
+mkdir -p /tmp/codex-app-server
+cd /tmp/codex-app-server
+codex app-server --listen unix://codex-app-server.sock
 ```
 
 then run `codex-web` with the proxy helper:
