@@ -7,7 +7,6 @@ import {
   isLocalFilePickerMessage,
 } from "./files";
 import {
-  installWorkspaceRootDialog,
   openSelectWorkspaceRootDialog,
   type WorkspaceDirectoryEntries,
 } from "./workspace-root-dialog";
@@ -142,27 +141,6 @@ const pendingDirectoryEntries = new Map<
   }
 >();
 const rendererListeners = new Map<string, Set<IpcListener>>();
-
-function installProcessShim(): void {
-  const globalWithProcess = globalThis as typeof globalThis & {
-    process?: {
-      arch: string;
-      platform: string;
-      versions?: Record<string, string>;
-    };
-  };
-  if (globalWithProcess.process) {
-    return;
-  }
-
-  globalWithProcess.process = {
-    arch: "arm64",
-    platform: "darwin",
-    versions: {
-      electron: "41.2.0",
-    },
-  };
-}
 
 function unimplemented(method: string): never {
   debugger;
@@ -352,7 +330,15 @@ const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 
-installProcessShim();
+Object.assign(globalThis, {
+  process: {
+    arch: "arm64",
+    platform: "darwin",
+    versions: {
+      electron: "41.2.0",
+    },
+  },
+});
 
 electronShim.services = {
   ...electronShim.services,
@@ -366,7 +352,8 @@ electronShim.services = {
 
 electronShim.overrideAdapter = {
   getGateOverride(e) {
-    if (e.name === "2929582856") { // codex_app_sunset
+    if (e.name === "2929582856") {
+      // codex_app_sunset
       return {
         ...e,
         value: false,
