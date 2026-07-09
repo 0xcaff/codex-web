@@ -5,6 +5,7 @@ type StubWebContents = {
   mainFrame: {
     url: string;
   };
+  getURL: () => string;
   isDestroyed: () => boolean;
   off: (event: string, listener: StubListener) => unknown;
   on: (event: string, listener: StubListener) => unknown;
@@ -160,6 +161,7 @@ const rendererWebContentsEmitter = createEmitterStub("ipcMainEvent.sender");
 const rendererWebContents: StubWebContents = {
   id: 1001,
   mainFrame: rendererMainFrame,
+  getURL: () => rendererMainFrame.url,
   isDestroyed: () => false,
   off: rendererWebContentsEmitter.off,
   on: rendererWebContentsEmitter.on,
@@ -248,6 +250,8 @@ function createIpcMainStub(): {
 }
 
 let appReady = false;
+const commandLineSwitches = new Map<string, string>();
+const commandLineArguments: string[] = [];
 
 const appBase = {
   ...createEmitterStub("app"),
@@ -259,7 +263,19 @@ const appBase = {
   },
   getVersion(): string {
     log("app.getVersion", []);
-    return "26.409.20454";
+    return "26.623.141536";
+  },
+  getLocale(): string {
+    log("app.getLocale", []);
+    return "en-US";
+  },
+  getSystemLocale(): string {
+    log("app.getSystemLocale", []);
+    return "en-US";
+  },
+  getPreferredSystemLanguages(): string[] {
+    log("app.getPreferredSystemLanguages", []);
+    return ["en-US"];
   },
   getPath(name: string): string {
     log("app.getPath", [name]);
@@ -302,6 +318,23 @@ const appBase = {
   commandLine: {
     appendSwitch(name: string, value?: string): void {
       log("app.commandLine.appendSwitch", [name, value]);
+      commandLineSwitches.set(name, value ?? "");
+    },
+    appendArgument(value: string): void {
+      log("app.commandLine.appendArgument", [value]);
+      commandLineArguments.push(value);
+    },
+    getSwitchValue(name: string): string {
+      log("app.commandLine.getSwitchValue", [name]);
+      return commandLineSwitches.get(name) ?? "";
+    },
+    hasSwitch(name: string): boolean {
+      log("app.commandLine.hasSwitch", [name]);
+      return commandLineSwitches.has(name);
+    },
+    removeSwitch(name: string): void {
+      log("app.commandLine.removeSwitch", [name]);
+      commandLineSwitches.delete(name);
     },
   },
   on(event: string, listener: (...args: unknown[]) => void): unknown {
@@ -353,8 +386,20 @@ class BrowserWindow {
       {
         ...webContentsEmitter,
         id: this.id * 1000 + 1,
+        mainFrame: {
+          url: "",
+        },
+        getURL: (): string => {
+          log(`BrowserWindow#${this.id}.webContents.getURL`, []);
+          return String(
+            (this.webContents.mainFrame as { url?: string } | undefined)
+              ?.url ?? "",
+          );
+        },
+        isDestroyed: (): boolean => this.destroyed,
         loadURL: async (url: string): Promise<void> => {
           log(`BrowserWindow#${this.id}.webContents.loadURL`, [url]);
+          (this.webContents.mainFrame as { url: string }).url = url;
         },
         loadFile: async (...loadFileArgs: unknown[]): Promise<void> => {
           log(`BrowserWindow#${this.id}.webContents.loadFile`, loadFileArgs);
@@ -416,6 +461,23 @@ class BrowserWindow {
       return BrowserWindow.focusedWindow;
     }
     return BrowserWindow.getAllWindows()[0] ?? null;
+  }
+
+  static fromWebContents(
+    webContents: { id?: unknown } | null | undefined,
+  ): BrowserWindow | null {
+    log("BrowserWindow.fromWebContents", [webContents]);
+    if (!webContents) {
+      return null;
+    }
+
+    return (
+      BrowserWindow.getAllWindows().find(
+        (window) =>
+          window.webContents === webContents ||
+          window.webContents.id === webContents.id,
+      ) ?? null
+    );
   }
 
   on(event: string, listener: StubListener): unknown {
@@ -830,9 +892,19 @@ const utilityProcess = {
   fork: undefined,
 };
 const webContents = {
-  fromId(id: number): undefined {
+  fromId(id: number): Record<string, unknown> | undefined {
     log("webContents.fromId", [id]);
-    return undefined;
+    return BrowserWindow.getAllWindows().find(
+      (window) => window.webContents.id === id,
+    )?.webContents;
+  },
+  getAllWebContents(): Record<string, unknown>[] {
+    log("webContents.getAllWebContents", []);
+    return BrowserWindow.getAllWindows().map((window) => window.webContents);
+  },
+  getFocusedWebContents(): Record<string, unknown> | null {
+    log("webContents.getFocusedWebContents", []);
+    return BrowserWindow.getFocusedWindow()?.webContents ?? null;
   },
 };
 class MessageChannelMain {

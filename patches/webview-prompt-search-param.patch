@@ -1,100 +1,145 @@
---- a/webview/assets/app-main-Dsg36Y4q.js
-+++ b/webview/assets/app-main-Dsg36Y4q.js
-@@ -711,6 +711,7 @@
-   c as ri,
-   d as ii,
-   f as ai,
-+  h as useSearchParams,
-   i as oi,
-   l as si,
-   n as ci,
-@@ -22270,6 +22271,8 @@
-     p = ss(),
-     m = ai(),
-     h = pi(),
+--- a/webview/assets/app-initial~app-main~automations-page-BcHjEK7e.js
++++ b/webview/assets/app-initial~app-main~automations-page-BcHjEK7e.js
+@@ -1411,6 +1411,7 @@
+   st as a_,
+   t as o_,
+   ta as s_,
++  tc as useSearchParams,
+   td as c_,
+   tf as fre,
+   tg as l_,
+@@ -26992,6 +26993,8 @@
+     h = Kp(),
+     g = Mx(),
+     _ = Qm(),
 +    [searchParams] = useSearchParams(),
 +    searchParamsPrompt = searchParams.get(`prompt`),
-     g = h.state;
-   Fw({
-     hostId: i,
-@@ -22570,6 +22573,8 @@
-                                       aboveComposerContent: te,
-                                       browserConversationId: j,
-                                       canStartRealtimeConversation: !0,
-+                                      defaultText: searchParamsPrompt ?? void 0,
-+                                      initialPrompt: searchParamsPrompt ?? void 0,
-                                       onLocalConversationCreated: N,
-                                       externalFooterVariant: `home`,
-                                       showExternalFooter: se,
-@@ -22603,6 +22608,8 @@
-                         browserConversationId: j,
-                         canStartRealtimeConversation: !0,
+     v = _.state;
+   q(yie);
+   let { data: y } = Bn(`account-info`, {
+@@ -27305,6 +27308,8 @@
+                                     belowComposerContent: fe
+                                       ? () => (0, VK.jsx)(iK, {})
+                                       : void 0,
++                                    defaultText: searchParamsPrompt ?? void 0,
++                                    initialPrompt: searchParamsPrompt ?? void 0,
+                                     onLocalConversationCreated: re,
+                                     externalFooterVariant: `home`,
+                                     homeRunLocationRemoteProject: z,
+@@ -27342,6 +27347,8 @@
+                       children: (0, VK.jsx)(qC, {
+                         browserConversationId: ne,
                          composerLayoutMode: `auto-single-line`,
 +                        defaultText: searchParamsPrompt ?? void 0,
 +                        initialPrompt: searchParamsPrompt ?? void 0,
-                         onLocalConversationCreated: N,
+                         homeRunLocationRemoteProject: z,
+                         onLocalConversationCreated: re,
                          showWorkspaceDropdownInFooter: !1,
-                         hideRunLocationDropdownOverride: C.kind !== `git`,
---- a/webview/assets/composer-CL8HPtlL.js
-+++ b/webview/assets/composer-CL8HPtlL.js
-@@ -67407,6 +67407,7 @@
+--- a/webview/assets/app-initial~app-main~remote-conversation-page~new-thread-panel-page~appgen-library-page~hot~djo67r4n-DfdeaLvo.js
++++ b/webview/assets/app-initial~app-main~remote-conversation-page~new-thread-panel-page~appgen-library-page~hot~djo67r4n-DfdeaLvo.js
+@@ -27360,6 +27360,7 @@
    showPlanKeywordSuggestion: f,
-   composerModeAvailability: m,
-   placeholderText: h,
+   composerModeAvailability: p,
+   placeholderText: m,
 +  initialPrompt,
-   composerLayoutMode: _,
-   hotkeyWindowHomeFooterControls: v,
-   onSubmitLocal: y,
-@@ -67859,7 +67860,14 @@
-       (sn && ci(sn),
-         rn && ha(rn),
-         ga != null && da(ga),
--        nn && nn !== An.getText() && An.setPromptText(nn),
-+        nn && nn !== An.getText()
-+          ? An.setPromptText(nn)
-+          : !nn &&
+   composerLayoutMode: h,
+   hotkeyWindowHomeFooterControls: g,
+   homeRunLocationRemoteProject: y,
+@@ -27892,13 +27893,20 @@
+     ka = (0, Mz.useEffectEvent)(() => {
+       (vn && Ea(vn),
+         Da != null && Ca(Da),
+-        _n && _n !== Y.getText() && Y.setPromptText(_n),
++        _n && _n !== Y.getText()
++          ? Y.setPromptText(_n)
++          : !_n &&
 +              initialPrompt != null &&
 +              initialPrompt !== `` &&
-+              An.getText() === ``
-+            ? An.setPromptText(initialPrompt)
++              Y.getText() === ``
++            ? Y.setPromptText(initialPrompt)
 +            : null,
-         an != null &&
-           an.length > 0 &&
-           ji((e) => {
-@@ -67877,7 +67885,7 @@
+         yn != null && yn.length > 0 && pa(yn),
+         bn != null && bn.length > 0 && Ei(bn));
      });
-   (0, $.useEffect)(() => {
-     ba();
--  }, [nn, rn, an, on, ga]);
-+  }, [nn, rn, an, on, ga, initialPrompt]);
-   let [xa, Sa] = Ai(`composer_prefill`),
-     wa = (0, $.useEffectEvent)(() => {
-       let e = xa?.commentAttachments;
-@@ -69778,6 +69786,8 @@
-   hideRunLocationDropdownOverride: v = !1,
-   composerModeAvailability: y,
-   placeholderText: b,
-+  defaultText,
-+  initialPrompt,
-   composerLayoutMode: x = `multiline`,
-   hotkeyWindowHomeFooterControls: S,
-   lockedCollaborationMode: C,
-@@ -70056,8 +70066,8 @@
-       (0, Q.jsxs)(
-         FG,
-         {
--          defaultText: M,
--          defaultTextKind: nd(M) ? `prompt` : `plain`,
-+          defaultText: defaultText ?? M,
-+          defaultTextKind: nd(defaultText ?? M) ? `prompt` : `plain`,
-           children: [
-             S == null && n && r === `floating`
-               ? (0, Q.jsx)(`div`, {
-@@ -70090,6 +70100,7 @@
-               showPlanKeywordSuggestion: g,
-               composerModeAvailability: y,
-               placeholderText: b,
-+              initialPrompt,
-               composerLayoutMode: x,
-               hotkeyWindowHomeFooterControls: S,
-               surfaceClassName: c,
+   (0, Mz.useEffect)(() => {
+     ka();
+-  }, [_n, vn, yn, bn, Da]);
++  }, [_n, vn, yn, bn, Da, initialPrompt]);
+   let [Aa, ja] = j(`composer_prefill`),
+     Ma = (0, Mz.useEffectEvent)(() => {
+       let e = Aa?.commentAttachments,
+@@ -30417,7 +30425,7 @@
+     ((Xz = I()), s(), (Zz = t(p(), 1)), vh(), St(), la(), (Qz = J()));
+   });
+ function eB(e) {
+-  let t = (0, rB.c)(104),
++  let t = (0, rB.c)(106),
+     {
+       browserConversationId: n,
+       className: r,
+@@ -30439,6 +30447,8 @@
+       hideRunLocationDropdownOverride: y,
+       composerModeAvailability: b,
+       placeholderText: x,
++      defaultText,
++      initialPrompt,
+       composerLayoutMode: S,
+       hotkeyWindowHomeFooterControls: C,
+       homeRunLocationRemoteProject: w,
+@@ -30681,7 +30691,7 @@
+       (t[55] = Ue),
+       (t[56] = We));
+   let Ge = Yz,
+-    Ke = ch(ce) ? `prompt` : `plain`,
++    Ke = ch(defaultText ?? ce) ? `prompt` : `plain`,
+     qe;
+   t[57] !== i || t[58] !== k || t[59] !== C
+     ? ((qe =
+@@ -30731,7 +30741,8 @@
+   t[87] !== j ||
+   t[88] !== d ||
+   t[89] !== Je ||
+-  t[90] !== Ye
++  t[90] !== Ye ||
++  t[105] !== initialPrompt
+     ? ((Xe = (0, aB.jsx)(kz, {
+         aboveComposerHeaderContent: Je,
+         belowComposerContent: o,
+@@ -30753,6 +30764,7 @@
+         showPlanKeywordSuggestion: I,
+         composerModeAvailability: b,
+         placeholderText: x,
++        initialPrompt,
+         composerLayoutMode: ee,
+         hotkeyWindowHomeFooterControls: C,
+         homeRunLocationRemoteProject: w,
+@@ -30794,6 +30806,7 @@
+       (t[88] = d),
+       (t[89] = Je),
+       (t[90] = Ye),
++      (t[105] = initialPrompt),
+       (t[91] = Xe))
+     : (Xe = t[91]);
+   let Ze;
+@@ -30802,10 +30815,11 @@
+   t[94] !== ce ||
+   t[95] !== Ke ||
+   t[96] !== qe ||
+-  t[97] !== Xe
++  t[97] !== Xe ||
++  t[104] !== defaultText
+     ? ((Ze = (0, aB.jsxs)(
+         Ge,
+-        { defaultText: ce, defaultTextKind: Ke, children: [qe, Xe] },
++        { defaultText: defaultText ?? ce, defaultTextKind: Ke, children: [qe, Xe] },
+         se,
+       )),
+       (t[92] = Ge),
+@@ -30814,6 +30828,7 @@
+       (t[95] = Ke),
+       (t[96] = qe),
+       (t[97] = Xe),
++      (t[104] = defaultText),
+       (t[98] = Ze))
+     : (Ze = t[98]);
+   let Qe;

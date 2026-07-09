@@ -1,7 +1,7 @@
 --- a/webview/index.html
 +++ b/webview/index.html
 @@ -2,7 +2,9 @@
- <html lang="en">
+ <html lang="en" data-build="<!-- PROD_BUILD_TAG_HERE -->">
    <head>
      <!-- PROD_BASE_TAG_HERE -->
 +    <base href="/" />
