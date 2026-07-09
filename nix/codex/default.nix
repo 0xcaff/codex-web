@@ -51,6 +51,7 @@ flake-utils.lib.eachSystem systems (
         ''
           tar -xzf "$src"
           install -Dm755 package/vendor/*/bin/codex "$out/bin/codex"
+          install -Dm755 package/vendor/*/bin/codex-code-mode-host "$out/bin/codex-code-mode-host"
         '';
   }
 )
