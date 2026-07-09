@@ -6,5 +6,5 @@
      <title>Codex</title>
 +    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
      <style>
-       :root {
-         --startup-background: transparent;
+       /* Dependency CSS can load before app.css, so establish Tailwind's layer order here. */
+       @layer theme, base, components, utilities;

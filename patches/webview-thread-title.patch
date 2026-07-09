@@ -1,29 +1,29 @@
---- a/webview/assets/local-conversation-thread-DhV7q0nP.js
-+++ b/webview/assets/local-conversation-thread-DhV7q0nP.js
-@@ -453,6 +453,7 @@
-   po as Ro,
-   pr as zo,
-   pv as Bo,
-+  qr as codexHostedWindowTitleAtom,
-   qn as Vo,
-   rc as Ho,
-   rr as Uo,
-@@ -17098,6 +17099,7 @@
-     x = F(mo, e) ?? !1,
-     S = F(Jo, e),
-     C = F(Ea, e),
-+    codexHostedWindowTitle = F(codexHostedWindowTitleAtom, e),
-     w = F(po, e) === `projectless`,
-     T = F($o, e),
-     E = F(Zo, e),
-@@ -17124,6 +17126,10 @@
-   (0, GS.useEffect)(() => {
-     U?.id == null || U.readAt != null || H(U.id);
-   }, [U?.id, U?.readAt, H]);
-+  (0, GS.useEffect)(() => {
+--- a/webview/assets/local-conversation-thread-D5wniwTZ.js
++++ b/webview/assets/local-conversation-thread-D5wniwTZ.js
+@@ -226,6 +226,7 @@
+   eD as Lt,
+   eI as Rt,
+   ei as zt,
++  fi as codexHostedWindowTitleAtom,
+   fA as Bt,
+   fr as Vt,
+   fu as Ht,
+@@ -15704,6 +15705,7 @@
+   let S = W(i),
+     C = G(Pt, e) ?? !0,
+     w = G(jn, e),
++    codexHostedWindowTitle = G(codexHostedWindowTitleAtom, e),
+     T = n(`2138468235`).get(`enable_mcp_apps`, !1),
+     { data: E } = G(ut, l, { enabled: T && e != null }),
+     { visibleTurnEntries: D } = G(sc, {
+@@ -15803,6 +15805,10 @@
+   (0, sC.useEffect)(() => {
+     c && de();
+   }, [de, c]);
++  (0, sC.useEffect)(() => {
 +    let t = codexHostedWindowTitle?.trim();
 +    t && (document.title = `${t} | Codex`);
 +  }, [codexHostedWindowTitle]);
-   let re = es(),
-     { agentMode: ie, shouldSendPermissionOverrides: ae } = Bt({
-       conversationId: e,
+   let fe = q((e) => {
+       ((te.current = e), ee(e));
+     }),

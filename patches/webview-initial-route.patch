@@ -1,40 +1,40 @@
---- a/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
-+++ b/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
-@@ -47305,11 +47305,16 @@
+--- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
++++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
+@@ -90247,11 +90247,16 @@
    unstable_useTransitions: i,
  }) {
-   let a = Zq.useRef();
--  a.current ??= KG({ initialEntries: n, initialIndex: r, v5Compat: !0 });
-+  a.current ??= KG({
+   let a = z4.useRef();
+-  a.current ??= Ctt({ initialEntries: n, initialIndex: r, v5Compat: !0 });
++  a.current ??= Ctt({
 +    initialEntries: n ?? [window.__ELECTRON_SHIM__.initialRoute],
 +    initialIndex: r,
 +    v5Compat: !0,
 +  });
    let o = a.current,
-     [s, c] = Zq.useState({ action: o.action, location: o.location }),
-     l = Zq.useCallback(
+     [s, c] = z4.useState({ action: o.action, location: o.location }),
+     l = z4.useCallback(
        (e) => {
 +        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-         i === !1 ? c(e) : Zq.startTransition(() => c(e));
+         i === !1 ? c(e) : z4.startTransition(() => c(e));
        },
        [i],
---- a/webview/assets/app-initial~app-main~onboarding-page-CNHnOMz8.js
-+++ b/webview/assets/app-initial~app-main~onboarding-page-CNHnOMz8.js
-@@ -44887,7 +44887,7 @@
-       fb(),
-       (vb = `app-shell-bottom-panel-launcher-visible`),
-       (Abe = 100),
--      (yb = jn(Ve, !0)),
-+      (yb = jn(Ve, window.__ELECTRON_SHIM__.initialSidebarState)),
-       (bb = jn(Ve, !1)),
-       (xb = jn(Ve, !1)),
-       (Sb = jn(Ve, !1)),
-@@ -44913,7 +44913,7 @@
+--- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~remote-conversation-~gjotggjg--gGzOgo3.js
++++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~remote-conversation-~gjotggjg--gGzOgo3.js
+@@ -467,7 +467,7 @@
+       Wt(),
+       (rn = `app-shell-bottom-panel-launcher-visible`),
+       (an = 100),
+-      (on = g(H, !0)),
++      (on = g(H, window.__ELECTRON_SHIM__.initialSidebarState)),
+       (sn = g(H, !0)),
+       (cn = g(H, !1)),
+       (ln = g(H, !1, {
+@@ -510,7 +510,7 @@
            };
          },
        })),
--      (Tb = jn(Ve, () => new _i(1))),
-+      (Tb = jn(Ve, () => new _i(window.__ELECTRON_SHIM__.initialSidebarState))),
-       (Eb = jn(Ve, Cbe)),
-       (Db = Vs(vb, !0)),
-       (Ob = jn(rd, !1)),
+-      (dn = g(H, () => new R(1))),
++      (dn = g(H, () => new R(window.__ELECTRON_SHIM__.initialSidebarState))),
+       (fn = g(H, zt)),
+       (pn = v(rn, !0)),
+       (mn = g(G, !1)),

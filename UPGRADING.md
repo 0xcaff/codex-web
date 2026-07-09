@@ -40,7 +40,7 @@ sure to wait for its completion before doing validation. run it in a subagent.
 run the following to get the version of the new codex-cli
 
 ```bash
-scratch/Codex.app/Contents/Resources/codex --version
+scratch/ChatGPT.app/Contents/Resources/codex --version
 ```
 
 then update the `nix/codex/default.nix` file's `version` field and hashes to

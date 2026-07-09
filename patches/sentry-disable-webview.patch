@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial~app-main~worktree-init-v2-page~remote-conversation-page~pull-requests-page~new-~mam8fk3d-QYu6Tutl.js
-+++ b/webview/assets/app-initial~app-main~worktree-init-v2-page~remote-conversation-page~pull-requests-page~new-~mam8fk3d-QYu6Tutl.js
-@@ -27265,6 +27265,7 @@
-     n = S(e.appVersion),
+--- a/webview/assets/app-initial~artifact-tab-content.electron~notebook-preview-panel~app-main~appgen-settings-p~k7s99xf2-CDccaBxU.js
++++ b/webview/assets/app-initial~artifact-tab-content.electron~notebook-preview-panel~app-main~appgen-settings-p~k7s99xf2-CDccaBxU.js
+@@ -8627,6 +8627,7 @@
+     n = re(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (mk({
+   (eg({
 +    enabled: !1,
-     beforeSend: xt,
-     dsn: ee,
-     environment: Sk,
+     beforeSend: m,
+     dsn: oe,
+     environment: cg,

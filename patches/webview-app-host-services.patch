@@ -1,15 +1,14 @@
---- a/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
-+++ b/webview/assets/app-initial~app-main~new-thread-panel-page-BZHGOlMi.js
-@@ -12688,8 +12688,17 @@
-         constructor(e) {
+--- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
++++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
+@@ -47078,7 +47078,16 @@
            (super(), (this.#e = e));
          }
        }),
--      (iu = new ru({ appActions: Nl, appUpdates: zl, downloads: tu })));
-+      (iu = new ru({
-+        appActions: Nl,
-+        appUpdates: zl,
-+        downloads: tu,
+-      (qNe = new KNe({ appActions: lz, appUpdates: PNe, downloads: WNe })));
++      (qNe = new KNe({
++        appActions: lz,
++        appUpdates: PNe,
++        downloads: WNe,
 +        requestUserInputAutoResolution: {
 +          recordConversationActivity: () => undefined,
 +          setConversationPresented: () => undefined,
@@ -17,16 +16,16 @@
 +        },
 +      })));
    });
- function jte() {
+ function YNe() {
    let { port1: e, port2: t } = new MessageChannel();
-@@ -12704,6 +12715,10 @@
+@@ -47092,6 +47101,10 @@
    );
  }
- async function Mte() {
+ async function XNe() {
 +  if (window.__ELECTRON_SHIM__ != null) {
-+    ((au = iu), (ou = iu.services));
++    ((vz = qNe), (yz = qNe.services), yz.devboxService);
 +    return;
 +  }
-   ((au = jte()), (ou = await au.services));
+   ((vz = YNe()), (yz = await vz.services), yz.devboxService);
  }
- var au,
+ var vz,

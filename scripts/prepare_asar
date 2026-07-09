@@ -2,7 +2,7 @@
 set -euxo pipefail
 
 unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
-asar extract "scratch/Codex.app/Contents/Resources/app.asar" "scratch/asar"
+asar extract "scratch/ChatGPT.app/Contents/Resources/app.asar" "scratch/asar"
 cp assets/* scratch/asar/webview/
 PWA_SOURCE_ICON="scratch/asar/webview/assets/app-D0g8sCle.png"
 PWA_TARGET_ICON="scratch/asar/webview/assets/pwa-icon-512.png"
@@ -34,9 +34,9 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-ini
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-electron-shim-close-sidebar.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prosemirror-inputmode.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-use-atfs-for-local-files.patch
+patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-statsig-override-adapter.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prompt-search-param.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-app-host-services.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-statsig-override-adapter.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
 rm -rf scratch/asar/node_modules/better-sqlite3

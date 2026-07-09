@@ -518,6 +518,11 @@ class BrowserWindow {
     return this.destroyed;
   }
 
+  isFocused(): boolean {
+    log(`BrowserWindow#${this.id}.isFocused`, []);
+    return BrowserWindow.focusedWindow === this && !this.destroyed;
+  }
+
   removeMenu(): void {
     log(`BrowserWindow#${this.id}.removeMenu`, []);
   }
