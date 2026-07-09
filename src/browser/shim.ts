@@ -360,6 +360,14 @@ electronShim.overrideAdapter = {
       };
     }
 
+    if (e.name === "2478676115") {
+      // Profile Selector
+      return {
+        ...e,
+        value: true,
+      };
+    }
+
     return null;
   },
 };
