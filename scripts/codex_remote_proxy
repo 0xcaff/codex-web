@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+while [[ "${1:-}" == "-c" ]]; do
+  if (( $# < 2 )); then
+    echo "codex_remote_proxy received -c without a value" >&2
+    exit 64
+  fi
+  shift 2
+done
+
 if [[ "${1:-}" != "app-server" ]]; then
   echo "codex_remote_proxy only supports app-server mode" >&2
   exit 64
