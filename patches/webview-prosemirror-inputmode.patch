@@ -1,9 +1,9 @@
---- a/webview/assets/app-initial~app-main~onboarding-page-CNHnOMz8.js
-+++ b/webview/assets/app-initial~app-main~onboarding-page-CNHnOMz8.js
-@@ -135163,8 +135163,18 @@
-     d = new EventTarget(),
-     f = new Dnt(),
-     p = o,
+--- a/webview/assets/app-initial~app-main~onboarding-page~hotkey-window-thread-page~quick-chat-window-page~chatg~k0ede4gb-BfuFOm2j.js
++++ b/webview/assets/app-initial~app-main~onboarding-page~hotkey-window-thread-page~quick-chat-window-page~chatg~k0ede4gb-BfuFOm2j.js
+@@ -189260,8 +189260,18 @@
+     f = new EventTarget(),
+     p = new m1t(),
+     m = s,
 +    inputModeDisabled = !1,
 +    getAttributes = () =>
 +      inputModeDisabled
@@ -12,17 +12,17 @@
 +    setPointerInputMode = (e) => {
 +      inputModeDisabled !== e &&
 +        ((inputModeDisabled = e),
-+        m.isDestroyed || m.setProps({ attributes: getAttributes }));
++        h.isDestroyed || h.setProps({ attributes: getAttributes }));
 +    },
-     m = new IF(null, {
+     h = new kL(null, {
 -      attributes: { spellcheck: `true` },
 +      attributes: getAttributes,
-       state: V8e.create({
-         schema: lI,
+       state: Hre.create({
+         schema: tJ,
          doc:
-@@ -135241,6 +135251,17 @@
-         let t = m.state.apply(e);
-         (m.updateState(t), d.dispatchEvent(new Event(TN)));
+@@ -189392,6 +189402,17 @@
+         (h.updateState(t),
+           f.dispatchEvent(new CustomEvent(hq, { detail: e.docChanged })));
        },
 +      handleDOMEvents: {
 +        mousedown(e, t) {

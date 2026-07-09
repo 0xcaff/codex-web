@@ -122,7 +122,7 @@ flake-utils.lib.eachSystem systems (
             '
 
             # Keep only extracted asar artifacts for packaging.
-            rm -rf scratch/Codex.app
+            rm -rf scratch/ChatGPT.app
 
             # npm pack drops directories named node_modules, so rename the nested
             # asar tree in-place to keep it in the package output.

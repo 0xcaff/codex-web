@@ -144,7 +144,7 @@ flake-utils.lib.eachSystem systems (
         runHook preInstall
 
         mkdir -p "$out"
-        cp -R Codex.app/Contents/Resources/plugins "$out/plugins"
+        cp -R ChatGPT.app/Contents/Resources/plugins "$out/plugins"
 
         chromeManifestScript="$out/plugins/openai-bundled/plugins/chrome/scripts/installManifest.mjs"
         chromeExtensionHost="${
@@ -162,8 +162,8 @@ flake-utils.lib.eachSystem systems (
         rm "$chromePluginRoot/scripts/open-chrome-window.js"
       ''
       + pkgs.lib.optionalString (system == "aarch64-darwin") ''
-        install -m755 Codex.app/Contents/Resources/node "$out/node"
-        install -m755 Codex.app/Contents/Resources/node_repl "$out/node_repl"
+        install -m755 ChatGPT.app/Contents/Resources/node "$out/node"
+        install -m755 ChatGPT.app/Contents/Resources/node_repl "$out/node_repl"
       ''
       + pkgs.lib.optionalString (system == "x86_64-linux") ''
         install -m755 ${pkgs.nodejs}/bin/node "$out/node"

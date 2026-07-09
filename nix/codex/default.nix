@@ -15,24 +15,24 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    version = "0.142.5";
+    version = "0.144.0-alpha.4";
     platform =
       {
         aarch64-darwin = {
           npm = "darwin-arm64";
-          hash = "sha256-UfjbUXuToIbovKehCMrIGjE6buvPszNsoQW65J8Rd2w=";
+          hash = "sha256-y77uJWKhP/6hgziwjBiQXRpWuB8hfpi6rhcH6O6+/bs=";
         };
         x86_64-darwin = {
           npm = "darwin-x64";
-          hash = "sha256-8+8J7T5fMUCIghAQmnJeBQKSKzTaGKndAMVYHVAV1Pk=";
+          hash = "sha256-nz/B9Gqnc/bWY+7NO4jHU/SGIIJtlFgwwaaofbyctcs=";
         };
         aarch64-linux = {
           npm = "linux-arm64";
-          hash = "sha256-fsy6iZbom0h/6lKPTDe/UPDAoviSg2Z+aydKXnGbDUY=";
+          hash = "sha256-nxFVEkzHTgUiON6N9jYa2FBfVcL76xjS6XZU+90wt60=";
         };
         x86_64-linux = {
           npm = "linux-x64";
-          hash = "sha256-oD4xFssJCa67Az45zUAYs6Ha+dSJYxk5thY/+pB63kc=";
+          hash = "sha256-Tas4KCEn+Qcc8TCVYV1Gjwob/02Ho9px0ezbWWMj7d8=";
         };
       }
       .${system};
@@ -51,6 +51,7 @@ flake-utils.lib.eachSystem systems (
         ''
           tar -xzf "$src"
           install -Dm755 package/vendor/*/bin/codex "$out/bin/codex"
+          install -Dm755 package/vendor/*/bin/codex-code-mode-host "$out/bin/codex-code-mode-host"
         '';
   }
 )

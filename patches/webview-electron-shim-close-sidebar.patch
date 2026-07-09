@@ -1,12 +1,12 @@
---- a/webview/assets/app-initial~app-main~automations-page-BcHjEK7e.js
-+++ b/webview/assets/app-initial~app-main~automations-page-BcHjEK7e.js
-@@ -5944,6 +5944,9 @@
-       (e[0] = t),
-       (e[1] = n));
-   let r = n;
+--- a/webview/assets/app-initial~app-main~appgen-settings-page~settings-page~skills-settings~plugins-settings~re~n7kg4zj6-CoJ-ih-g.js
++++ b/webview/assets/app-initial~app-main~appgen-settings-page~settings-page~skills-settings~plugins-settings~re~n7kg4zj6-CoJ-ih-g.js
+@@ -9208,6 +9208,9 @@
+       (n[2] = r))
+     : (r = n[2]);
+   let i = r;
 +  window.__ELECTRON_SHIM__.closeSidebar = () => {
-+    Ree(t, !1);
++    Qt(e, !1, { animate: t });
 +  };
-   uy(`toggleSidebar`, r);
-   let i;
-   (e[2] === t ? (i = e[3]) : ((i = [t]), (e[2] = t), (e[3] = i)),
+   Al(`toggleSidebar`, i);
+   let a;
+   (n[3] !== e || n[4] !== t

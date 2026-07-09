@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial~app-main~automations-page-BcHjEK7e.js
-+++ b/webview/assets/app-initial~app-main~automations-page-BcHjEK7e.js
-@@ -34403,6 +34403,7 @@
-       (HQ = 5),
-       (UQ = 500),
-       (WQ = {
+--- a/webview/assets/app-initial~app-main~page-BF1QkwFT.js
++++ b/webview/assets/app-initial~app-main~page-BF1QkwFT.js
+@@ -72952,6 +72952,7 @@
+       (pQe = 5),
+       (mQe = 500),
+       (s5 = {
 +        overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
          networkConfig: {
-           api: zQ,
-           logEventUrl: tZ,
+           api: uQe,
+           logEventUrl: I8,

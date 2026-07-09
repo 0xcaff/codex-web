@@ -1,6 +1,6 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -118,6 +118,11 @@
+@@ -131,6 +131,11 @@
          }
        }
      </style>
@@ -9,6 +9,6 @@
 +        --spacing-token-safe-header-left: 0px;
 +      }
 +    </style>
-     <script type="module" crossorigin src="./assets/index-C7hn25K8.js"></script>
+     <script type="module" crossorigin src="./assets/index-LQUNCOO3.js"></script>
      <link
        rel="modulepreload"
