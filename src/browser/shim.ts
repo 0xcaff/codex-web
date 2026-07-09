@@ -496,36 +496,17 @@ export const ipcRenderer = {
 
     if (channel === "codex_desktop:get-shared-object-snapshot") {
       return {
-        host_config: {
-          id: "local",
-          display_name: "Local",
-          kind: "local",
-        },
-        remote_connections: [],
-        remote_control_connections: [],
+        host_config: { id: "local", display_name: "Local", kind: "local" },
+        remote_ssh_connections: [],
+        remote_wsl_connections: [],
         remote_control_connections_state: {
           available: false,
+          accessRequired: false,
           authRequired: false,
+          clientAuthorized: false,
         },
+        local_remote_control_client_id: null,
         pending_worktrees: [],
-        statsig_default_enable_features: {
-          enable_request_compression: true,
-          collaboration_modes: true,
-          personality: true,
-          request_rule: true,
-          fast_mode: true,
-          image_generation: true,
-          image_detail_original: true,
-          workspace_dependencies: true,
-          guardian_approval: true,
-          apps: true,
-          plugins: true,
-          tool_search: true,
-          tool_suggest: false,
-          tool_call_mcp_elicitation: true,
-          memories: false,
-          realtime_conversation: false,
-        },
       };
     }
 
