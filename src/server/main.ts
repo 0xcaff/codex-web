@@ -1,5 +1,11 @@
 #!/usr/bin/env node
 
+declare global {
+  var __CODEX_SHIM_VALUES__: {
+    version: string;
+  };
+}
+
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -431,6 +437,17 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 
   ensureElectronLikeProcessContext();
   installModuleAliasHook();
+
+  const packageJson = JSON.parse(
+    await fs.readFile(
+      path.resolve(__dirname, "../../scratch/asar/package.json"),
+      "utf8",
+    ),
+  );
+
+  globalThis.__CODEX_SHIM_VALUES__ = {
+    version: packageJson.version,
+  };
 
   const matches = await glob("../../scratch/asar/.vite/build/main-*.js", {
     nodir: true,

@@ -1,6 +1,3 @@
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
 type StubWebContents = {
@@ -253,35 +250,8 @@ function createIpcMainStub(): {
 }
 
 let appReady = false;
-let cachedAppVersion: string | null = null;
 const commandLineSwitches = new Map<string, string>();
 const commandLineArguments: string[] = [];
-
-function getPackagedAppVersion(): string {
-  if (cachedAppVersion !== null) {
-    return cachedAppVersion;
-  }
-
-  const resourcesPath = (
-    process as NodeJS.Process & {
-      resourcesPath?: string;
-    }
-  ).resourcesPath;
-  if (!resourcesPath) {
-    throw new Error("process.resourcesPath is unavailable");
-  }
-
-  const packageJsonPath = join(resourcesPath, "package.json");
-  const packageJson = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
-    version?: unknown;
-  };
-  if (typeof packageJson.version !== "string" || !packageJson.version) {
-    throw new Error(`Expected a version string in ${packageJsonPath}`);
-  }
-
-  cachedAppVersion = packageJson.version;
-  return cachedAppVersion;
-}
 
 const appBase = {
   ...createEmitterStub("app"),
@@ -292,8 +262,7 @@ const appBase = {
     return "Codex";
   },
   getVersion(): string {
-    log("app.getVersion", []);
-    return getPackagedAppVersion();
+    return globalThis.__CODEX_SHIM_VALUES__.version;
   },
   getLocale(): string {
     log("app.getLocale", []);
