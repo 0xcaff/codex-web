@@ -115,18 +115,6 @@ type ElectronShimState = {
     };
   };
   onMemoryNavigationChanged?: (navigation: MemoryNavigationChange) => void;
-  overrideAdapter?: {
-    getGateOverride?: (
-      e: StatsigGateEvaluation,
-      ...args: unknown[]
-    ) => StatsigGateEvaluation | null;
-  };
-};
-
-type StatsigGateEvaluation = {
-  name: string;
-  value: boolean;
-  [key: string]: unknown;
 };
 
 declare global {
@@ -376,36 +364,6 @@ electronShim.services = {
     recordConversationActivity: () => undefined,
     setConversationPresented: () => undefined,
     snooze: () => undefined,
-  },
-};
-
-electronShim.overrideAdapter = {
-  getGateOverride(e) {
-    if (e.name === "2929582856") {
-      // codex_app_sunset
-      return {
-        ...e,
-        value: false,
-      };
-    }
-
-    if (e.name === "2478676115") {
-      // Profile Selector
-      return {
-        ...e,
-        value: true,
-      };
-    }
-
-    if (e.name === "824038554") {
-      // Work mode and the compact reasoning picker
-      return {
-        ...e,
-        value: true,
-      };
-    }
-
-    return null;
   },
 };
 
