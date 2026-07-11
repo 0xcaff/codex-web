@@ -77,11 +77,26 @@ type MemoryNavigationChange = {
   };
 };
 
+type ElectronAppInfo = {
+  appBrand: "codex";
+  appIconMedium: null;
+  appName: string;
+  buildFlavor: string;
+  buildNumber: null;
+  dockIconPreviews: null;
+  osName: string;
+  systemVersion: null;
+  version: string;
+};
+
 type ElectronShimState = {
   initialRoute?: string;
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
   services?: {
+    appInfo?: {
+      get: () => Promise<ElectronAppInfo>;
+    };
     requestUserInputAutoResolution?: {
       recordConversationActivity?: (args: {
         conversationId: string;
@@ -329,6 +344,7 @@ const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
 const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
+const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 Object.assign(globalThis, {
   process: {
@@ -342,6 +358,19 @@ Object.assign(globalThis, {
 
 electronShim.services = {
   ...electronShim.services,
+  appInfo: {
+    get: async () => ({
+      appBrand: "codex",
+      appIconMedium: null,
+      appName: "Codex",
+      buildFlavor,
+      buildNumber: null,
+      dockIconPreviews: null,
+      osName: "macOS",
+      systemVersion: null,
+      version: __CODEX_APP_VERSION__,
+    }),
+  },
   requestUserInputAutoResolution: {
     ...electronShim.services?.requestUserInputAutoResolution,
     recordConversationActivity: () => undefined,
@@ -362,6 +391,14 @@ electronShim.overrideAdapter = {
 
     if (e.name === "2478676115") {
       // Profile Selector
+      return {
+        ...e,
+        value: true,
+      };
+    }
+
+    if (e.name === "824038554") {
+      // Work mode and the compact reasoning picker
       return {
         ...e,
         value: true,
@@ -409,8 +446,6 @@ electronShim.onMemoryNavigationChanged = (navigation) => {
 
   window.history.pushState(undefined, "", browserPath.path);
 };
-
-const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
