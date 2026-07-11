@@ -89,6 +89,11 @@ type ElectronAppInfo = {
   version: string;
 };
 
+type ElectronWorkspaceFiles = {
+  downloadCopy?: (args: { hostId: string; path: string }) => Promise<void>;
+  getDownloadsFolderIcon?: () => Promise<string>;
+};
+
 type ElectronShimState = {
   initialRoute?: string;
   initialSidebarState?: boolean;
@@ -97,6 +102,7 @@ type ElectronShimState = {
     appInfo?: {
       get: () => Promise<ElectronAppInfo>;
     };
+    workspaceFiles?: ElectronWorkspaceFiles;
     requestUserInputAutoResolution?: {
       recordConversationActivity?: (args: {
         conversationId: string;
@@ -359,6 +365,7 @@ electronShim.services = {
       version: __CODEX_APP_VERSION__,
     }),
   },
+  workspaceFiles: electronShim.services?.workspaceFiles ?? {},
   requestUserInputAutoResolution: {
     ...electronShim.services?.requestUserInputAutoResolution,
     recordConversationActivity: () => undefined,
