@@ -210,6 +210,33 @@ function flushOutboundQueue(): void {
   }
 }
 
+function removeQueuedRequest(requestId: string): void {
+  for (let index = outboundQueue.length - 1; index >= 0; index -= 1) {
+    const message = outboundQueue[index];
+    if (
+      (message.type === "ipc-renderer-invoke" ||
+        message.type === "workspace-directory-entries-request") &&
+      message.requestId === requestId
+    ) {
+      outboundQueue.splice(index, 1);
+    }
+  }
+}
+
+function rejectPendingRequests(reason: Error): void {
+  for (const [requestId, pending] of pendingInvokes) {
+    removeQueuedRequest(requestId);
+    pending.reject(reason);
+  }
+  pendingInvokes.clear();
+
+  for (const [requestId, pending] of pendingDirectoryEntries) {
+    removeQueuedRequest(requestId);
+    pending.reject(reason);
+  }
+  pendingDirectoryEntries.clear();
+}
+
 function scheduleReconnect(): void {
   if (reconnectTimeoutId !== null) {
     return;
@@ -229,13 +256,14 @@ function ensureSocket(): void {
     return;
   }
 
-  socket = new WebSocket(
+  const nextSocket = new WebSocket(
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
-  socket.addEventListener("open", () => {
+  socket = nextSocket;
+  nextSocket.addEventListener("open", () => {
     flushOutboundQueue();
   });
-  socket.addEventListener("message", (event) => {
+  nextSocket.addEventListener("message", (event) => {
     try {
       const message = JSON.parse(String(event.data)) as MainToRendererMessage;
       handleIncomingMessage(message);
@@ -246,11 +274,18 @@ function ensureSocket(): void {
       );
     }
   });
-  socket.addEventListener("close", () => {
+  nextSocket.addEventListener("close", () => {
+    if (socket !== nextSocket) {
+      return;
+    }
+    socket = null;
+    rejectPendingRequests(
+      new Error("[ipc-bridge] connection closed before the request completed"),
+    );
     scheduleReconnect();
   });
-  socket.addEventListener("error", () => {
-    scheduleReconnect();
+  nextSocket.addEventListener("error", () => {
+    nextSocket.close();
   });
 }
 
