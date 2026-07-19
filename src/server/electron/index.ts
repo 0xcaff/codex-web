@@ -31,27 +31,6 @@ type IpcMainEvent = {
   reply: (channel: string, ...args: unknown[]) => void;
 };
 
-type AppHostServiceRequest = {
-  service: "projectWritableRoots" | "threadProjectAssignments";
-  method: string;
-  params: unknown;
-};
-
-type RpcTransport = {
-  abort: (error: Error) => void;
-  receive: () => Promise<string>;
-  send: (message: string) => Promise<void>;
-};
-
-type AppHostServices = Record<
-  string,
-  Record<string, (params: unknown) => Promise<unknown>>
->;
-
-type RemoteAppHost = {
-  services: Promise<AppHostServices>;
-};
-
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: {
     type: "ipc-main-event";
@@ -63,6 +42,12 @@ type IpcMainBridgeState = {
     args: unknown[],
     sourceUrl?: string,
   ) => Promise<unknown>;
+  handleRendererPostMessage?: (
+    channel: string,
+    message: unknown,
+    ports: StubMessagePort[],
+    sourceUrl?: string,
+  ) => void;
   handleRendererSend?: (
     channel: string,
     args: unknown[],
@@ -181,108 +166,6 @@ function createMessagePortStub(label: string): {
   };
 }
 
-function createLinkedMessagePorts(): [StubMessagePort, StubMessagePort] {
-  function createPort(): StubMessagePort & {
-    emit: (event: string, ...args: unknown[]) => void;
-    peer: StubMessagePort & {
-      emit: (event: string, ...args: unknown[]) => void;
-    };
-  } {
-    const emitter = createEmitterStub("AppHostMessagePort");
-    let closed = false;
-    return {
-      close(): void {
-        if (closed) {
-          return;
-        }
-        closed = true;
-        queueMicrotask(() => this.peer.emit("close"));
-      },
-      emit(event: string, ...args: unknown[]): void {
-        emitter.emit(event, ...args);
-      },
-      on: emitter.on,
-      peer: undefined as never,
-      postMessage(message: unknown): void {
-        if (!closed) {
-          queueMicrotask(() => this.peer.emit("message", { data: message }));
-        }
-      },
-      start(): void {},
-    };
-  }
-
-  const port1 = createPort();
-  const port2 = createPort();
-  port1.peer = port2;
-  port2.peer = port1;
-  return [port1, port2];
-}
-
-class MessagePortRpcTransport implements RpcTransport {
-  private aborted: Error | null = null;
-  private pendingReject: ((error: Error) => void) | null = null;
-  private pendingResolve: ((message: string) => void) | null = null;
-  private readonly queuedMessages: string[] = [];
-
-  constructor(private readonly port: StubMessagePort) {
-    port.start();
-    port.on("message", (rawEvent: unknown) => {
-      const event = rawEvent as { data?: unknown };
-      if (this.aborted) {
-        return;
-      }
-      if (typeof event.data !== "string") {
-        this.abort(new TypeError("Received non-string app-host RPC message."));
-        return;
-      }
-      if (this.pendingResolve) {
-        const resolve = this.pendingResolve;
-        this.pendingReject = null;
-        this.pendingResolve = null;
-        resolve(event.data);
-        return;
-      }
-      this.queuedMessages.push(event.data);
-    });
-    port.on("close", () => {
-      this.abort(new Error("App-host RPC message port closed."));
-    });
-  }
-
-  abort(error: Error): void {
-    if (this.aborted) {
-      return;
-    }
-    this.aborted = error;
-    this.pendingReject?.(error);
-    this.pendingReject = null;
-    this.pendingResolve = null;
-    this.port.close();
-  }
-
-  async receive(): Promise<string> {
-    const queuedMessage = this.queuedMessages.shift();
-    if (queuedMessage !== undefined) {
-      return queuedMessage;
-    }
-    if (this.aborted) {
-      throw this.aborted;
-    }
-    return await new Promise<string>((resolve, reject) => {
-      this.pendingResolve = resolve;
-      this.pendingReject = reject;
-    });
-  }
-
-  async send(message: string): Promise<void> {
-    if (this.aborted) {
-      throw this.aborted;
-    }
-    this.port.postMessage(message);
-  }
-}
-
 const rendererUrl = "http://localhost:5175/";
 const rendererMainFrame = {
   url: rendererUrl,
@@ -345,77 +228,31 @@ function createIpcMainStub(): {
     (event: unknown, ...args: unknown[]) => unknown
   >();
   const bridgeState = getIpcMainBridgeState();
-  let remoteAppHostPromise: Promise<RemoteAppHost> | null = null;
 
-  function getRemoteAppHost(): Promise<RemoteAppHost> {
-    if (remoteAppHostPromise) {
-      return remoteAppHostPromise;
+  const pendingPostMessages = new Map<
+    string,
+    Array<{ message: unknown; ports: StubMessagePort[] }>
+  >();
+  const registeredPostMessageChannels = new Set<string>();
+
+  bridgeState.handleRendererPostMessage = (
+    channel: string,
+    message: unknown,
+    ports: StubMessagePort[],
+  ): void => {
+    if (registeredPostMessageChannels.has(channel)) {
+      emitter.emit(channel, createIpcMainEvent(ports), message);
+      return;
     }
-
-    remoteAppHostPromise = Promise.resolve().then(() => {
-      const [mainPort, clientPort] = createLinkedMessagePorts();
-      const event = createIpcMainEvent([mainPort]);
-      emitter.emit("codex_desktop:connect-app-host", event);
-
-      const resourcesPath = (process as NodeJS.Process & {
-        resourcesPath?: string;
-      }).resourcesPath;
-      if (!resourcesPath) {
-        throw new Error("Electron resources path is unavailable");
-      }
-      const rpcModulePath = `${resourcesPath}/.vite/build/sqlite-Bd1pmlws.js`;
-      const rpcModule = require(rpcModulePath) as {
-        N: new (
-          transport: RpcTransport,
-          localMain?: unknown,
-        ) => { getRemoteMain: () => RemoteAppHost };
-      };
-      const localMain = {
-        services: {
-          appUpdates: { stateChanged: async () => undefined },
-          downloads: { stateChanged: async () => undefined },
-        },
-      };
-      return new rpcModule.N(
-        new MessagePortRpcTransport(clientPort),
-        localMain,
-      ).getRemoteMain();
-    });
-
-    return remoteAppHostPromise;
-  }
-
-  async function invokeAppHostService(args: unknown[]): Promise<unknown> {
-    const request = args[0] as AppHostServiceRequest | undefined;
-    const allowedMethods =
-      request?.service === "projectWritableRoots"
-        ? new Set(["addRoot", "clearRoots", "removeRoot"])
-        : request?.service === "threadProjectAssignments"
-          ? new Set(["setAssignment"])
-          : null;
-    if (!request || !allowedMethods?.has(request.method)) {
-      throw new Error("Invalid app-host service request");
-    }
-
-    const remoteAppHost = await getRemoteAppHost();
-    const services = await remoteAppHost.services;
-    const method = services[request.service]?.[request.method];
-    if (typeof method !== "function") {
-      throw new Error(
-        `App-host service method is unavailable: ${request.service}.${request.method}`,
-      );
-    }
-    return await method(request.params);
-  }
+    const pending = pendingPostMessages.get(channel) ?? [];
+    pending.push({ message, ports });
+    pendingPostMessages.set(channel, pending);
+  };
 
   bridgeState.handleRendererInvoke = async (
     channel: string,
     args: unknown[],
   ): Promise<unknown> => {
-    if (channel === "codex_web:app-host-service") {
-      return await invokeAppHostService(args);
-    }
-
     const handler = handlers.get(channel);
     if (!handler) {
       throw new Error(`[electron-main-stub] No ipcMain.handle for ${channel}`);
@@ -434,7 +271,18 @@ function createIpcMainStub(): {
   };
 
   return {
-    on: emitter.on,
+    on(channel: string, listener: StubListener): unknown {
+      const result = emitter.on(channel, listener);
+      registeredPostMessageChannels.add(channel);
+      const pending = pendingPostMessages.get(channel);
+      if (pending) {
+        pendingPostMessages.delete(channel);
+        for (const { message, ports } of pending) {
+          emitter.emit(channel, createIpcMainEvent(ports), message);
+        }
+      }
+      return result;
+    },
     off: emitter.off,
     handle(
       channel: string,

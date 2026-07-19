@@ -21,6 +21,21 @@ type RendererToMainMessage =
       args: unknown[];
     }
   | {
+      type: "ipc-renderer-post-message";
+      channel: string;
+      message: unknown;
+      portIds: string[];
+    }
+  | {
+      type: "message-port-message";
+      portId: string;
+      data: unknown;
+    }
+  | {
+      type: "message-port-close";
+      portId: string;
+    }
+  | {
       type: "ipc-renderer-send";
       channel: string;
       args: unknown[];
@@ -61,6 +76,15 @@ type MainToRendererMessage =
       requestId: string;
       ok: false;
       errorMessage: string;
+    }
+  | {
+      type: "message-port-message";
+      portId: string;
+      data: unknown;
+    }
+  | {
+      type: "message-port-close";
+      portId: string;
     };
 
 const RECONNECT_DELAY_MS = 1_000;
@@ -77,33 +101,6 @@ type MemoryNavigationChange = {
   };
 };
 
-type ElectronAppInfo = {
-  appBrand: "codex";
-  appIconMedium: null;
-  appName: string;
-  buildFlavor: string;
-  buildNumber: null;
-  dockIconPreviews: null;
-  osName: string;
-  systemVersion: null;
-  version: string;
-};
-
-type ElectronWorkspaceFiles = {
-  downloadCopy?: (args: { hostId: string; path: string }) => Promise<void>;
-  getDownloadsFolderIcon?: () => Promise<string>;
-};
-
-type ElectronProjectWritableRoots = {
-  addRoot: (args: unknown) => Promise<unknown>;
-  clearRoots: (args: unknown) => Promise<unknown>;
-  removeRoot: (args: unknown) => Promise<unknown>;
-};
-
-type ElectronThreadProjectAssignments = {
-  setAssignment: (args: unknown) => Promise<unknown>;
-};
-
 type StatsigGateEvaluation = {
   name: string;
   value: boolean;
@@ -114,30 +111,6 @@ type ElectronShimState = {
   initialRoute?: string;
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
-  services?: {
-    appInfo?: {
-      get: () => Promise<ElectronAppInfo>;
-    };
-    projectWritableRoots?: ElectronProjectWritableRoots;
-    threadProjectAssignments?: ElectronThreadProjectAssignments;
-    workspaceFiles?: ElectronWorkspaceFiles;
-    requestUserInputAutoResolution?: {
-      recordConversationActivity?: (args: {
-        conversationId: string;
-        hostId: string;
-      }) => void;
-      setConversationPresented?: (args: {
-        conversationId: string;
-        hostId: string;
-        presented: boolean;
-      }) => void;
-      snooze?: (args: {
-        conversationId: string;
-        hostId: string;
-        requestId: string;
-      }) => void;
-    };
-  };
   onMemoryNavigationChanged?: (navigation: MemoryNavigationChange) => void;
   overrideAdapter?: {
     getGateOverride?: (
@@ -174,6 +147,8 @@ const pendingDirectoryEntries = new Map<
   }
 >();
 const rendererListeners = new Map<string, Set<IpcListener>>();
+const messagePorts = new Map<string, MessagePort>();
+let reloadOnReconnect = false;
 
 function unimplemented(method: string): never {
   debugger;
@@ -208,6 +183,18 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
       return;
     }
     pending.reject(new Error(message.errorMessage));
+    return;
+  }
+
+  if (message.type === "message-port-message") {
+    messagePorts.get(message.portId)?.postMessage(message.data);
+    return;
+  }
+
+  if (message.type === "message-port-close") {
+    const port = messagePorts.get(message.portId);
+    messagePorts.delete(message.portId);
+    port?.close();
     return;
   }
 
@@ -257,6 +244,11 @@ function ensureSocket(): void {
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
   socket.addEventListener("open", () => {
+    if (reloadOnReconnect) {
+      reloadOnReconnect = false;
+      window.location.reload();
+      return;
+    }
     flushOutboundQueue();
   });
   socket.addEventListener("message", (event) => {
@@ -271,6 +263,14 @@ function ensureSocket(): void {
     }
   });
   socket.addEventListener("close", () => {
+    if (messagePorts.size > 0) {
+      reloadOnReconnect = true;
+      for (const port of messagePorts.values()) {
+        port.close();
+      }
+      messagePorts.clear();
+      outboundQueue.length = 0;
+    }
     scheduleReconnect();
   });
   socket.addEventListener("error", () => {
@@ -300,16 +300,6 @@ function invokeMain(channel: string, args: unknown[]): Promise<unknown> {
       args,
     });
   });
-}
-
-function invokeAppHostService(
-  service: "projectWritableRoots" | "threadProjectAssignments",
-  method: string,
-  params: unknown,
-): Promise<unknown> {
-  return invokeMain("codex_web:app-host-service", [
-    { service, method, params },
-  ]);
 }
 
 function addIpcListener(channel: string, listener: IpcListener): void {
@@ -402,42 +392,6 @@ electronShim.overrideAdapter = {
     }
 
     return null;
-  },
-};
-
-electronShim.services = {
-  ...electronShim.services,
-  appInfo: {
-    get: async () => ({
-      appBrand: "codex",
-      appIconMedium: null,
-      appName: "Codex",
-      buildFlavor,
-      buildNumber: null,
-      dockIconPreviews: null,
-      osName: "macOS",
-      systemVersion: null,
-      version: __CODEX_APP_VERSION__,
-    }),
-  },
-  projectWritableRoots: {
-    addRoot: (params) =>
-      invokeAppHostService("projectWritableRoots", "addRoot", params),
-    clearRoots: (params) =>
-      invokeAppHostService("projectWritableRoots", "clearRoots", params),
-    removeRoot: (params) =>
-      invokeAppHostService("projectWritableRoots", "removeRoot", params),
-  },
-  workspaceFiles: electronShim.services?.workspaceFiles ?? {},
-  threadProjectAssignments: {
-    setAssignment: (params) =>
-      invokeAppHostService("threadProjectAssignments", "setAssignment", params),
-  },
-  requestUserInputAutoResolution: {
-    ...electronShim.services?.requestUserInputAutoResolution,
-    recordConversationActivity: () => undefined,
-    setConversationPresented: () => undefined,
-    snooze: () => undefined,
   },
 };
 
@@ -541,6 +495,36 @@ export const ipcRenderer = {
     transfer?: Transferable[],
   ): void {
     if (transfer && transfer.length > 0) {
+      const portIds = transfer.map((transferable) => {
+        if (!(transferable instanceof MessagePort)) {
+          throw new TypeError(
+            "Only MessagePort transfers are supported by the browser IPC bridge.",
+          );
+        }
+
+        const portId = `message_port_${nextRequestId()}`;
+        messagePorts.set(portId, transferable);
+        transferable.addEventListener("message", (event) => {
+          enqueueMessage({
+            type: "message-port-message",
+            portId,
+            data: event.data,
+          });
+        });
+        transferable.addEventListener("messageerror", () => {
+          messagePorts.delete(portId);
+          enqueueMessage({ type: "message-port-close", portId });
+        });
+        transferable.start();
+        return portId;
+      });
+
+      enqueueMessage({
+        type: "ipc-renderer-post-message",
+        channel,
+        message,
+        portIds,
+      });
       return;
     }
 
