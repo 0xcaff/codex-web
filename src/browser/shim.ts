@@ -94,6 +94,16 @@ type ElectronWorkspaceFiles = {
   getDownloadsFolderIcon?: () => Promise<string>;
 };
 
+type ElectronProjectWritableRoots = {
+  addRoot: (args: unknown) => Promise<unknown>;
+  clearRoots: (args: unknown) => Promise<unknown>;
+  removeRoot: (args: unknown) => Promise<unknown>;
+};
+
+type ElectronThreadProjectAssignments = {
+  setAssignment: (args: unknown) => Promise<unknown>;
+};
+
 type StatsigGateEvaluation = {
   name: string;
   value: boolean;
@@ -108,6 +118,8 @@ type ElectronShimState = {
     appInfo?: {
       get: () => Promise<ElectronAppInfo>;
     };
+    projectWritableRoots?: ElectronProjectWritableRoots;
+    threadProjectAssignments?: ElectronThreadProjectAssignments;
     workspaceFiles?: ElectronWorkspaceFiles;
     requestUserInputAutoResolution?: {
       recordConversationActivity?: (args: {
@@ -290,6 +302,16 @@ function invokeMain(channel: string, args: unknown[]): Promise<unknown> {
   });
 }
 
+function invokeAppHostService(
+  service: "projectWritableRoots" | "threadProjectAssignments",
+  method: string,
+  params: unknown,
+): Promise<unknown> {
+  return invokeMain("codex_web:app-host-service", [
+    { service, method, params },
+  ]);
+}
+
 function addIpcListener(channel: string, listener: IpcListener): void {
   const listeners = rendererListeners.get(channel) ?? new Set<IpcListener>();
   listeners.add(listener);
@@ -364,6 +386,13 @@ Object.assign(globalThis, {
 
 electronShim.overrideAdapter = {
   getGateOverride(evaluation) {
+    if (evaluation.name === "2911712394") {
+      return {
+        ...evaluation,
+        value: true,
+      };
+    }
+
     if (evaluation.name === "1042620455") {
       // Remote control (Slingshot).
       return {
@@ -391,7 +420,19 @@ electronShim.services = {
       version: __CODEX_APP_VERSION__,
     }),
   },
+  projectWritableRoots: {
+    addRoot: (params) =>
+      invokeAppHostService("projectWritableRoots", "addRoot", params),
+    clearRoots: (params) =>
+      invokeAppHostService("projectWritableRoots", "clearRoots", params),
+    removeRoot: (params) =>
+      invokeAppHostService("projectWritableRoots", "removeRoot", params),
+  },
   workspaceFiles: electronShim.services?.workspaceFiles ?? {},
+  threadProjectAssignments: {
+    setAssignment: (params) =>
+      invokeAppHostService("threadProjectAssignments", "setAssignment", params),
+  },
   requestUserInputAutoResolution: {
     ...electronShim.services?.requestUserInputAutoResolution,
     recordConversationActivity: () => undefined,
