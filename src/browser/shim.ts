@@ -94,6 +94,12 @@ type ElectronWorkspaceFiles = {
   getDownloadsFolderIcon?: () => Promise<string>;
 };
 
+type StatsigGateEvaluation = {
+  name: string;
+  value: boolean;
+  [key: string]: unknown;
+};
+
 type ElectronShimState = {
   initialRoute?: string;
   initialSidebarState?: boolean;
@@ -121,6 +127,12 @@ type ElectronShimState = {
     };
   };
   onMemoryNavigationChanged?: (navigation: MemoryNavigationChange) => void;
+  overrideAdapter?: {
+    getGateOverride?: (
+      evaluation: StatsigGateEvaluation,
+      ...args: unknown[]
+    ) => StatsigGateEvaluation | null;
+  };
 };
 
 declare global {
@@ -349,6 +361,20 @@ Object.assign(globalThis, {
     },
   },
 });
+
+electronShim.overrideAdapter = {
+  getGateOverride(evaluation) {
+    if (evaluation.name === "1042620455") {
+      // Remote control (Slingshot).
+      return {
+        ...evaluation,
+        value: true,
+      };
+    }
+
+    return null;
+  },
+};
 
 electronShim.services = {
   ...electronShim.services,

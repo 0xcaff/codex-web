@@ -177,12 +177,16 @@ const rendererWebContents: StubWebContents = {
 };
 
 function createIpcMainEvent(): IpcMainEvent {
+  const sender =
+    (BrowserWindow.fromWebContents(rendererWebContents)
+      ?.webContents as unknown as StubWebContents | undefined) ??
+    rendererWebContents;
   const event: IpcMainEvent = {
     returnValue: undefined,
     processId: 1,
     frameId: 1,
-    sender: rendererWebContents,
-    senderFrame: rendererMainFrame,
+    sender,
+    senderFrame: sender.mainFrame,
     reply: (channel: string, ...args: unknown[]): void => {
       getIpcMainBridgeState().broadcastToRenderer?.({
         type: "ipc-main-event",
@@ -493,6 +497,11 @@ class BrowserWindow {
 
   removeListener(event: string, listener: StubListener): unknown {
     return this.emitter.removeListener(event, listener);
+  }
+
+  async loadURL(url: string): Promise<void> {
+    log(`BrowserWindow#${this.id}.loadURL`, [url]);
+    (this.webContents.mainFrame as { url: string }).url = url;
   }
 
   close(): void {

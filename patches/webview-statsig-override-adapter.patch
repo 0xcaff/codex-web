@@ -1,0 +1,10 @@
+--- a/webview/assets/app-initial~app-main~page-BF1QkwFT.js
++++ b/webview/assets/app-initial~app-main~page-BF1QkwFT.js
+@@ -72952,6 +72952,7 @@
+       (pQe = 5),
+       (mQe = 500),
+       (s5 = {
++        overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
+         networkConfig: {
+           api: uQe,
+           logEventUrl: I8,
