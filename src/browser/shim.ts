@@ -261,7 +261,6 @@ function ensureSocket(): void {
       port.close();
     }
     messagePorts.clear();
-    outboundQueue.length = 0;
     scheduleReconnect();
   });
   socket.addEventListener("error", () => {
