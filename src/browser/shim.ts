@@ -87,6 +87,8 @@ type MainToRendererMessage =
       portId: string;
     };
 
+const RECONNECT_DELAY_MS = 1_000;
+
 type MemoryNavigationChange = {
   action: "POP" | "PUSH" | "REPLACE";
   delta: number;
@@ -128,6 +130,7 @@ declare const __CODEX_APP_VERSION__: string;
 
 let requestCounter = 0;
 let socket: WebSocket | null = null;
+let reconnectTimeoutId: number | null = null;
 const outboundQueue: RendererToMainMessage[] = [];
 const pendingInvokes = new Map<
   string,
@@ -217,8 +220,22 @@ function flushOutboundQueue(): void {
   }
 }
 
+function scheduleReconnect(): void {
+  if (reconnectTimeoutId !== null) {
+    return;
+  }
+  reconnectTimeoutId = window.setTimeout(() => {
+    reconnectTimeoutId = null;
+    ensureSocket();
+  }, RECONNECT_DELAY_MS);
+}
+
 function ensureSocket(): void {
-  if (socket) {
+  if (
+    socket &&
+    (socket.readyState === WebSocket.OPEN ||
+      socket.readyState === WebSocket.CONNECTING)
+  ) {
     return;
   }
 
@@ -245,6 +262,10 @@ function ensureSocket(): void {
     }
     messagePorts.clear();
     outboundQueue.length = 0;
+    scheduleReconnect();
+  });
+  socket.addEventListener("error", () => {
+    scheduleReconnect();
   });
 }
 
