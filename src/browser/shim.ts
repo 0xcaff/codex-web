@@ -87,8 +87,6 @@ type MainToRendererMessage =
       portId: string;
     };
 
-const RECONNECT_DELAY_MS = 1_000;
-
 type MemoryNavigationChange = {
   action: "POP" | "PUSH" | "REPLACE";
   delta: number;
@@ -130,7 +128,6 @@ declare const __CODEX_APP_VERSION__: string;
 
 let requestCounter = 0;
 let socket: WebSocket | null = null;
-let reconnectTimeoutId: number | null = null;
 const outboundQueue: RendererToMainMessage[] = [];
 const pendingInvokes = new Map<
   string,
@@ -148,7 +145,6 @@ const pendingDirectoryEntries = new Map<
 >();
 const rendererListeners = new Map<string, Set<IpcListener>>();
 const messagePorts = new Map<string, MessagePort>();
-let reloadOnReconnect = false;
 
 function unimplemented(method: string): never {
   debugger;
@@ -221,22 +217,8 @@ function flushOutboundQueue(): void {
   }
 }
 
-function scheduleReconnect(): void {
-  if (reconnectTimeoutId !== null) {
-    return;
-  }
-  reconnectTimeoutId = window.setTimeout(() => {
-    reconnectTimeoutId = null;
-    ensureSocket();
-  }, RECONNECT_DELAY_MS);
-}
-
 function ensureSocket(): void {
-  if (
-    socket &&
-    (socket.readyState === WebSocket.OPEN ||
-      socket.readyState === WebSocket.CONNECTING)
-  ) {
+  if (socket) {
     return;
   }
 
@@ -244,11 +226,6 @@ function ensureSocket(): void {
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
   socket.addEventListener("open", () => {
-    if (reloadOnReconnect) {
-      reloadOnReconnect = false;
-      window.location.reload();
-      return;
-    }
     flushOutboundQueue();
   });
   socket.addEventListener("message", (event) => {
@@ -263,18 +240,11 @@ function ensureSocket(): void {
     }
   });
   socket.addEventListener("close", () => {
-    if (messagePorts.size > 0) {
-      reloadOnReconnect = true;
-      for (const port of messagePorts.values()) {
-        port.close();
-      }
-      messagePorts.clear();
-      outboundQueue.length = 0;
+    for (const port of messagePorts.values()) {
+      port.close();
     }
-    scheduleReconnect();
-  });
-  socket.addEventListener("error", () => {
-    scheduleReconnect();
+    messagePorts.clear();
+    outboundQueue.length = 0;
   });
 }
 
