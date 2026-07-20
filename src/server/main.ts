@@ -492,34 +492,18 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
       ports: WebSocketMessagePort[],
       sourceUrl?: string,
     ): void => {
-      let attemptsRemaining = 1_000;
-      const attempt = (): void => {
-        if (socket.readyState !== WebSocket.OPEN) {
-          for (const port of ports) {
-            port.disconnect();
-          }
-          return;
-        }
+      const handler = bridgeState.handleRendererPostMessage;
+      if (handler) {
+        handler(channel, message, ports, sourceUrl);
+        return;
+      }
 
-        const handler = bridgeState.handleRendererPostMessage;
-        if (handler) {
-          handler(channel, message, ports, sourceUrl);
-          return;
-        }
-
-        attemptsRemaining -= 1;
-        if (attemptsRemaining <= 0) {
-          console.error(
-            `[ipc-bridge] no ipcMain postMessage handler for channel ${channel}`,
-          );
-          for (const port of ports) {
-            port.close();
-          }
-          return;
-        }
-        setTimeout(attempt, 10);
-      };
-      attempt();
+      console.error(
+        `[ipc-bridge] no ipcMain postMessage handler for channel ${channel}`,
+      );
+      for (const port of ports) {
+        port.close();
+      }
     };
 
     socket.on("close", () => {
