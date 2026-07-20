@@ -16,19 +16,13 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.707.30751";
-    codexZip = pkgs.fetchurl {
-      url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-+BAjhFrlbruYs0nkvIHXtJBTNWSJfOoOpPxKFxBPOJI=";
-    };
-    codex = self.packages.${system}.codex;
   in
   {
     devShells.default = pkgs.mkShell {
-      HOSTED_CODEX_APP_ZIP = codexZip;
+      HOSTED_CODEX_APP_ZIP = self.packages.${system}.codexZip;
 
       packages = [
-        codex
+        self.packages.${system}.codex
         pkgs.nodejs
         pkgs.unzip
         pkgs.patch
@@ -89,7 +83,7 @@ flake-utils.lib.eachSystem systems (
       in
       {
         default = pkgs.buildNpmPackage {
-          HOSTED_CODEX_APP_ZIP = codexZip;
+          HOSTED_CODEX_APP_ZIP = self.packages.${system}.codexZip;
 
           pname = "codex-web";
           version = "1.0.0";
@@ -109,6 +103,11 @@ flake-utils.lib.eachSystem systems (
 
           preBuild = ''
             patchShebangs scripts
+          '';
+
+          postBuild = ''
+            substituteInPlace src/server/main.js \
+              --replace-fail '@resourcesPath@' '${self.packages.${system}.codex_resources}'
           '';
 
           preInstall = ''

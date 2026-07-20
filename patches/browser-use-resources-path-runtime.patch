@@ -1,0 +1,14 @@
+--- a/.vite/build/main-kSlb32Yb.js
++++ b/.vite/build/main-kSlb32Yb.js
+@@ -968,7 +968,10 @@
+   resolveBundledPath: a,
+   resourcesPath: o,
+ }) {
+-  if (t || n === `win32`) return a(o);
++  if (o != null) {
++    let s = a(o);
++    if (t || n === `win32` || Gt(s)) return s;
++  } else if (t || n === `win32`) return a(o);
+   let s = i.default.join(r, ...e);
+   return Gt(s) ? s : null;
+ }
