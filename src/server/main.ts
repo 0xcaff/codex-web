@@ -124,7 +124,6 @@ type BridgedMessagePort = {
 class WebSocketMessagePort implements BridgedMessagePort {
   private closed = false;
   private readonly listeners = new Map<string, Set<MessagePortListener>>();
-  private readonly queuedMessages: unknown[] = [];
 
   constructor(
     private readonly portId: string,
@@ -136,12 +135,6 @@ class WebSocketMessagePort implements BridgedMessagePort {
     const listeners = this.listeners.get(event) ?? new Set();
     listeners.add(listener);
     this.listeners.set(event, listeners);
-
-    if (event === "message" && this.queuedMessages.length > 0) {
-      for (const data of this.queuedMessages.splice(0)) {
-        listener({ data });
-      }
-    }
 
     return this;
   }
@@ -175,7 +168,6 @@ class WebSocketMessagePort implements BridgedMessagePort {
     }
     const listeners = this.listeners.get("message");
     if (!listeners || listeners.size === 0) {
-      this.queuedMessages.push(data);
       return;
     }
     for (const listener of listeners) {
@@ -183,15 +175,11 @@ class WebSocketMessagePort implements BridgedMessagePort {
     }
   }
 
-  receiveClose(): void {
+  disconnect(): void {
     if (!this.markClosed()) {
       return;
     }
     this.emit("close");
-  }
-
-  disconnect(): void {
-    this.receiveClose();
   }
 
   private emit(event: string, ...args: unknown[]): void {
@@ -205,7 +193,6 @@ class WebSocketMessagePort implements BridgedMessagePort {
       return false;
     }
     this.closed = true;
-    this.queuedMessages.length = 0;
     this.onClosed();
     return true;
   }
@@ -481,11 +468,6 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     sockets.add(socket);
 
     const messagePorts = new Map<string, WebSocketMessagePort>();
-    const sendToRenderer = (message: MainToRendererMessage): void => {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(message));
-      }
-    };
     const dispatchPostMessage = (
       channel: string,
       message: unknown,
@@ -541,7 +523,11 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
           }
           const port = new WebSocketMessagePort(
             portId,
-            sendToRenderer,
+            (message) => {
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(message));
+              }
+            },
             () => messagePorts.delete(portId),
           );
           messagePorts.set(portId, port);
@@ -563,7 +549,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
       }
 
       if (message.type === "message-port-close") {
-        messagePorts.get(message.portId)?.receiveClose();
+        messagePorts.get(message.portId)?.disconnect();
         return;
       }
 
