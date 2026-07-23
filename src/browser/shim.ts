@@ -559,6 +559,10 @@ export const ipcRenderer = {
       };
     }
 
+    if (channel === "codex_desktop:get-initial-sidebar-bootstrap") {
+      return null;
+    }
+
     if (channel === "codex_desktop:get-system-theme-variant") {
       return themeMediaQuery.matches ? "dark" : "light";
     }

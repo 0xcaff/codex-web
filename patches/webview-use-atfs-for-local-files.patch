@@ -1,11 +1,11 @@
---- a/webview/assets/app-initial~app-main~onboarding-page~hotkey-window-thread-page~quick-chat-window-page~chatg~k0ede4gb-BfuFOm2j.js
-+++ b/webview/assets/app-initial~app-main~onboarding-page~hotkey-window-thread-page~quick-chat-window-page~chatg~k0ede4gb-BfuFOm2j.js
-@@ -120437,7 +120437,7 @@
+--- a/webview/assets/app-initial-BTphDPeq.js
++++ b/webview/assets/app-initial-BTphDPeq.js
+@@ -338532,7 +338532,7 @@
          })));
    });
- function yF(e) {
--  return `${Dot}${Eot(e)}`;
-+  return Eot(e);
+ function wta(e) {
+-  return `${Dta}${Eta(e)}`;
++  return Eta(e);
  }
- function Tot(e) {
-   return Eot(e);
+ function Tta(e) {
+   return Eta(e);
