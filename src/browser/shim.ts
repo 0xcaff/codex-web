@@ -381,6 +381,14 @@ electronShim.overrideAdapter = {
       };
     }
 
+    if (evaluation.name === "2380644311") {
+      // Realtime voice.
+      return {
+        ...evaluation,
+        value: true,
+      };
+    }
+
     return null;
   },
 };
