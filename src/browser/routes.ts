@@ -1,11 +1,4 @@
 export function mapBrowserPathToInitialRoute(pathname: string, search: string) {
-  const initialRoute = new URLSearchParams(search).get("initialRoute");
-  if (initialRoute?.startsWith("/")) {
-    return {
-      memoryPath: initialRoute,
-    };
-  }
-
   if (pathname === "/share/receive" && search) {
     const params = new URLSearchParams(search);
 
