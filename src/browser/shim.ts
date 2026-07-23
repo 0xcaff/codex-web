@@ -360,37 +360,6 @@ type WebNotificationPayload = {
   title: string;
 };
 
-function installWebNotificationPermissionRequest(): void {
-  if (
-    typeof Notification === "undefined" ||
-    Notification.permission !== "default"
-  ) {
-    return;
-  }
-
-  const requestFromUserGesture = (event: Event) => {
-    if (!event.isTrusted) {
-      return;
-    }
-
-    window.removeEventListener("click", requestFromUserGesture, true);
-    window.removeEventListener("keydown", requestFromUserGesture, true);
-    void Notification.requestPermission()
-      .then((permission) => {
-        console.log("[codex-web] notification permission", permission);
-      })
-      .catch((error) => {
-        console.error(
-          "[codex-web] failed to request notification permission",
-          error,
-        );
-      });
-  };
-
-  window.addEventListener("click", requestFromUserGesture, true);
-  window.addEventListener("keydown", requestFromUserGesture, true);
-}
-
 async function showWebNotification(
   notification: WebNotificationPayload,
 ): Promise<void> {
@@ -419,8 +388,6 @@ async function showWebNotification(
     console.error("[codex-web] failed to show notification", error);
   }
 }
-
-installWebNotificationPermissionRequest();
 
 function handleNotificationShowMessage(value: unknown): void {
   if (typeof value !== "string") {
