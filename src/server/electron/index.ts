@@ -33,25 +33,31 @@ type IpcMainEvent = {
 
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: {
-    type: "ipc-main-event";
-    channel: string;
-    args: unknown[];
+    type: "ipc-main-event" | "browser-window-open" | "browser-window-close";
+    channel?: string;
+    args?: unknown[];
+    targetWebContentsId?: number;
+    url?: string;
+    webContentsId?: number;
   }) => void;
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
+    sourceUrl: string,
+    sourceWebContentsId: number,
   ) => Promise<unknown>;
   handleRendererPostMessage?: (
     channel: string,
     message: unknown,
     ports: StubMessagePort[],
-    sourceUrl?: string,
+    sourceUrl: string,
+    sourceWebContentsId: number,
   ) => void;
   handleRendererSend?: (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
+    sourceUrl: string,
+    sourceWebContentsId: number,
   ) => void;
 };
 
@@ -185,15 +191,20 @@ const rendererWebContents: StubWebContents = {
       type: "ipc-main-event",
       channel,
       args,
+      targetWebContentsId: rendererWebContents.id,
     });
   },
 };
 
-function createIpcMainEvent(ports: StubMessagePort[] = []): IpcMainEvent {
+function createIpcMainEvent(
+  ports: StubMessagePort[] = [],
+  sourceWebContentsId = rendererWebContents.id,
+): IpcMainEvent {
   const sender =
-    (BrowserWindow.fromWebContents(rendererWebContents)
+    (BrowserWindow.fromWebContents({ id: sourceWebContentsId })
       ?.webContents as unknown as StubWebContents | undefined) ??
     rendererWebContents;
+  BrowserWindow.notifyRendererConnected(sourceWebContentsId);
   const event: IpcMainEvent = {
     returnValue: undefined,
     processId: 1,
@@ -206,6 +217,7 @@ function createIpcMainEvent(ports: StubMessagePort[] = []): IpcMainEvent {
         type: "ipc-main-event",
         channel,
         args,
+        targetWebContentsId: sender.id,
       });
     },
   };
@@ -231,7 +243,11 @@ function createIpcMainStub(): {
 
   const pendingPostMessages = new Map<
     string,
-    Array<{ message: unknown; ports: StubMessagePort[] }>
+    Array<{
+      message: unknown;
+      ports: StubMessagePort[];
+      sourceWebContentsId: number;
+    }>
   >();
   const registeredPostMessageChannels = new Set<string>();
 
@@ -239,34 +255,43 @@ function createIpcMainStub(): {
     channel: string,
     message: unknown,
     ports: StubMessagePort[],
+    _sourceUrl: string,
+    sourceWebContentsId: number,
   ): void => {
     if (registeredPostMessageChannels.has(channel)) {
-      emitter.emit(channel, createIpcMainEvent(ports), message);
+      emitter.emit(
+        channel,
+        createIpcMainEvent(ports, sourceWebContentsId),
+        message,
+      );
       return;
     }
     const pending = pendingPostMessages.get(channel) ?? [];
-    pending.push({ message, ports });
+    pending.push({ message, ports, sourceWebContentsId });
     pendingPostMessages.set(channel, pending);
   };
 
   bridgeState.handleRendererInvoke = async (
     channel: string,
     args: unknown[],
+    _sourceUrl: string,
+    sourceWebContentsId: number,
   ): Promise<unknown> => {
     const handler = handlers.get(channel);
     if (!handler) {
       throw new Error(`[electron-main-stub] No ipcMain.handle for ${channel}`);
     }
-    const event = createIpcMainEvent();
+    const event = createIpcMainEvent([], sourceWebContentsId);
     return await Promise.resolve(handler(event, ...args));
   };
 
   bridgeState.handleRendererSend = (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
+    _sourceUrl: string,
+    sourceWebContentsId: number,
   ): void => {
-    const event = createIpcMainEvent();
+    const event = createIpcMainEvent([], sourceWebContentsId);
     emitter.emit(channel, event, ...args);
   };
 
@@ -277,8 +302,12 @@ function createIpcMainStub(): {
       const pending = pendingPostMessages.get(channel);
       if (pending) {
         pendingPostMessages.delete(channel);
-        for (const { message, ports } of pending) {
-          emitter.emit(channel, createIpcMainEvent(ports), message);
+        for (const { message, ports, sourceWebContentsId } of pending) {
+          emitter.emit(
+            channel,
+            createIpcMainEvent(ports, sourceWebContentsId),
+            message,
+          );
         }
       }
       return result;
@@ -421,6 +450,7 @@ class BrowserWindow {
   private bounds = { x: 0, y: 0, width: 1280, height: 820 };
   webContents: Record<string, unknown>;
   private readonly emitter: ReturnType<typeof createEmitterStub>;
+  private rendererConnected = false;
 
   constructor(...args: unknown[]) {
     log("new BrowserWindow", args);
@@ -447,7 +477,7 @@ class BrowserWindow {
         isDestroyed: (): boolean => this.destroyed,
         loadURL: async (url: string): Promise<void> => {
           log(`BrowserWindow#${this.id}.webContents.loadURL`, [url]);
-          (this.webContents.mainFrame as { url: string }).url = url;
+          this.setLoadedUrl(url);
         },
         loadFile: async (...loadFileArgs: unknown[]): Promise<void> => {
           log(`BrowserWindow#${this.id}.webContents.loadFile`, loadFileArgs);
@@ -468,6 +498,7 @@ class BrowserWindow {
             type: "ipc-main-event",
             channel,
             args,
+            targetWebContentsId: Number(this.webContents.id),
           });
         },
       } as Record<string, unknown>,
@@ -487,6 +518,9 @@ class BrowserWindow {
     BrowserWindow.focusedWindow = this;
     return new Proxy(this, {
       get: (target, prop) => {
+        if (prop === "then") {
+          return undefined;
+        }
         if (prop in target) {
           return target[prop as keyof typeof target];
         }
@@ -525,6 +559,23 @@ class BrowserWindow {
     );
   }
 
+  static notifyRendererConnected(webContentsId: number): void {
+    const window = BrowserWindow.getAllWindows().find(
+      (candidate) => candidate.webContents.id === webContentsId,
+    );
+    if (!window || window.rendererConnected) {
+      return;
+    }
+
+    window.rendererConnected = true;
+    (
+      window.webContents as {
+        emit: (event: string, ...args: unknown[]) => boolean;
+      }
+    ).emit("did-finish-load");
+    window.emitter.emit("ready-to-show");
+  }
+
   on(event: string, listener: StubListener): unknown {
     return this.emitter.on(event, listener);
   }
@@ -543,7 +594,21 @@ class BrowserWindow {
 
   async loadURL(url: string): Promise<void> {
     log(`BrowserWindow#${this.id}.loadURL`, [url]);
+    this.setLoadedUrl(url);
+  }
+
+  private setLoadedUrl(url: string): void {
     (this.webContents.mainFrame as { url: string }).url = url;
+    if (this.id === 1) {
+      return;
+    }
+
+    getIpcMainBridgeState().broadcastToRenderer?.({
+      type: "browser-window-open",
+      targetWebContentsId: rendererWebContents.id,
+      url,
+      webContentsId: Number(this.webContents.id),
+    });
   }
 
   close(): void {
@@ -557,6 +622,13 @@ class BrowserWindow {
   destroy(): void {
     log(`BrowserWindow#${this.id}.destroy`, []);
     this.destroyed = true;
+    if (this.id !== 1) {
+      getIpcMainBridgeState().broadcastToRenderer?.({
+        type: "browser-window-close",
+        targetWebContentsId: rendererWebContents.id,
+        webContentsId: Number(this.webContents.id),
+      });
+    }
     if (BrowserWindow.focusedWindow === this) {
       BrowserWindow.focusedWindow = null;
     }
