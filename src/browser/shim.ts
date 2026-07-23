@@ -620,7 +620,9 @@ export const ipcRenderer = {
         const portId = `message_port_${nextRequestId()}`;
         messagePorts.set(portId, transferable);
         transferable.addEventListener("message", (event) => {
-          handleNotificationShowMessage(event.data);
+          if (channel === "codex_desktop:connect-app-host") {
+            handleNotificationShowMessage(event.data);
+          }
           enqueueMessage({
             type: "message-port-message",
             portId,
