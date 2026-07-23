@@ -141,7 +141,7 @@ flake-utils.lib.eachSystem systems (
 
           postFixup = ''
             wrapProgram "$out/bin/codex-web" \
-              --set-default CODEX_CLI_PATH ${pkgs.lib.getExe' codex "codex"}
+              --set CODEX_CLI_PATH ${pkgs.lib.getExe' codex "codex"}
           '';
         };
 
