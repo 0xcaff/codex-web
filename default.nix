@@ -138,6 +138,11 @@ flake-utils.lib.eachSystem systems (
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
           '';
+
+          postFixup = ''
+            wrapProgram "$out/bin/codex-web" \
+              --set CODEX_CLI_PATH ${pkgs.lib.getExe' codex "codex"}
+          '';
         };
 
         codex_remote_proxy = pkgs.writeShellApplication {
