@@ -30,22 +30,19 @@ type RendererToMainMessage =
       channel: string;
       args: unknown[];
       sourceUrl: string;
-      sourceWebContentsId: number;
     }
   | {
       type: "ipc-renderer-send";
       channel: string;
       args: unknown[];
       sourceUrl: string;
-      sourceWebContentsId: number;
     }
   | {
       type: "ipc-renderer-post-message";
       channel: string;
       message: unknown;
       portIds: string[];
-      sourceUrl: string;
-      sourceWebContentsId: number;
+      sourceUrl?: string;
     }
   | {
       type: "message-port-message";
@@ -68,18 +65,6 @@ type MainToRendererMessage =
       type: "ipc-main-event";
       channel: string;
       args: unknown[];
-      targetWebContentsId?: number;
-    }
-  | {
-      type: "browser-window-open";
-      targetWebContentsId: number;
-      url: string;
-      webContentsId: number;
-    }
-  | {
-      type: "browser-window-close";
-      targetWebContentsId: number;
-      webContentsId: number;
     }
   | {
       type: "ipc-renderer-invoke-result";
@@ -240,25 +225,14 @@ function compareWorkspaceDirectoryEntries(
 
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: MainToRendererMessage) => void;
-  handleRendererInvoke?: (
-    channel: string,
-    args: unknown[],
-    sourceUrl: string,
-    sourceWebContentsId: number,
-  ) => Promise<unknown>;
+  handleRendererInvoke?: (channel: string, args: unknown[]) => Promise<unknown>;
   handleRendererPostMessage?: (
     channel: string,
     message: unknown,
     ports: BridgedMessagePort[],
-    sourceUrl: string,
-    sourceWebContentsId: number,
+    sourceUrl?: string,
   ) => void;
-  handleRendererSend?: (
-    channel: string,
-    args: unknown[],
-    sourceUrl: string,
-    sourceWebContentsId: number,
-  ) => void;
+  handleRendererSend?: (channel: string, args: unknown[]) => void;
 };
 
 function printUsage(): void {
@@ -500,12 +474,11 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
       channel: string,
       message: unknown,
       ports: WebSocketMessagePort[],
-      sourceUrl: string,
-      sourceWebContentsId: number,
+      sourceUrl?: string,
     ): void => {
       const handler = bridgeState.handleRendererPostMessage;
       if (handler) {
-        handler(channel, message, ports, sourceUrl, sourceWebContentsId);
+        handler(channel, message, ports, sourceUrl);
         return;
       }
 
@@ -535,12 +508,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
       }
 
       if (message.type === "ipc-renderer-send") {
-        bridgeState.handleRendererSend?.(
-          message.channel,
-          message.args,
-          message.sourceUrl,
-          message.sourceWebContentsId,
-        );
+        bridgeState.handleRendererSend?.(message.channel, message.args);
         return;
       }
 
@@ -573,7 +541,6 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
           message.message,
           ports,
           message.sourceUrl,
-          message.sourceWebContentsId,
         );
         return;
       }
@@ -619,12 +586,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
       if (message.type === "ipc-renderer-invoke") {
         const { channel, requestId, args } = message;
         Promise.resolve(
-          bridgeState.handleRendererInvoke?.(
-            channel,
-            args,
-            message.sourceUrl,
-            message.sourceWebContentsId,
-          ) ??
+          bridgeState.handleRendererInvoke?.(channel, args) ??
             Promise.reject(
               new Error(
                 `[ipc-bridge] no ipcMain.handle for channel ${channel}`,
