@@ -165,39 +165,26 @@ export function emitRendererEvent(channel: string, args: unknown[]): void {
   }
 }
 
-type BrowserWindowFocusChangeSource = "browser-event" | "focus-request";
-
 let lastBrowserWindowFocusState: boolean | null = null;
 
 function getBrowserWindowFocusState(): boolean {
   return document.visibilityState === "visible" && document.hasFocus();
 }
 
-function emitBrowserWindowFocusChanged(
-  source: BrowserWindowFocusChangeSource,
-  force = false,
-): void {
-  const isFocused = getBrowserWindowFocusState();
-  if (!force && isFocused === lastBrowserWindowFocusState) {
-    return;
-  }
-
-  lastBrowserWindowFocusState = isFocused;
-  console.log("[codex-web] electron-window-focus-changed", {
-    isFocused,
-    source,
-  });
-  emitRendererEvent("codex_desktop:message-for-view", [
-    {
-      type: "electron-window-focus-changed",
-      isFocused,
-    },
-  ]);
-}
-
 function installBrowserWindowFocusListeners(): void {
   const handleFocusChange = () => {
-    emitBrowserWindowFocusChanged("browser-event");
+    const isFocused = getBrowserWindowFocusState();
+    if (isFocused === lastBrowserWindowFocusState) {
+      return;
+    }
+
+    lastBrowserWindowFocusState = isFocused;
+    emitRendererEvent("codex_desktop:message-for-view", [
+      {
+        type: "electron-window-focus-changed",
+        isFocused,
+      },
+    ]);
   };
 
   window.addEventListener("focus", handleFocusChange);
@@ -419,7 +406,6 @@ function handleNotificationShowMessage(value: unknown): void {
         typeof notification.body === "string") &&
       (notification.id === undefined || typeof notification.id === "string")
     ) {
-      console.log("[codex-web] notifications.show", notification);
       void showWebNotification({
         body: notification.body,
         id: notification.id,
@@ -554,7 +540,14 @@ export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     if (channel === "codex_desktop:message-from-view" && args.length === 1) {
       if (isElectronWindowFocusRequestMessage(args[0])) {
-        emitBrowserWindowFocusChanged("focus-request", true);
+        const isFocused = getBrowserWindowFocusState();
+        lastBrowserWindowFocusState = isFocused;
+        emitRendererEvent("codex_desktop:message-for-view", [
+          {
+            type: "electron-window-focus-changed",
+            isFocused,
+          },
+        ]);
         return Promise.resolve(undefined);
       }
 
