@@ -103,6 +103,7 @@ flake-utils.lib.eachSystem systems (
           npmPruneFlags = [ "--ignore-scripts" ];
 
           nativeBuildInputs = [
+            pkgs.makeWrapper
             pkgs.unzip
             pkgs.patch
           ];
@@ -136,6 +137,11 @@ flake-utils.lib.eachSystem systems (
             addon="$out/lib/node_modules/codex-web/node_modules/better-sqlite3"
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
+          '';
+
+          postFixup = ''
+            wrapProgram "$out/bin/codex-web" \
+              --set CODEX_CLI_PATH ${pkgs.lib.getExe' codex "codex"}
           '';
         };
 
