@@ -193,6 +193,35 @@ export function emitRendererEvent(channel: string, args: unknown[]): void {
   }
 }
 
+let lastBrowserWindowFocusState: boolean | null = null;
+
+function getBrowserWindowFocusState(): boolean {
+  return document.visibilityState === "visible" && document.hasFocus();
+}
+
+function installBrowserWindowFocusListeners(): void {
+  const handleFocusChange = () => {
+    const isFocused = getBrowserWindowFocusState();
+    if (isFocused === lastBrowserWindowFocusState) {
+      return;
+    }
+
+    lastBrowserWindowFocusState = isFocused;
+    emitRendererEvent("codex_desktop:message-for-view", [
+      {
+        type: "electron-window-focus-changed",
+        isFocused,
+      },
+    ]);
+  };
+
+  window.addEventListener("focus", handleFocusChange);
+  window.addEventListener("blur", handleFocusChange);
+  document.addEventListener("visibilitychange", handleFocusChange);
+}
+
+installBrowserWindowFocusListeners();
+
 function handleIncomingMessage(message: MainToRendererMessage): void {
   if (
     "targetWebContentsId" in message &&
@@ -393,6 +422,84 @@ export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+type WebNotificationPayload = {
+  body?: string;
+  id?: string;
+  kind: string;
+  title: string;
+};
+
+async function showWebNotification(
+  notification: WebNotificationPayload,
+): Promise<void> {
+  if (typeof Notification === "undefined") {
+    console.warn("[codex-web] Web Notifications API unavailable");
+    return;
+  }
+
+  try {
+    const permission = Notification.permission;
+    if (permission !== "granted") {
+      console.warn("[codex-web] notification permission", permission);
+      return;
+    }
+
+    const webNotification = new Notification(notification.title, {
+      body: notification.body,
+      tag: notification.id,
+    });
+    webNotification.onclick = () => {
+      window.focus();
+      webNotification.close();
+    };
+    console.log("[codex-web] notification shown", notification);
+  } catch (error) {
+    console.error("[codex-web] failed to show notification", error);
+  }
+}
+
+function handleNotificationShowMessage(value: unknown): void {
+  if (typeof value !== "string") {
+    return;
+  }
+
+  try {
+    const message = JSON.parse(value) as unknown;
+    if (
+      !Array.isArray(message) ||
+      message[0] !== "push" ||
+      !Array.isArray(message[1])
+    ) {
+      return;
+    }
+
+    const pipeline = message[1];
+    const method = pipeline[2];
+    const args = pipeline[3];
+    const notification = Array.isArray(args) ? args[0] : null;
+    if (
+      pipeline[0] === "pipeline" &&
+      Array.isArray(method) &&
+      method[0] === "show" &&
+      isRecord(notification) &&
+      typeof notification.kind === "string" &&
+      typeof notification.title === "string" &&
+      (notification.body === undefined ||
+        typeof notification.body === "string") &&
+      (notification.id === undefined || typeof notification.id === "string")
+    ) {
+      void showWebNotification({
+        body: notification.body,
+        id: notification.id,
+        kind: notification.kind,
+        title: notification.title,
+      });
+    }
+  } catch {
+    // Ignore non-JSON MessagePort traffic.
+  }
+}
+
 function isUnhandledAddWorkspaceRootOptionMessage(value: unknown): value is {
   root?: unknown;
   type: "electron-add-new-workspace-root-option";
@@ -413,6 +520,12 @@ function isOpenInBrowserMessage(value: unknown): value is {
     value.type === "open-in-browser" &&
     typeof value.url === "string"
   );
+}
+
+function isElectronWindowFocusRequestMessage(value: unknown): value is {
+  type: "electron-window-focus-request";
+} {
+  return isRecord(value) && value.type === "electron-window-focus-request";
 }
 
 function requestWorkspaceDirectoryEntries(
@@ -516,6 +629,18 @@ electronShim.onMemoryNavigationChanged = (navigation) => {
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     if (channel === "codex_desktop:message-from-view" && args.length === 1) {
+      if (isElectronWindowFocusRequestMessage(args[0])) {
+        const isFocused = getBrowserWindowFocusState();
+        lastBrowserWindowFocusState = isFocused;
+        emitRendererEvent("codex_desktop:message-for-view", [
+          {
+            type: "electron-window-focus-changed",
+            isFocused,
+          },
+        ]);
+        return Promise.resolve(undefined);
+      }
+
       if (isOpenInBrowserMessage(args[0])) {
         window.open(args[0].url, "_blank", "noopener,noreferrer");
       }
@@ -587,6 +712,9 @@ export const ipcRenderer = {
         const portId = `message_port_${nextRequestId()}`;
         messagePorts.set(portId, transferable);
         transferable.addEventListener("message", (event) => {
+          if (channel === "codex_desktop:connect-app-host") {
+            handleNotificationShowMessage(event.data);
+          }
           enqueueMessage({
             type: "message-port-message",
             portId,
