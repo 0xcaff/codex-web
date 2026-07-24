@@ -1,0 +1,37 @@
+--- a/webview/assets/app-initial-BTphDPeq.js
++++ b/webview/assets/app-initial-BTphDPeq.js
+@@ -150109,7 +150109,7 @@
+             s = await this.listRecentThreads({
+               limit: i ? Math.min(a, 100) : a,
+               cursor: null,
+-              background: i,
++              background: !1,
+             });
+           if (s.data.length < a && s.nextCursor != null) {
+             let e = [...s.data],
+@@ -150203,7 +150203,7 @@
+               r,
+               n
+                 ? { priority: `background`, source: `recent_threads` }
+-                : { source: `recent_threads` },
++                : { priority: `critical`, source: `recent_threads` },
+             );
+           return { ...i, data: i.data.filter(ddn) };
+         }
+@@ -193455,7 +193455,7 @@
+   (Fu(), bg(), oS());
+ });
+ function x8n() {
+-  return wHn() ? { priority: `critical` } : {};
++  return { priority: `critical` };
+ }
+ var S8n = e(() => {
+   eT();
+@@ -236672,6 +236672,7 @@
+                 includeHidden: !0,
+                 cursor: null,
+                 limit: i,
++                priority: `critical`,
+               }),
+             select: ({ data: n }) =>
+               jJr({
