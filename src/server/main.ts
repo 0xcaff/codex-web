@@ -23,6 +23,31 @@ type ServerOptions = {
   port: number;
 };
 
+const HASHED_ASSET_FILENAME_PATTERNS = [
+  /-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/,
+  /\.[a-z0-9]{10}\.[A-Za-z0-9]+$/,
+];
+const STABLE_ASSET_FILENAMES = new Set([
+  "dotnet.js",
+  "preload.js",
+  "preload.js.map",
+  "pwa-icon-512.png",
+]);
+const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
+const REVALIDATE_CACHE_CONTROL = "public, max-age=0";
+
+function cacheControlForWebviewFile(filePath: string): string {
+  const filename = path.basename(filePath);
+  const isAsset = path.basename(path.dirname(filePath)) === "assets";
+  const hasContentHash = HASHED_ASSET_FILENAME_PATTERNS.some((pattern) =>
+    pattern.test(filename),
+  );
+
+  return isAsset && !STABLE_ASSET_FILENAMES.has(filename) && hasContentHash
+    ? IMMUTABLE_ASSET_CACHE_CONTROL
+    : REVALIDATE_CACHE_CONTROL;
+}
+
 type RendererToMainMessage =
   | {
       type: "ipc-renderer-invoke";
@@ -426,6 +451,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   await app.register(fastifyStatic, {
     root: path.resolve(__dirname, "../../scratch/asar/webview"),
     prefix: "/",
+    cacheControl: false,
+    setHeaders(response, filePath) {
+      response.setHeader("Cache-Control", cacheControlForWebviewFile(filePath));
+    },
   });
 
   app.get("/", async (_request, reply) => {
