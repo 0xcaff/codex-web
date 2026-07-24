@@ -23,25 +23,22 @@ type ServerOptions = {
   port: number;
 };
 
-const HASHED_ASSET_FILENAME_PATTERNS = [
-  /-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/,
-  /\.[a-z0-9]{10}\.[A-Za-z0-9]+$/,
-];
-const STABLE_ASSET_FILENAMES = new Set([
-  "dotnet.js",
-  "preload.js",
-  "preload.js.map",
-  "pwa-icon-512.png",
-]);
-
 function cacheControlForWebviewFile(filePath: string): string {
   const filename = path.basename(filePath);
   const isAsset = path.basename(path.dirname(filePath)) === "assets";
-  const hasContentHash = HASHED_ASSET_FILENAME_PATTERNS.some((pattern) =>
-    pattern.test(filename),
-  );
+  const hasContentHash = [
+    /-[A-Za-z0-9_-]{8}\.[A-Za-z0-9]+$/,
+    /\.[a-z0-9]{10}\.[A-Za-z0-9]+$/,
+  ].some((pattern) => pattern.test(filename));
 
-  return isAsset && !STABLE_ASSET_FILENAMES.has(filename) && hasContentHash
+  return isAsset &&
+    !new Set([
+      "dotnet.js",
+      "preload.js",
+      "preload.js.map",
+      "pwa-icon-512.png",
+    ]).has(filename) &&
+    hasContentHash
     ? "public, max-age=31536000, immutable"
     : "public, max-age=0";
 }
