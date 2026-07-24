@@ -39,6 +39,7 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-sta
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prioritize-startup-requests.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prompt-search-param.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/preload-disable-device-check.patch
+patch --batch --forward --strip 1 --directory scratch/asar < patches/main-realtime-voice-launch-timeout.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
 rm -rf scratch/asar/node_modules/better-sqlite3

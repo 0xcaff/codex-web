@@ -15,16 +15,25 @@ type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
 type RendererToMainMessage =
   | {
+      type: "renderer-connected";
+      sourceUrl: string;
+      sourceWebContentsId: number;
+    }
+  | {
       type: "ipc-renderer-invoke";
       requestId: string;
       channel: string;
       args: unknown[];
+      sourceUrl: string;
+      sourceWebContentsId: number;
     }
   | {
       type: "ipc-renderer-post-message";
       channel: string;
       message: unknown;
       portIds: string[];
+      sourceUrl: string;
+      sourceWebContentsId: number;
     }
   | {
       type: "message-port-message";
@@ -39,6 +48,8 @@ type RendererToMainMessage =
       type: "ipc-renderer-send";
       channel: string;
       args: unknown[];
+      sourceUrl: string;
+      sourceWebContentsId: number;
     }
   | {
       type: "workspace-directory-entries-request";
@@ -52,6 +63,18 @@ type MainToRendererMessage =
       type: "ipc-main-event";
       channel: string;
       args: unknown[];
+      targetWebContentsId?: number;
+    }
+  | {
+      type: "browser-window-open";
+      targetWebContentsId: number;
+      url: string;
+      webContentsId: number;
+    }
+  | {
+      type: "browser-window-close";
+      targetWebContentsId: number;
+      webContentsId: number;
     }
   | {
       type: "ipc-renderer-invoke-result";
@@ -88,6 +111,16 @@ type MainToRendererMessage =
     };
 
 const RECONNECT_DELAY_MS = 1_000;
+const PRIMARY_WEB_CONTENTS_ID = 1_001;
+const webContentsIdParam = "__codexWebContentsId";
+const parsedWebContentsId = Number(
+  new URLSearchParams(window.location.search).get(webContentsIdParam),
+);
+const sourceWebContentsId =
+  Number.isInteger(parsedWebContentsId) && parsedWebContentsId > 0
+    ? parsedWebContentsId
+    : PRIMARY_WEB_CONTENTS_ID;
+const browserWindowFrames = new Map<number, HTMLIFrameElement>();
 
 type MemoryNavigationChange = {
   action: "POP" | "PUSH" | "REPLACE";
@@ -195,6 +228,24 @@ function installBrowserWindowFocusListeners(): void {
 installBrowserWindowFocusListeners();
 
 function handleIncomingMessage(message: MainToRendererMessage): void {
+  if (
+    "targetWebContentsId" in message &&
+    message.targetWebContentsId !== sourceWebContentsId
+  ) {
+    return;
+  }
+
+  if (message.type === "browser-window-open") {
+    openBrowserWindowFrame(message.webContentsId, message.url);
+    return;
+  }
+
+  if (message.type === "browser-window-close") {
+    browserWindowFrames.get(message.webContentsId)?.remove();
+    browserWindowFrames.delete(message.webContentsId);
+    return;
+  }
+
   if (message.type === "ipc-main-event") {
     emitRendererEvent(message.channel, message.args);
     return;
@@ -240,6 +291,40 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
   }
 }
 
+function openBrowserWindowFrame(
+  webContentsId: number,
+  electronUrl: string,
+): void {
+  if (browserWindowFrames.has(webContentsId)) {
+    return;
+  }
+
+  const sourceUrl = new URL(electronUrl);
+  const frameUrl = new URL("/", window.location.origin);
+  for (const name of ["initialRoute", "mcpAppSandboxDevtools"]) {
+    const value = sourceUrl.searchParams.get(name);
+    if (value !== null) {
+      frameUrl.searchParams.set(name, value);
+    }
+  }
+  frameUrl.searchParams.set(webContentsIdParam, String(webContentsId));
+
+  const frame = document.createElement("iframe");
+  frame.src = frameUrl.toString();
+  frame.allow = "microphone; autoplay";
+  frame.dataset.codexBrowserWindow = String(webContentsId);
+  Object.assign(frame.style, {
+    border: "0",
+    height: "720px",
+    left: "-10000px",
+    position: "fixed",
+    top: "0",
+    width: "480px",
+  });
+  browserWindowFrames.set(webContentsId, frame);
+  document.documentElement.append(frame);
+}
+
 function flushOutboundQueue(): void {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     return;
@@ -272,6 +357,13 @@ function ensureSocket(): void {
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
   socket.addEventListener("open", () => {
+    socket?.send(
+      JSON.stringify({
+        type: "renderer-connected",
+        sourceUrl: window.location.href,
+        sourceWebContentsId,
+      } satisfies RendererToMainMessage),
+    );
     flushOutboundQueue();
   });
   socket.addEventListener("message", (event) => {
@@ -317,6 +409,8 @@ function invokeMain(channel: string, args: unknown[]): Promise<unknown> {
       requestId,
       channel,
       args,
+      sourceUrl: window.location.href,
+      sourceWebContentsId,
     });
   });
 }
@@ -494,6 +588,14 @@ electronShim.overrideAdapter = {
       };
     }
 
+    if (evaluation.name === "2380644311") {
+      // Realtime voice.
+      return {
+        ...evaluation,
+        value: true,
+      };
+    }
+
     return null;
   },
 };
@@ -602,6 +704,8 @@ export const ipcRenderer = {
       type: "ipc-renderer-send",
       channel,
       args,
+      sourceUrl: window.location.href,
+      sourceWebContentsId,
     });
   },
   postMessage(
@@ -642,6 +746,8 @@ export const ipcRenderer = {
         channel,
         message,
         portIds,
+        sourceUrl: window.location.href,
+        sourceWebContentsId,
       });
       return;
     }
@@ -650,6 +756,8 @@ export const ipcRenderer = {
       type: "ipc-renderer-send",
       channel,
       args: [message],
+      sourceUrl: window.location.href,
+      sourceWebContentsId,
     });
   },
   sendSync(channel: string, ..._args: unknown[]): unknown {
