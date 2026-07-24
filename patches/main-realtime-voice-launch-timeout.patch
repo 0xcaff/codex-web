@@ -1,0 +1,11 @@
+--- a/.vite/build/main-DOHyf8yn.js
++++ b/.vite/build/main-DOHyf8yn.js
+@@ -85345,7 +85345,7 @@
+       this.controller.handleRendererReady(this.origin, e);
+     }
+   },
+-  sue = 3e4,
++  sue = 12e4,
+   cue = 1e4,
+   Z0 = new WeakMap(),
+   lue = class {
