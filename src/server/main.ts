@@ -33,8 +33,6 @@ const STABLE_ASSET_FILENAMES = new Set([
   "preload.js.map",
   "pwa-icon-512.png",
 ]);
-const IMMUTABLE_ASSET_CACHE_CONTROL = "public, max-age=31536000, immutable";
-const REVALIDATE_CACHE_CONTROL = "public, max-age=0";
 
 function cacheControlForWebviewFile(filePath: string): string {
   const filename = path.basename(filePath);
@@ -44,8 +42,8 @@ function cacheControlForWebviewFile(filePath: string): string {
   );
 
   return isAsset && !STABLE_ASSET_FILENAMES.has(filename) && hasContentHash
-    ? IMMUTABLE_ASSET_CACHE_CONTROL
-    : REVALIDATE_CACHE_CONTROL;
+    ? "public, max-age=31536000, immutable"
+    : "public, max-age=0";
 }
 
 type RendererToMainMessage =
