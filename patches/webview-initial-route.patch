@@ -1,40 +1,41 @@
---- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
-+++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
-@@ -90247,11 +90247,16 @@
+--- a/webview/assets/app-initial-BTphDPeq.js
++++ b/webview/assets/app-initial-BTphDPeq.js
+@@ -181872,11 +181872,16 @@
    unstable_useTransitions: i,
  }) {
-   let a = z4.useRef();
--  a.current ??= Ctt({ initialEntries: n, initialIndex: r, v5Compat: !0 });
-+  a.current ??= Ctt({
+   let a = Gw.useRef();
+-  a.current ??= kzn({ initialEntries: n, initialIndex: r, v5Compat: !0 });
++  a.current ??= kzn({
 +    initialEntries: n ?? [window.__ELECTRON_SHIM__.initialRoute],
 +    initialIndex: r,
 +    v5Compat: !0,
 +  });
    let o = a.current,
-     [s, c] = z4.useState({ action: o.action, location: o.location }),
-     l = z4.useCallback(
+     [s, c] = Gw.useState({ action: o.action, location: o.location }),
+     l = Gw.useCallback(
        (e) => {
 +        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-         i === !1 ? c(e) : z4.startTransition(() => c(e));
+         i === !1 ? c(e) : Gw.startTransition(() => c(e));
        },
        [i],
---- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~remote-conversation-~gjotggjg--gGzOgo3.js
-+++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~remote-conversation-~gjotggjg--gGzOgo3.js
-@@ -467,7 +467,7 @@
-       Wt(),
-       (rn = `app-shell-bottom-panel-launcher-visible`),
-       (an = 100),
--      (on = g(H, !0)),
-+      (on = g(H, window.__ELECTRON_SHIM__.initialSidebarState)),
-       (sn = g(H, !0)),
-       (cn = g(H, !1)),
-       (ln = g(H, !1, {
-@@ -510,7 +510,7 @@
+@@ -197825,7 +197830,7 @@
+       (gar = `app-shell-bottom-panel-launcher-visible`),
+       (_ar = `app-shell-file-tree-open`),
+       (yar = 100),
+-      (fO = Da(Q, !0)),
++      (fO = Da(Q, window.__ELECTRON_SHIM__.initialSidebarState)),
+       (bar = Da(Q, !0)),
+       (pO = Da(Q, !1)),
+       (xar = Da(Q, null)),
+@@ -197869,7 +197874,10 @@
            };
          },
        })),
--      (dn = g(H, () => new R(1))),
-+      (dn = g(H, () => new R(window.__ELECTRON_SHIM__.initialSidebarState))),
-       (fn = g(H, zt)),
-       (pn = v(rn, !0)),
-       (mn = g(G, !1)),
+-      (war = Da(Q, () => new qRe(1))),
++      (war = Da(
++        Q,
++        () => new qRe(window.__ELECTRON_SHIM__.initialSidebarState),
++      )),
+       (Tar = Da(Q, qir)),
+       (Ear = Hm(gar, !0)),
+       (mO = Da(ST, !1)),

@@ -1,0 +1,11 @@
+--- a/webview/assets/app-initial-BTphDPeq.js
++++ b/webview/assets/app-initial-BTphDPeq.js
+@@ -228611,7 +228611,7 @@
+     fe = (0, fM.useRef)(K.get()),
+     pe = (0, fM.useRef)(new Set()),
+     me = {
+-      "--spacing-token-safe-header-left": `${C.left / S + 6}px`,
++      "--spacing-token-safe-header-left": `0px`,
+       "--spacing-token-safe-header-right": `${C.right / S}px`,
+       width: `calc(100vw / var(--codex-window-zoom))`,
+       height: `calc(100vh / var(--codex-window-zoom))`,

@@ -440,8 +440,8 @@ class BrowserWindow {
         getURL: (): string => {
           log(`BrowserWindow#${this.id}.webContents.getURL`, []);
           return String(
-            (this.webContents.mainFrame as { url?: string } | undefined)
-              ?.url ?? "",
+            (this.webContents.mainFrame as { url?: string } | undefined)?.url ??
+              "",
           );
         },
         isDestroyed: (): boolean => this.destroyed,
@@ -502,10 +502,7 @@ class BrowserWindow {
 
   static getFocusedWindow(): BrowserWindow | null {
     log("BrowserWindow.getFocusedWindow", []);
-    if (
-      BrowserWindow.focusedWindow &&
-      !BrowserWindow.focusedWindow.destroyed
-    ) {
+    if (BrowserWindow.focusedWindow && !BrowserWindow.focusedWindow.destroyed) {
       return BrowserWindow.focusedWindow;
     }
     return BrowserWindow.getAllWindows()[0] ?? null;
@@ -873,6 +870,15 @@ const protocol = {
   },
 };
 function createSessionStub(label: string): {
+  cookies: {
+    get: (...args: unknown[]) => Promise<unknown[]>;
+    off: (event: string, listener: StubListener) => unknown;
+    on: (event: string, listener: StubListener) => unknown;
+    once: (event: string, listener: StubListener) => unknown;
+    remove: (...args: unknown[]) => Promise<void>;
+    removeListener: (event: string, listener: StubListener) => unknown;
+    set: (...args: unknown[]) => Promise<void>;
+  };
   getUserAgent: () => string;
   loadExtension: (extensionPath: string) => Promise<{
     id: string;
@@ -893,7 +899,24 @@ function createSessionStub(label: string): {
   };
 } {
   const emitter = createEmitterStub(label);
+  const cookiesEmitter = createEmitterStub(`${label}.cookies`);
   return {
+    cookies: {
+      async get(...args: unknown[]): Promise<unknown[]> {
+        log(`${label}.cookies.get`, args);
+        return [];
+      },
+      off: cookiesEmitter.off,
+      on: cookiesEmitter.on,
+      once: cookiesEmitter.once,
+      async remove(...args: unknown[]): Promise<void> {
+        log(`${label}.cookies.remove`, args);
+      },
+      removeListener: cookiesEmitter.removeListener,
+      async set(...args: unknown[]): Promise<void> {
+        log(`${label}.cookies.set`, args);
+      },
+    },
     async loadExtension(extensionPath: string): Promise<{
       id: string;
       name: string;
@@ -933,14 +956,19 @@ function createSessionStub(label: string): {
     },
   };
 }
-const partitionSessions = new Map<string, ReturnType<typeof createSessionStub>>();
+const partitionSessions = new Map<
+  string,
+  ReturnType<typeof createSessionStub>
+>();
 const session = {
   defaultSession: createSessionStub("session.defaultSession"),
   fromPartition(partition: string): ReturnType<typeof createSessionStub> {
     log("session.fromPartition", [partition]);
     let partitionSession = partitionSessions.get(partition);
     if (!partitionSession) {
-      partitionSession = createSessionStub(`session.fromPartition(${partition})`);
+      partitionSession = createSessionStub(
+        `session.fromPartition(${partition})`,
+      );
       partitionSessions.set(partition, partitionSession);
     }
     return partitionSession;

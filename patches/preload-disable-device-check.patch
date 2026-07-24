@@ -1,0 +1,12 @@
+--- a/.vite/build/preload.js
++++ b/.vite/build/preload.js
+@@ -268,8 +268,7 @@
+     getSentryInitOptions: () => E,
+     getAppSessionId: () => E.codexAppSessionId,
+     getBuildFlavor: () => D,
+-    isDeviceCheckSupported: () =>
+-      process.platform === `darwin` && process.arch === `arm64`,
++    isDeviceCheckSupported: () => false,
+     isIntelMacBuild: () =>
+       process.platform === `darwin` && process.arch === `x64`,
+     usesOwlAppShell: () => O,
