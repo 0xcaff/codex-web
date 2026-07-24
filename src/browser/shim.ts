@@ -575,9 +575,6 @@ ensureSocket();
 
 export const contextBridge = {
   exposeInMainWorld(_key: string, _api: unknown): void {
-    if (_key === "electronBridge" && isRecord(_api)) {
-      Reflect.set(_api, "isDeviceCheckSupported", () => false);
-    }
     Reflect.set(window, _key, _api);
   },
 };
