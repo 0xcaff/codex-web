@@ -15,6 +15,11 @@ type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
 type RendererToMainMessage =
   | {
+      type: "renderer-connected";
+      sourceUrl: string;
+      sourceWebContentsId: number;
+    }
+  | {
       type: "ipc-renderer-invoke";
       requestId: string;
       channel: string;
@@ -352,6 +357,13 @@ function ensureSocket(): void {
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
   socket.addEventListener("open", () => {
+    socket?.send(
+      JSON.stringify({
+        type: "renderer-connected",
+        sourceUrl: window.location.href,
+        sourceWebContentsId,
+      } satisfies RendererToMainMessage),
+    );
     flushOutboundQueue();
   });
   socket.addEventListener("message", (event) => {

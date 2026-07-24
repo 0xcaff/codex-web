@@ -25,6 +25,11 @@ type ServerOptions = {
 
 type RendererToMainMessage =
   | {
+      type: "renderer-connected";
+      sourceUrl: string;
+      sourceWebContentsId: number;
+    }
+  | {
       type: "ipc-renderer-invoke";
       requestId: string;
       channel: string;
@@ -240,6 +245,10 @@ function compareWorkspaceDirectoryEntries(
 
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: MainToRendererMessage) => void;
+  handleRendererConnected?: (
+    sourceUrl: string,
+    sourceWebContentsId: number,
+  ) => void;
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
@@ -259,6 +268,10 @@ type IpcMainBridgeState = {
     sourceUrl: string,
     sourceWebContentsId: number,
   ) => void;
+  pendingRendererConnections?: Array<{
+    sourceUrl: string;
+    sourceWebContentsId: number;
+  }>;
 };
 
 function printUsage(): void {
@@ -531,6 +544,21 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
         message = JSON.parse(String(rawData)) as RendererToMainMessage;
       } catch (error) {
         console.error("[ipc-bridge] invalid JSON payload", error);
+        return;
+      }
+
+      if (message.type === "renderer-connected") {
+        const handler = bridgeState.handleRendererConnected;
+        if (handler) {
+          handler(message.sourceUrl, message.sourceWebContentsId);
+        } else {
+          const pending = bridgeState.pendingRendererConnections ?? [];
+          pending.push({
+            sourceUrl: message.sourceUrl,
+            sourceWebContentsId: message.sourceWebContentsId,
+          });
+          bridgeState.pendingRendererConnections = pending;
+        }
         return;
       }
 

@@ -40,6 +40,10 @@ type IpcMainBridgeState = {
     url?: string;
     webContentsId?: number;
   }) => void;
+  handleRendererConnected?: (
+    sourceUrl: string,
+    sourceWebContentsId: number,
+  ) => void;
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
@@ -59,6 +63,10 @@ type IpcMainBridgeState = {
     sourceUrl: string,
     sourceWebContentsId: number,
   ) => void;
+  pendingRendererConnections?: Array<{
+    sourceUrl: string;
+    sourceWebContentsId: number;
+  }>;
 };
 
 function getIpcMainBridgeState(): IpcMainBridgeState {
@@ -250,6 +258,20 @@ function createIpcMainStub(): {
     }>
   >();
   const registeredPostMessageChannels = new Set<string>();
+
+  bridgeState.handleRendererConnected = (
+    _sourceUrl: string,
+    sourceWebContentsId: number,
+  ): void => {
+    BrowserWindow.notifyRendererConnected(sourceWebContentsId);
+    BrowserWindow.syncRendererWindows(sourceWebContentsId);
+  };
+  const pendingRendererConnections =
+    bridgeState.pendingRendererConnections ?? [];
+  delete bridgeState.pendingRendererConnections;
+  for (const { sourceUrl, sourceWebContentsId } of pendingRendererConnections) {
+    bridgeState.handleRendererConnected(sourceUrl, sourceWebContentsId);
+  }
 
   bridgeState.handleRendererPostMessage = (
     channel: string,
@@ -574,6 +596,31 @@ class BrowserWindow {
       }
     ).emit("did-finish-load");
     window.emitter.emit("ready-to-show");
+  }
+
+  static syncRendererWindows(targetWebContentsId: number): void {
+    if (targetWebContentsId !== rendererWebContents.id) {
+      return;
+    }
+
+    for (const window of BrowserWindow.getAllWindows()) {
+      if (window.id === 1) {
+        continue;
+      }
+      const url = String(
+        (window.webContents.mainFrame as { url?: string } | undefined)?.url ??
+          "",
+      );
+      if (!url) {
+        continue;
+      }
+      getIpcMainBridgeState().broadcastToRenderer?.({
+        type: "browser-window-open",
+        targetWebContentsId,
+        url,
+        webContentsId: Number(window.webContents.id),
+      });
+    }
   }
 
   on(event: string, listener: StubListener): unknown {
