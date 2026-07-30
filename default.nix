@@ -37,7 +37,6 @@ flake-utils.lib.eachSystem systems (
 
     packages =
       let
-        nodeHeaders = pkgs.nodejs.dev;
         npmDeps = pkgs.importNpmLock {
           npmRoot = ./.;
         };
@@ -69,9 +68,9 @@ flake-utils.lib.eachSystem systems (
             runHook preBuild
 
             pushd node_modules/better-sqlite3
-            npm run build-release --offline --nodedir="${nodeHeaders}"
+            npm run build-release --offline --nodedir="${pkgs.nodejs.dev}"
             rm -rf build/Release/{.deps,obj,obj.target,test_extension.node}
-            find build -type f -exec ${pkgs.lib.getExe pkgs.removeReferencesTo} -t "${nodeHeaders}" {} \;
+            find build -type f -exec ${pkgs.lib.getExe pkgs.removeReferencesTo} -t "${pkgs.nodejs.dev}" {} \;
             popd
 
             runHook postBuild
@@ -114,10 +113,10 @@ flake-utils.lib.eachSystem systems (
 
             pushd node_modules/node-pty
             npm_config_build_from_source=true \
-              npm_config_nodedir="${nodeHeaders}" \
+              npm_config_nodedir="${pkgs.nodejs.dev}" \
               npm run install --offline
             chmod +x build/Release/spawn-helper
-            find build -type f -exec ${pkgs.lib.getExe pkgs.removeReferencesTo} -t "${nodeHeaders}" {} \;
+            find build -type f -exec ${pkgs.lib.getExe pkgs.removeReferencesTo} -t "${pkgs.nodejs.dev}" {} \;
             popd
 
             runHook postBuild
