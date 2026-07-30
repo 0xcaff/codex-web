@@ -86,6 +86,52 @@ flake-utils.lib.eachSystem systems (
             runHook postInstall
           '';
         };
+        nodePtyNative = pkgs.stdenv.mkDerivation {
+          pname = "node-pty-native";
+          version = "1.1.0";
+          src = pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = pkgs.lib.fileset.unions [
+              ./package.json
+              ./package-lock.json
+            ];
+          };
+
+          inherit npmDeps;
+
+          npmRebuildFlags = [ "--ignore-scripts" ];
+
+          nativeBuildInputs = [
+            pkgs.importNpmLock.npmConfigHook
+            pkgs.nodejs
+            pkgs.python3
+            pkgs.removeReferencesTo
+          ]
+          ++ pkgs.lib.optionals pkgs.stdenv.hostPlatform.isDarwin [ pkgs.cctools ];
+
+          buildPhase = ''
+            runHook preBuild
+
+            pushd node_modules/node-pty
+            npm_config_build_from_source=true \
+              npm_config_nodedir="${nodeSources}" \
+              npm run install --offline
+            chmod +x build/Release/spawn-helper
+            find build -type f -exec ${pkgs.lib.getExe pkgs.removeReferencesTo} -t "${nodeSources}" {} \;
+            popd
+
+            runHook postBuild
+          '';
+
+          installPhase = ''
+            runHook preInstall
+
+            mkdir -p "$out"
+            cp -R node_modules/node-pty/build "$out/build"
+
+            runHook postInstall
+          '';
+        };
       in
       {
         default = pkgs.buildNpmPackage {
@@ -109,6 +155,10 @@ flake-utils.lib.eachSystem systems (
 
           preBuild = ''
             patchShebangs scripts
+
+            addon="node_modules/node-pty"
+            rm -rf "$addon/build"
+            ln -s ${nodePtyNative}/build "$addon/build"
           '';
 
           preInstall = ''
@@ -136,6 +186,10 @@ flake-utils.lib.eachSystem systems (
             addon="$out/lib/node_modules/codex-web/node_modules/better-sqlite3"
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
+
+            addon="$out/lib/node_modules/codex-web/node_modules/node-pty"
+            rm -rf "$addon/build"
+            ln -s ${nodePtyNative}/build "$addon/build"
           '';
         };
 
