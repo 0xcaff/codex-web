@@ -22,6 +22,7 @@ export type WorkspaceDirectoryEntries = {
 
 const TITLE_ID = "codex-web-workspace-root-dialog-title";
 const DESCRIPTION_ID = "codex-web-workspace-root-dialog-description";
+const HOST_Z_INDEX = "var(--max-app-overlay-z-index, 10000)";
 const HOST_EVENT_NAMES = [
   "click",
   "focusin",
@@ -135,11 +136,10 @@ function WorkspaceRootDialog({
           "codex-dialog-overlay",
           "fixed",
           "inset-0",
-          "z-50",
         ].join(" ")}
         data-state="open"
         onClick={() => onClose(null)}
-        style={{ pointerEvents: "auto", zIndex: 2147483646 }}
+        style={{ pointerEvents: "auto", zIndex: 0 }}
       />
       <div
         aria-describedby={DESCRIPTION_ID}
@@ -149,7 +149,6 @@ function WorkspaceRootDialog({
           "codex-dialog",
           "left-1/2",
           "top-1/2",
-          "z-50",
           "-translate-x-1/2",
           "-translate-y-1/2",
           "outline-none",
@@ -168,7 +167,7 @@ function WorkspaceRootDialog({
         data-state="open"
         ref={dialogRef}
         role="dialog"
-        style={{ pointerEvents: "auto", zIndex: 2147483647 }}
+        style={{ pointerEvents: "auto", zIndex: 1 }}
         tabIndex={-1}
       >
         <form
@@ -565,7 +564,7 @@ function ensureHost(): HTMLElement {
       isolation: "isolate",
       pointerEvents: "none",
       position: "fixed",
-      zIndex: "2147483646",
+      zIndex: HOST_Z_INDEX,
     });
     for (const eventName of HOST_EVENT_NAMES) {
       element.addEventListener(eventName, stopHostEventPropagation);
