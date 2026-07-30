@@ -22,6 +22,16 @@ export type WorkspaceDirectoryEntries = {
 
 const TITLE_ID = "codex-web-workspace-root-dialog-title";
 const DESCRIPTION_ID = "codex-web-workspace-root-dialog-description";
+const HOST_EVENT_NAMES = [
+  "click",
+  "focusin",
+  "mousedown",
+  "pointerdown",
+] as const;
+
+function stopHostEventPropagation(event: Event): void {
+  event.stopPropagation();
+}
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -38,6 +48,9 @@ function WorkspaceRootDialog({
 }): React.ReactElement {
   const [directoryPath, setDirectoryPath] = useState<string | null>(null);
   const [userSelectedPath, setUserSelectedPath] = useState<string | null>(null);
+  const [pathInputValue, setPathInputValue] = useState("");
+  const [pathSubmitError, setPathSubmitError] = useState<string | null>(null);
+  const [isPathSubmitting, setIsPathSubmitting] = useState(false);
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
   const directoryQuery = useQuery({
@@ -54,20 +67,28 @@ function WorkspaceRootDialog({
     [directoryQuery.data?.entries],
   );
   const parentPath = directoryQuery.data?.parentPath ?? null;
-  const isBusy = directoryQuery.isFetching;
+  const isBusy = directoryQuery.isFetching || isPathSubmitting;
   const isLoading = directoryQuery.isPending && !directoryQuery.data;
-  const queryError = directoryQuery.isError
-    ? errorMessage(directoryQuery.error)
-    : null;
+  const queryError =
+    pathSubmitError ??
+    (directoryQuery.isError ? errorMessage(directoryQuery.error) : null);
 
   function navigateTo(nextDirectoryPath: string): void {
     setUserSelectedPath(nextDirectoryPath);
+    setPathInputValue(nextDirectoryPath);
+    setPathSubmitError(null);
     setDirectoryPath(nextDirectoryPath);
   }
 
   useEffect(() => {
     dialogRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (directoryQuery.data?.directoryPath) {
+      setPathInputValue(directoryQuery.data.directoryPath);
+    }
+  }, [directoryQuery.data?.directoryPath]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -83,14 +104,26 @@ function WorkspaceRootDialog({
 
   const selectedPath = userSelectedPath ?? directoryQuery.data?.directoryPath;
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ): Promise<void> {
     event.preventDefault();
-    if (selectedPath && !isBusy) {
-      onClose(selectedPath);
+    const requestedPath = pathInputValue.trim();
+    if (!requestedPath || isBusy) {
+      return;
+    }
+
+    setIsPathSubmitting(true);
+    setPathSubmitError(null);
+    try {
+      const result = await listDirectory(requestedPath);
+      setIsPathSubmitting(false);
+      onClose(result.directoryPath);
+    } catch (error) {
+      setPathSubmitError(errorMessage(error));
+      setIsPathSubmitting(false);
     }
   }
-
-  const selectedPathValue = selectedPath ?? "";
 
   return (
     <>
@@ -106,7 +139,7 @@ function WorkspaceRootDialog({
         ].join(" ")}
         data-state="open"
         onClick={() => onClose(null)}
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: "auto", zIndex: 2147483646 }}
       />
       <div
         aria-describedby={DESCRIPTION_ID}
@@ -135,7 +168,7 @@ function WorkspaceRootDialog({
         data-state="open"
         ref={dialogRef}
         role="dialog"
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: "auto", zIndex: 2147483647 }}
         tabIndex={-1}
       >
         <form
@@ -283,7 +316,9 @@ function WorkspaceRootDialog({
                         <UpIcon />
                       </button>
                       <input
-                        aria-label="Selected folder path"
+                        aria-label="Server folder path"
+                        autoCapitalize="none"
+                        autoCorrect="off"
                         className={[
                           "w-full",
                           "min-w-0",
@@ -297,15 +332,16 @@ function WorkspaceRootDialog({
                           "text-sm",
                           "text-token-input-foreground",
                           "outline-none",
-                          "disabled:bg-token-foreground/5",
-                          "disabled:text-token-text-secondary",
-                          "disabled:opacity-100",
+                          "focus:border-token-focus-border",
                         ].join(" ")}
-                        disabled
-                        readOnly
+                        onChange={(event) => {
+                          setPathInputValue(event.target.value);
+                          setUserSelectedPath(null);
+                          setPathSubmitError(null);
+                        }}
                         spellCheck={false}
-                        title={selectedPathValue}
-                        value={selectedPathValue}
+                        title={pathInputValue}
+                        value={pathInputValue}
                       />
                     </div>
 
@@ -386,6 +422,8 @@ function WorkspaceRootDialog({
                                 key={entry.path}
                                 onClick={() => {
                                   setUserSelectedPath(entry.path);
+                                  setPathInputValue(entry.path);
+                                  setPathSubmitError(null);
                                 }}
                                 onDoubleClick={() => {
                                   navigateTo(entry.path);
@@ -479,7 +517,7 @@ function WorkspaceRootDialog({
                     "text-base",
                     "leading-[18px]",
                   ].join(" ")}
-                  disabled={!selectedPath || isBusy}
+                  disabled={!pathInputValue.trim() || isBusy}
                   type="submit"
                 >
                   Add project
@@ -522,6 +560,16 @@ function ensureHost(): HTMLElement {
   if (!element) {
     element = document.createElement("div");
     element.id = DIALOG_ID;
+    Object.assign(element.style, {
+      inset: "0",
+      isolation: "isolate",
+      pointerEvents: "none",
+      position: "fixed",
+      zIndex: "2147483646",
+    });
+    for (const eventName of HOST_EVENT_NAMES) {
+      element.addEventListener(eventName, stopHostEventPropagation);
+    }
     document.body.append(element);
   }
   return element;
