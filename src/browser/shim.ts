@@ -10,6 +10,10 @@ import {
   openSelectWorkspaceRootDialog,
   type WorkspaceDirectoryEntries,
 } from "./workspace-root-dialog";
+import {
+  isRemoteControlAuthorizationUrl,
+  openRemoteControlOAuthDialog,
+} from "./oauth-callback-dialog";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
@@ -45,6 +49,11 @@ type RendererToMainMessage =
       requestId: string;
       directoryPath: string | null;
       directoriesOnly: boolean;
+    }
+  | {
+      type: "oauth-callback-forward";
+      requestId: string;
+      callbackUrl: string;
     };
 
 type MainToRendererMessage =
@@ -85,6 +94,21 @@ type MainToRendererMessage =
   | {
       type: "message-port-close";
       portId: string;
+    }
+  | {
+      type: "oauth-callback-forward-result";
+      requestId: string;
+      ok: true;
+    }
+  | {
+      type: "oauth-callback-forward-result";
+      requestId: string;
+      ok: false;
+      errorMessage: string;
+    }
+  | {
+      type: "open-external";
+      url: string;
     };
 
 const RECONNECT_DELAY_MS = 1_000;
@@ -148,6 +172,13 @@ const pendingDirectoryEntries = new Map<
 >();
 const rendererListeners = new Map<string, Set<IpcListener>>();
 const messagePorts = new Map<string, MessagePort>();
+const pendingOAuthCallbacks = new Map<
+  string,
+  {
+    reject: (reason?: unknown) => void;
+    resolve: () => void;
+  }
+>();
 
 function unimplemented(method: string): never {
   debugger;
@@ -168,6 +199,25 @@ export function emitRendererEvent(channel: string, args: unknown[]): void {
 function handleIncomingMessage(message: MainToRendererMessage): void {
   if (message.type === "ipc-main-event") {
     emitRendererEvent(message.channel, message.args);
+    return;
+  }
+
+  if (message.type === "open-external") {
+    openExternalUrl(message.url);
+    return;
+  }
+
+  if (message.type === "oauth-callback-forward-result") {
+    const pending = pendingOAuthCallbacks.get(message.requestId);
+    if (!pending) {
+      return;
+    }
+    pendingOAuthCallbacks.delete(message.requestId);
+    if (message.ok) {
+      pending.resolve();
+      return;
+    }
+    pending.reject(new Error(message.errorMessage));
     return;
   }
 
@@ -261,6 +311,9 @@ function ensureSocket(): void {
       port.close();
     }
     messagePorts.clear();
+    rejectPendingOAuthCallbacks(
+      new Error("The Codex Web connection closed during authorization"),
+    );
     scheduleReconnect();
   });
   socket.addEventListener("error", () => {
@@ -272,6 +325,18 @@ function enqueueMessage(message: RendererToMainMessage): void {
   outboundQueue.push(message);
   ensureSocket();
   flushOutboundQueue();
+}
+
+function rejectPendingOAuthCallbacks(error: Error): void {
+  for (const pending of pendingOAuthCallbacks.values()) {
+    pending.reject(error);
+  }
+  pendingOAuthCallbacks.clear();
+  for (let index = outboundQueue.length - 1; index >= 0; index -= 1) {
+    if (outboundQueue[index]?.type === "oauth-callback-forward") {
+      outboundQueue.splice(index, 1);
+    }
+  }
 }
 
 function nextRequestId(): string {
@@ -346,6 +411,43 @@ function requestWorkspaceDirectoryEntries(
       directoriesOnly: true,
     });
   });
+}
+
+function forwardRemoteControlOAuthCallback(callbackUrl: string): Promise<void> {
+  const requestId = nextRequestId();
+  return new Promise((resolve, reject) => {
+    pendingOAuthCallbacks.set(requestId, { reject, resolve });
+    enqueueMessage({
+      type: "oauth-callback-forward",
+      requestId,
+      callbackUrl,
+    });
+  });
+}
+
+function openExternalUrl(value: string): void {
+  let externalUrl: URL;
+  try {
+    externalUrl = new URL(value);
+  } catch {
+    throw new Error("[electron-stub] refusing invalid external URL");
+  }
+  if (!new Set(["http:", "https:"]).has(externalUrl.protocol)) {
+    throw new Error(
+      `[electron-stub] refusing external URL protocol ${externalUrl.protocol}`,
+    );
+  }
+
+  const url = externalUrl.toString();
+  if (isRemoteControlAuthorizationUrl(url)) {
+    openRemoteControlOAuthDialog({
+      authorizationUrl: url,
+      onSubmit: forwardRemoteControlOAuthCallback,
+    });
+    return;
+  }
+
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
@@ -427,7 +529,7 @@ export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     if (channel === "codex_desktop:message-from-view" && args.length === 1) {
       if (isOpenInBrowserMessage(args[0])) {
-        window.open(args[0].url, "_blank", "noopener,noreferrer");
+        openExternalUrl(args[0].url);
       }
 
       if (isLocalFilePickerMessage(args[0])) {

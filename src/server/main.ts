@@ -17,6 +17,10 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
 import { glob } from "glob";
+import {
+  forwardRemoteControlOAuthCallback,
+  parseRemoteControlOAuthCallbackUrl,
+} from "./oauth-callback";
 
 type ServerOptions = {
   host: string;
@@ -58,6 +62,11 @@ type RendererToMainMessage =
       requestId: string;
       directoryPath: string | null;
       directoriesOnly: boolean;
+    }
+  | {
+      type: "oauth-callback-forward";
+      requestId: string;
+      callbackUrl: string;
     };
 
 type MainToRendererMessage =
@@ -98,6 +107,21 @@ type MainToRendererMessage =
   | {
       type: "message-port-close";
       portId: string;
+    }
+  | {
+      type: "oauth-callback-forward-result";
+      requestId: string;
+      ok: true;
+    }
+  | {
+      type: "oauth-callback-forward-result";
+      requestId: string;
+      ok: false;
+      errorMessage: string;
+    }
+  | {
+      type: "open-external";
+      url: string;
     };
 
 type WorkspaceDirectoryEntry = {
@@ -550,6 +574,35 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 
       if (message.type === "message-port-close") {
         messagePorts.get(message.portId)?.disconnect();
+        return;
+      }
+
+      if (message.type === "oauth-callback-forward") {
+        const { requestId } = message;
+        Promise.resolve()
+          .then(() => parseRemoteControlOAuthCallbackUrl(message.callbackUrl))
+          .then((callback) => forwardRemoteControlOAuthCallback(callback))
+          .then(() => {
+            const payload: MainToRendererMessage = {
+              type: "oauth-callback-forward-result",
+              requestId,
+              ok: true,
+            };
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          })
+          .catch((error) => {
+            const payload: MainToRendererMessage = {
+              type: "oauth-callback-forward-result",
+              requestId,
+              ok: false,
+              errorMessage: errorMessage(error),
+            };
+            if (socket.readyState === WebSocket.OPEN) {
+              socket.send(JSON.stringify(payload));
+            }
+          });
         return;
       }
 

@@ -49,6 +49,20 @@ server.
 codex login --device-auth
 ```
 
+### remote-control authorization
+
+remote-control setup opens an OpenAI authorization page whose registered
+callback points to `localhost`. when codex-web is hosted on another machine,
+the browser cannot reach that machine's loopback listener directly.
+
+codex-web displays a completion dialog for this flow. after OpenAI redirects
+to the localhost page, copy the complete URL from that tab's address bar and
+paste it into the dialog. the callback is validated and forwarded internally
+to the loopback listener; ports `1455` and `1457` do not need to be exposed.
+
+the callback contains a short-lived authorization code. do not paste it into a
+chat, log, shell command, or any page other than the completion dialog.
+
 ### proxying to app-server (advanced usage)
 
 it’s often useful to run the app server separately, so a crash or restart of
@@ -133,14 +147,14 @@ talk.
 
 ## alternatives
 
-* [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels fell off. i needed subagents
+- [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels fell off. i needed subagents
   and an inline image viewer. this didn't have them and was having a hard time
   keeping up with upstream codex updates.
-* the native codex remote feature (behind a feature flag) is great for
+- the native codex remote feature (behind a feature flag) is great for
   connecting to remote codex hosts over ssh to manage long running tasks but
   this only works if you have codex desktop on your client device. this means it
   doesn't work on mobile.
-* upcoming first party mobile app from openai. `codex-web` exists and works
+- upcoming first party mobile app from openai. `codex-web` exists and works
   today. i can't wait for the mobile app but judging by the other openai mobile
   apps, i'm a little bit skeptical about the quality of the mobile experience.
   time will tell.

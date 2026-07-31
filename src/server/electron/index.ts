@@ -32,11 +32,18 @@ type IpcMainEvent = {
 };
 
 type IpcMainBridgeState = {
-  broadcastToRenderer?: (message: {
-    type: "ipc-main-event";
-    channel: string;
-    args: unknown[];
-  }) => void;
+  broadcastToRenderer?: (
+    message:
+      | {
+          type: "ipc-main-event";
+          channel: string;
+          args: unknown[];
+        }
+      | {
+          type: "open-external";
+          url: string;
+        },
+  ) => void;
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
@@ -440,8 +447,8 @@ class BrowserWindow {
         getURL: (): string => {
           log(`BrowserWindow#${this.id}.webContents.getURL`, []);
           return String(
-            (this.webContents.mainFrame as { url?: string } | undefined)
-              ?.url ?? "",
+            (this.webContents.mainFrame as { url?: string } | undefined)?.url ??
+              "",
           );
         },
         isDestroyed: (): boolean => this.destroyed,
@@ -502,10 +509,7 @@ class BrowserWindow {
 
   static getFocusedWindow(): BrowserWindow | null {
     log("BrowserWindow.getFocusedWindow", []);
-    if (
-      BrowserWindow.focusedWindow &&
-      !BrowserWindow.focusedWindow.destroyed
-    ) {
+    if (BrowserWindow.focusedWindow && !BrowserWindow.focusedWindow.destroyed) {
       return BrowserWindow.focusedWindow;
     }
     return BrowserWindow.getAllWindows()[0] ?? null;
@@ -755,6 +759,31 @@ const dialog = {
   },
 };
 
+const shell = {
+  async openExternal(value: string): Promise<void> {
+    let externalUrl: URL;
+    try {
+      externalUrl = new URL(value);
+    } catch {
+      throw new Error("Invalid external URL");
+    }
+    if (!new Set(["http:", "https:"]).has(externalUrl.protocol)) {
+      throw new Error(
+        `Unsupported external URL protocol: ${externalUrl.protocol}`,
+      );
+    }
+
+    const broadcastToRenderer = getIpcMainBridgeState().broadcastToRenderer;
+    if (!broadcastToRenderer) {
+      throw new Error("No browser renderer is connected");
+    }
+    broadcastToRenderer({
+      type: "open-external",
+      url: externalUrl.toString(),
+    });
+  },
+};
+
 const crashReporter = {
   start(...args: unknown[]): void {
     log("crashReporter.start", args);
@@ -933,14 +962,19 @@ function createSessionStub(label: string): {
     },
   };
 }
-const partitionSessions = new Map<string, ReturnType<typeof createSessionStub>>();
+const partitionSessions = new Map<
+  string,
+  ReturnType<typeof createSessionStub>
+>();
 const session = {
   defaultSession: createSessionStub("session.defaultSession"),
   fromPartition(partition: string): ReturnType<typeof createSessionStub> {
     log("session.fromPartition", [partition]);
     let partitionSession = partitionSessions.get(partition);
     if (!partitionSession) {
-      partitionSession = createSessionStub(`session.fromPartition(${partition})`);
+      partitionSession = createSessionStub(
+        `session.fromPartition(${partition})`,
+      );
       partitionSessions.set(partition, partitionSession);
     }
     return partitionSession;
@@ -988,6 +1022,7 @@ const electronModule = new Proxy(
     protocol,
     screen,
     session,
+    shell,
     Tray,
     utilityProcess,
     WebContentsView,
@@ -1021,6 +1056,7 @@ export {
   protocol,
   screen,
   session,
+  shell,
   Tray,
   utilityProcess,
   WebContentsView,
