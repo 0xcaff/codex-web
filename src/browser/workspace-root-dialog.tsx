@@ -22,19 +22,6 @@ export type WorkspaceDirectoryEntries = {
 
 const TITLE_ID = "codex-web-workspace-root-dialog-title";
 const DESCRIPTION_ID = "codex-web-workspace-root-dialog-description";
-const HOST_Z_INDEX = "var(--max-app-overlay-z-index, 10000)";
-const HOST_EVENT_NAMES = [
-  "click",
-  "focusin",
-  "mousedown",
-  "pointerdown",
-  "touchmove",
-  "wheel",
-] as const;
-
-function stopHostEventPropagation(event: Event): void {
-  event.stopPropagation();
-}
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -566,10 +553,17 @@ function ensureHost(): HTMLElement {
       isolation: "isolate",
       pointerEvents: "none",
       position: "fixed",
-      zIndex: HOST_Z_INDEX,
+      zIndex: "var(--max-app-overlay-z-index, 10000)",
     });
-    for (const eventName of HOST_EVENT_NAMES) {
-      element.addEventListener(eventName, stopHostEventPropagation);
+    for (const eventName of [
+      "click",
+      "focusin",
+      "mousedown",
+      "pointerdown",
+      "touchmove",
+      "wheel",
+    ] as const) {
+      element.addEventListener(eventName, (event) => event.stopPropagation());
     }
     document.body.append(element);
   }
