@@ -28,6 +28,8 @@ const HOST_EVENT_NAMES = [
   "focusin",
   "mousedown",
   "pointerdown",
+  "touchmove",
+  "wheel",
 ] as const;
 
 function stopHostEventPropagation(event: Event): void {
