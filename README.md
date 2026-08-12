@@ -112,6 +112,11 @@ route and enable Access token validation at the tunnel or origin.
 The install path verifies the pinned Codex desktop archive SHA-256 before
 extracting it. On macOS it also requires a valid OpenAI Developer ID signature.
 
+For a persistent macOS deployment behind Cloudflare Tunnel and Access, see the
+[macOS Cloudflare operations guide](docs/macos-cloudflare.md). It includes the
+recommended setup order, verification, stop/restart commands, and complete
+removal procedure.
+
 someone with access to the web ui may be able to:
 
 - run commands on the host, limited only by the permissions of the `codex-web`
