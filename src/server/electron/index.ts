@@ -152,12 +152,16 @@ function createEmitterStub(label: string): {
 }
 
 function createMessagePortStub(label: string): {
+  close: () => void;
   on: (event: string, listener: StubListener) => unknown;
   postMessage: (...args: unknown[]) => void;
   start: () => void;
 } {
   const emitter = createEmitterStub(label);
   return {
+    close(): void {
+      emitter.emit("close");
+    },
     on: emitter.on,
     postMessage(...args: unknown[]): void {
       log(`${label}.postMessage`, args);
@@ -231,15 +235,24 @@ function createIpcMainStub(): {
   >();
   const bridgeState = getIpcMainBridgeState();
 
-  const pendingPostMessages = new Map<
-    string,
-    Array<{
-      message: unknown;
-      ports: StubMessagePort[];
-      sourceUrl?: string;
-    }>
-  >();
+  const bootstrapPostMessageChannel = "codex_desktop:connect-app-host";
+  const maximumPendingBootstrapMessages = 4;
+  type PendingPostMessage = {
+    message: unknown;
+    ports: StubMessagePort[];
+    sourceUrl?: string;
+  };
+  const pendingPostMessages: PendingPostMessage[] = [];
   const registeredPostMessageChannels = new Set<string>();
+
+  const closePorts = (ports: StubMessagePort[]): void => {
+    for (const port of ports) port.close();
+  };
+
+  const removePendingPostMessage = (pending: PendingPostMessage): void => {
+    const index = pendingPostMessages.indexOf(pending);
+    if (index >= 0) pendingPostMessages.splice(index, 1);
+  };
 
   bridgeState.handleRendererPostMessage = (
     channel: string,
@@ -253,9 +266,25 @@ function createIpcMainStub(): {
       emitter.emit(channel, event, message);
       return;
     }
-    const pending = pendingPostMessages.get(channel) ?? [];
-    pending.push({ message, ports, sourceUrl });
-    pendingPostMessages.set(channel, pending);
+    if (channel !== bootstrapPostMessageChannel) {
+      console.error(
+        `[electron-main-stub] refusing unregistered postMessage channel ${channel}`,
+      );
+      closePorts(ports);
+      return;
+    }
+    if (pendingPostMessages.length >= maximumPendingBootstrapMessages) {
+      console.error(
+        "[electron-main-stub] bootstrap postMessage buffer is full",
+      );
+      closePorts(ports);
+      return;
+    }
+    const pending: PendingPostMessage = { message, ports, sourceUrl };
+    pendingPostMessages.push(pending);
+    for (const port of ports) {
+      port.on("close", () => removePendingPostMessage(pending));
+    }
   };
 
   bridgeState.handleRendererInvoke = async (
@@ -286,10 +315,9 @@ function createIpcMainStub(): {
     on(channel: string, listener: StubListener): unknown {
       const result = emitter.on(channel, listener);
       registeredPostMessageChannels.add(channel);
-      const pending = pendingPostMessages.get(channel);
-      if (pending) {
-        pendingPostMessages.delete(channel);
-        for (const { message, ports, sourceUrl } of pending) {
+      if (channel === bootstrapPostMessageChannel) {
+        for (const pending of pendingPostMessages.splice(0)) {
+          const { message, ports, sourceUrl } = pending;
           const event = createIpcMainEvent(ports);
           event.senderFrame.url = sourceUrl ?? event.senderFrame.url;
           emitter.emit(channel, event, message);

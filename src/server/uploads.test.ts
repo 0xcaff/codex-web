@@ -66,7 +66,13 @@ async function request(
     body,
     headers = {},
     method = "GET",
-  }: { body?: Buffer; headers?: Record<string, string>; method?: string } = {},
+    origin,
+  }: {
+    body?: Buffer;
+    headers?: Record<string, string>;
+    method?: string;
+    origin?: string | false;
+  } = {},
 ): Promise<{
   body: Buffer;
   headers: http.IncomingHttpHeaders;
@@ -77,6 +83,9 @@ async function request(
       {
         headers: {
           ...(body ? { "content-length": String(body.length) } : {}),
+          ...(origin === false
+            ? {}
+            : { origin: origin ?? `http://127.0.0.1:${port}` }),
           ...headers,
         },
         host: "127.0.0.1",
@@ -101,9 +110,18 @@ async function request(
   });
 }
 
-async function uploadServer(limits = testLimits, webviewRoot?: string) {
+async function uploadServer(
+  limits = testLimits,
+  webviewRoot?: string,
+  allowedOrigins: string[] = [],
+) {
   const server = await startIpcBridgeServer(
-    { allowedOrigins: [], host: "127.0.0.1", port: 0, uploadLimits: limits },
+    {
+      allowedOrigins,
+      host: "127.0.0.1",
+      port: 0,
+      uploadLimits: limits,
+    },
     { startMainApp: false, webviewRoot },
   );
   servers.push(server);
@@ -111,6 +129,57 @@ async function uploadServer(limits = testLimits, webviewRoot?: string) {
 }
 
 describe("bounded uploads", () => {
+  it("requires an exact same or configured Origin before parsing uploads", async () => {
+    const payload = multipartBody([{ content: "small", name: "small.txt" }]);
+    const sameOriginServer = await uploadServer();
+    const sameOrigin = await request(
+      sameOriginServer.port,
+      "/__backend/upload",
+      {
+        body: payload.body,
+        headers: { "content-type": payload.contentType },
+        method: "POST",
+      },
+    );
+    expect(sameOrigin.statusCode).toBe(200);
+
+    const configuredServer = await uploadServer(testLimits, undefined, [
+      "https://codex.example.test",
+    ]);
+    const configured = await request(
+      configuredServer.port,
+      "/__backend/upload",
+      {
+        body: payload.body,
+        headers: { "content-type": payload.contentType },
+        method: "POST",
+        origin: "https://codex.example.test",
+      },
+    );
+    expect(configured.statusCode).toBe(200);
+
+    const rejectedOrigins: Array<string | false> = [
+      false,
+      "https://evil.example.test",
+    ];
+    for (const origin of rejectedOrigins) {
+      const rejected = await request(
+        sameOriginServer.port,
+        "/__backend/upload",
+        {
+          body: payload.body,
+          headers: { "content-type": payload.contentType },
+          method: "POST",
+          origin,
+        },
+      );
+      expect(rejected.statusCode).toBe(403);
+      expect(JSON.parse(rejected.body.toString("utf8"))).toEqual({
+        error: "upload origin is not allowed",
+      });
+    }
+  });
+
   it("uses finite defaults and validates CLI or environment overrides", () => {
     expect(
       parseServerArgs([

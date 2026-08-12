@@ -66,10 +66,14 @@ flowchart TB
   B["Browser on a trusted path"] --> P["Loopback, VPN, SSH, or authenticated TLS proxy"]
   P --> S["codex-web process as dedicated host user"]
   S --> C["Codex CLI, files, and credentials available to that user"]
-  B -->|"Origin and Host checked for IPC"| S
-  B -->|"multipart upload"| U["Private temporary upload directory"]
+  B -->|"Origin and Host checked for IPC and uploads"| S
+  B -->|"origin-authenticated multipart upload"| U["Private temporary upload directory"]
   U -->|"finite limits; expiry scavenger"| S
 ```
+
+Raw upload clients must send the same exact `Origin` as the browser origin (or
+an explicitly configured `--allowed-origin`); requests without one are denied
+before multipart parsing.
 
 The default bind is `127.0.0.1`. `--lan` deliberately binds `0.0.0.0`, reports
 only non-loopback IPv4 candidates that can reach that listener, and prints a

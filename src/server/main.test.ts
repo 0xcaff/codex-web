@@ -74,7 +74,7 @@ type IpcBridgeGlobals = typeof globalThis & {
     handleRendererPostMessage?: (
       channel: string,
       message: unknown,
-      ports: unknown[],
+      ports: Array<{ postMessage: (message: unknown) => void }>,
       sourceUrl?: string,
     ) => void;
   };
@@ -303,6 +303,82 @@ describe("IPC bridge readiness", () => {
 
     await delivered;
     expect(receivedPayload).toBeUndefined();
+    socket.close();
+    await bridge.close();
+  });
+
+  it("contains invalid upstream MessagePort payloads and removes the affected port", async () => {
+    const errors = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const ports: Array<{ postMessage: (message: unknown) => void }> = [];
+    const bridge = await startIpcBridgeServer(
+      { host: "127.0.0.1", port: 0, allowedOrigins: [] },
+      {
+        bootstrapMainApp: () => {
+          const globals = globalThis as IpcBridgeGlobals;
+          const bridgeState = (globals.__codexElectronIpcBridge ??= {});
+          bridgeState.handleRendererPostMessage = (
+            _channel,
+            _message,
+            received,
+          ) => {
+            ports.push(...received);
+          };
+        },
+      },
+    );
+    const socket = await connectIpc(bridge.port);
+    socket.send(
+      JSON.stringify({
+        type: "ipc-renderer-post-message",
+        channel: "port-payload",
+        portIds: ["port-1"],
+      }),
+    );
+    await vi.waitFor(() => expect(ports).toHaveLength(1));
+
+    const cyclic: { self?: unknown } = {};
+    cyclic.self = cyclic;
+    expect(() => ports[0]?.postMessage(cyclic)).not.toThrow();
+    expect(() => ports[0]?.postMessage("ignored-after-cleanup")).not.toThrow();
+    expect(errors).toHaveBeenCalledWith(
+      "[ipc-bridge] refused invalid message port payload for port-1",
+      expect.any(Error),
+    );
+
+    socket.send(
+      JSON.stringify({
+        type: "ipc-renderer-post-message",
+        channel: "port-payload",
+        portIds: ["port-1"],
+      }),
+    );
+    await vi.waitFor(() => expect(ports).toHaveLength(2));
+    ports[1]?.postMessage("recovered");
+    await expect(nextIpcMessage(socket)).resolves.toEqual({
+      type: "message-port-message",
+      portId: "port-1",
+      data: "recovered",
+    });
+
+    socket.send(
+      JSON.stringify({
+        type: "ipc-renderer-post-message",
+        channel: "port-payload",
+        portIds: ["port-oversized"],
+      }),
+    );
+    await vi.waitFor(() => expect(ports).toHaveLength(3));
+    expect(() =>
+      ports[2]?.postMessage("x".repeat(8 * 1024 * 1024)),
+    ).not.toThrow();
+    expect(errors).toHaveBeenCalledWith(
+      "[ipc-bridge] refused invalid message port payload for port-oversized",
+      expect.any(Error),
+    );
+
+    errors.mockRestore();
     socket.close();
     await bridge.close();
   });

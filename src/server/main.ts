@@ -303,6 +303,15 @@ export async function startIpcBridgeServer(
   const uploadRoot = await createUploadDirectory();
 
   app.post("/__backend/upload", async (request, reply) => {
+    if (
+      !isAllowedIpcOrigin(
+        request.headers.origin,
+        request.headers.host,
+        options.allowedOrigins,
+      )
+    ) {
+      return reply.code(403).send({ error: "upload origin is not allowed" });
+    }
     if (!request.isMultipart()) {
       return reply.code(400).send({ error: "expected multipart upload body" });
     }
@@ -460,8 +469,16 @@ export async function startIpcBridgeServer(
             const port = new WebSocketMessagePort(
               portId,
               (message) => {
-                if (socket.readyState === WebSocket.OPEN) {
-                  socket.send(serializeMainToRendererMessage(message));
+                try {
+                  if (socket.readyState === WebSocket.OPEN) {
+                    socket.send(serializeMainToRendererMessage(message));
+                  }
+                } catch (error) {
+                  console.error(
+                    `[ipc-bridge] refused invalid message port payload for ${portId}`,
+                    error,
+                  );
+                  messagePorts.get(portId)?.disconnect();
                 }
               },
               () => messagePorts.delete(portId),
