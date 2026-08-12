@@ -53,10 +53,7 @@ export function parseLauncherArgs(rawArgs) {
 export function runChild(command, args, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { ...options, stdio: "inherit" });
-    let forwardedSignal;
     const forwardSignal = (signal) => {
-      if (forwardedSignal) return;
-      forwardedSignal = signal;
       if (child.exitCode === null && child.signalCode === null) {
         child.kill(signal);
       }

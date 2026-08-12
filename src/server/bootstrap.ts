@@ -3,6 +3,10 @@ import { glob } from "glob";
 import compatibilityManifest from "../../compatibility.json";
 import { installModuleAliasHook } from "./module";
 import { installUpstreamConsolePolicy, operatorError } from "./runtime-logging";
+import {
+  installUpstreamProcessTracker,
+  terminateUpstreamProcesses,
+} from "./upstream-processes";
 
 declare global {
   var __CODEX_SHIM_VALUES__: { version: string };
@@ -30,8 +34,11 @@ export function ensureElectronLikeProcessContext(): void {
   processWithElectronFields.type ??= "browser";
 }
 
-export async function bootstrapMainApp(): Promise<void> {
+export type MainAppLifecycle = { close: () => Promise<void> };
+
+export async function bootstrapMainApp(): Promise<MainAppLifecycle> {
   installUpstreamConsolePolicy();
+  installUpstreamProcessTracker();
   ensureElectronLikeProcessContext();
   installModuleAliasHook();
   globalThis.__CODEX_SHIM_VALUES__ = {
@@ -56,4 +63,5 @@ export async function bootstrapMainApp(): Promise<void> {
   } catch {
     operatorError("[ipc-bridge] upstream startup failed");
   }
+  return { close: terminateUpstreamProcesses };
 }

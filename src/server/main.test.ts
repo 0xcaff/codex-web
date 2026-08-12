@@ -394,6 +394,24 @@ describe("IPC bridge readiness", () => {
     error.mockRestore();
     await bridge.close();
   });
+
+  it("awaits upstream lifecycle cleanup when the bridge closes", async () => {
+    let cleanedUp = false;
+    const bridge = await startIpcBridgeServer(
+      { host: "127.0.0.1", port: 0, allowedOrigins: [] },
+      {
+        bootstrapMainApp: async () => ({
+          close: async () => {
+            await Promise.resolve();
+            cleanedUp = true;
+          },
+        }),
+      },
+    );
+
+    await bridge.close();
+    expect(cleanedUp).toBe(true);
+  });
 });
 
 describe("IPC connection and reload behavior", () => {

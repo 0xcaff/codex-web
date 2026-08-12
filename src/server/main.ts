@@ -21,8 +21,9 @@ import {
   parseServerArgs,
   type ServerOptions,
 } from "./config";
-import { bootstrapMainApp } from "./bootstrap";
+import { bootstrapMainApp, type MainAppLifecycle } from "./bootstrap";
 import { operatorError, operatorLog } from "./runtime-logging";
+import { forceTerminateUpstreamProcesses } from "./upstream-processes";
 import {
   IPC_MAX_PAYLOAD_BYTES,
   parseRendererToMainMessage as parseWireRendererToMainMessage,
@@ -51,6 +52,24 @@ export {
 } from "../shared/ipc-protocol";
 
 type MessagePortListener = (...args: unknown[]) => void;
+
+async function lifecycleReadyForShutdown(
+  lifecycle: Promise<MainAppLifecycle | void> | undefined,
+): Promise<MainAppLifecycle | void> {
+  if (!lifecycle) return undefined;
+
+  let timeout: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      lifecycle,
+      new Promise<void>((resolve) => {
+        timeout = setTimeout(resolve, 250);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
+}
 
 type BridgedMessagePort = {
   close: () => void;
@@ -274,10 +293,14 @@ export async function startIpcBridgeServer(
     webviewRoot = path.resolve(__dirname, "../../scratch/asar/webview"),
   }: {
     startMainApp?: boolean;
-    bootstrapMainApp?: () => Promise<void> | void;
+    bootstrapMainApp?: () =>
+      | Promise<MainAppLifecycle | void>
+      | MainAppLifecycle
+      | void;
     webviewRoot?: string;
   } = {},
 ): Promise<{ close: () => Promise<void>; port: number }> {
+  let mainAppLifecycle: Promise<MainAppLifecycle | void> | undefined;
   const bridgeState = getIpcMainBridgeState();
   const uploadLimits = options.uploadLimits ?? DEFAULT_UPLOAD_LIMITS;
   const app = Fastify({ logger: false });
@@ -581,8 +604,9 @@ export async function startIpcBridgeServer(
     // HTTP immediately and use handler presence below as the IPC readiness
     // signal instead of blocking on a promise that normally never resolves.
     try {
-      void Promise.resolve(bootstrap()).catch(() => {
+      mainAppLifecycle = Promise.resolve(bootstrap()).catch(() => {
         operatorError("[ipc-bridge] startup failed");
+        return undefined;
       });
     } catch {
       operatorError("[ipc-bridge] startup failed");
@@ -602,33 +626,47 @@ export async function startIpcBridgeServer(
 
   return {
     close: async () => {
-      for (const socket of sockets) {
-        socket.terminate();
+      try {
+        for (const socket of sockets) {
+          socket.terminate();
+        }
+        websocketServer.close();
+        await app.close();
+      } finally {
+        const lifecycle = await lifecycleReadyForShutdown(mainAppLifecycle);
+        await lifecycle?.close();
       }
-      websocketServer.close();
-      await app.close();
     },
     port: address.port,
   };
 }
 
-async function main(args: string[]) {
+async function main(args: string[]): Promise<void> {
   const options = parseServerArgs(args);
   const bridge = await startIpcBridgeServer(options);
   let closing = false;
   const closeGracefully = (signal: NodeJS.Signals): void => {
     if (closing) {
+      forceTerminateUpstreamProcesses();
+      process.exit(1);
       return;
     }
     closing = true;
-    void bridge.close().catch(() => {
-      operatorError("[ipc-bridge] graceful shutdown failed");
-    });
+    void bridge
+      .close()
+      .then(() => process.exit(0))
+      .catch(() => {
+        operatorError("[ipc-bridge] graceful shutdown failed");
+        process.exit(1);
+      });
   };
-  process.once("SIGINT", () => closeGracefully("SIGINT"));
-  process.once("SIGTERM", () => closeGracefully("SIGTERM"));
+  process.on("SIGINT", () => closeGracefully("SIGINT"));
+  process.on("SIGTERM", () => closeGracefully("SIGTERM"));
 }
 
 if (require.main === module) {
-  void main(process.argv.slice(2));
+  void main(process.argv.slice(2)).catch(() => {
+    operatorError("[ipc-bridge] startup failed");
+    process.exit(1);
+  });
 }
