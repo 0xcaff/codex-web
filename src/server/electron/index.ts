@@ -1,3 +1,5 @@
+import type { MainToRendererMessage } from "../../shared/ipc-protocol";
+
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
@@ -32,11 +34,7 @@ type IpcMainEvent = {
 };
 
 type IpcMainBridgeState = {
-  broadcastToRenderer?: (message: {
-    type: "ipc-main-event";
-    channel: string;
-    args: unknown[];
-  }) => void;
+  broadcastToRenderer?: (message: MainToRendererMessage) => void;
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
@@ -231,7 +229,11 @@ function createIpcMainStub(): {
 
   const pendingPostMessages = new Map<
     string,
-    Array<{ message: unknown; ports: StubMessagePort[] }>
+    Array<{
+      message: unknown;
+      ports: StubMessagePort[];
+      sourceUrl?: string;
+    }>
   >();
   const registeredPostMessageChannels = new Set<string>();
 
@@ -239,25 +241,30 @@ function createIpcMainStub(): {
     channel: string,
     message: unknown,
     ports: StubMessagePort[],
+    sourceUrl?: string,
   ): void => {
     if (registeredPostMessageChannels.has(channel)) {
-      emitter.emit(channel, createIpcMainEvent(ports), message);
+      const event = createIpcMainEvent(ports);
+      event.senderFrame.url = sourceUrl ?? event.senderFrame.url;
+      emitter.emit(channel, event, message);
       return;
     }
     const pending = pendingPostMessages.get(channel) ?? [];
-    pending.push({ message, ports });
+    pending.push({ message, ports, sourceUrl });
     pendingPostMessages.set(channel, pending);
   };
 
   bridgeState.handleRendererInvoke = async (
     channel: string,
     args: unknown[],
+    sourceUrl?: string,
   ): Promise<unknown> => {
     const handler = handlers.get(channel);
     if (!handler) {
       throw new Error(`[electron-main-stub] No ipcMain.handle for ${channel}`);
     }
     const event = createIpcMainEvent();
+    event.senderFrame.url = sourceUrl ?? event.senderFrame.url;
     return await Promise.resolve(handler(event, ...args));
   };
 
@@ -267,6 +274,7 @@ function createIpcMainStub(): {
     sourceUrl?: string,
   ): void => {
     const event = createIpcMainEvent();
+    event.senderFrame.url = sourceUrl ?? event.senderFrame.url;
     emitter.emit(channel, event, ...args);
   };
 
@@ -277,8 +285,10 @@ function createIpcMainStub(): {
       const pending = pendingPostMessages.get(channel);
       if (pending) {
         pendingPostMessages.delete(channel);
-        for (const { message, ports } of pending) {
-          emitter.emit(channel, createIpcMainEvent(ports), message);
+        for (const { message, ports, sourceUrl } of pending) {
+          const event = createIpcMainEvent(ports);
+          event.senderFrame.url = sourceUrl ?? event.senderFrame.url;
+          emitter.emit(channel, event, message);
         }
       }
       return result;
@@ -440,8 +450,8 @@ class BrowserWindow {
         getURL: (): string => {
           log(`BrowserWindow#${this.id}.webContents.getURL`, []);
           return String(
-            (this.webContents.mainFrame as { url?: string } | undefined)
-              ?.url ?? "",
+            (this.webContents.mainFrame as { url?: string } | undefined)?.url ??
+              "",
           );
         },
         isDestroyed: (): boolean => this.destroyed,
@@ -502,10 +512,7 @@ class BrowserWindow {
 
   static getFocusedWindow(): BrowserWindow | null {
     log("BrowserWindow.getFocusedWindow", []);
-    if (
-      BrowserWindow.focusedWindow &&
-      !BrowserWindow.focusedWindow.destroyed
-    ) {
+    if (BrowserWindow.focusedWindow && !BrowserWindow.focusedWindow.destroyed) {
       return BrowserWindow.focusedWindow;
     }
     return BrowserWindow.getAllWindows()[0] ?? null;
@@ -933,14 +940,19 @@ function createSessionStub(label: string): {
     },
   };
 }
-const partitionSessions = new Map<string, ReturnType<typeof createSessionStub>>();
+const partitionSessions = new Map<
+  string,
+  ReturnType<typeof createSessionStub>
+>();
 const session = {
   defaultSession: createSessionStub("session.defaultSession"),
   fromPartition(partition: string): ReturnType<typeof createSessionStub> {
     log("session.fromPartition", [partition]);
     let partitionSession = partitionSessions.get(partition);
     if (!partitionSession) {
-      partitionSession = createSessionStub(`session.fromPartition(${partition})`);
+      partitionSession = createSessionStub(
+        `session.fromPartition(${partition})`,
+      );
       partitionSessions.set(partition, partitionSession);
     }
     return partitionSession;

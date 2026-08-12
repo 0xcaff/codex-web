@@ -17,6 +17,15 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
 import { glob } from "glob";
+import {
+  IPC_MAX_PAYLOAD_BYTES,
+  parseRendererToMainMessage as parseWireRendererToMainMessage,
+  serializeMainToRendererMessage,
+  type MainToRendererMessage,
+  type RendererToMainMessage,
+  type WorkspaceDirectoryEntries,
+  type WorkspaceDirectoryEntry,
+} from "../shared/ipc-protocol";
 
 export type ServerOptions = {
   host: string;
@@ -24,96 +33,7 @@ export type ServerOptions = {
   allowedOrigins: string[];
 };
 
-export const IPC_MAX_PAYLOAD_BYTES = 1024 * 1024;
-
-type RendererToMainMessage =
-  | {
-      type: "ipc-renderer-invoke";
-      requestId: string;
-      channel: string;
-      args: unknown[];
-      sourceUrl?: string;
-    }
-  | {
-      type: "ipc-renderer-send";
-      channel: string;
-      args: unknown[];
-      sourceUrl?: string;
-    }
-  | {
-      type: "ipc-renderer-post-message";
-      channel: string;
-      message: unknown;
-      portIds: string[];
-      sourceUrl?: string;
-    }
-  | {
-      type: "message-port-message";
-      portId: string;
-      data: unknown;
-    }
-  | {
-      type: "message-port-close";
-      portId: string;
-    }
-  | {
-      type: "workspace-directory-entries-request";
-      requestId: string;
-      directoryPath: string | null;
-      directoriesOnly: boolean;
-    };
-
-type MainToRendererMessage =
-  | {
-      type: "ipc-main-event";
-      channel: string;
-      args: unknown[];
-    }
-  | {
-      type: "ipc-renderer-invoke-result";
-      requestId: string;
-      ok: true;
-      result: unknown;
-    }
-  | {
-      type: "ipc-renderer-invoke-result";
-      requestId: string;
-      ok: false;
-      errorMessage: string;
-    }
-  | {
-      type: "workspace-directory-entries-result";
-      requestId: string;
-      ok: true;
-      result: WorkspaceDirectoryEntries;
-    }
-  | {
-      type: "workspace-directory-entries-result";
-      requestId: string;
-      ok: false;
-      errorMessage: string;
-    }
-  | {
-      type: "message-port-message";
-      portId: string;
-      data: unknown;
-    }
-  | {
-      type: "message-port-close";
-      portId: string;
-    };
-
-type WorkspaceDirectoryEntry = {
-  name: string;
-  path: string;
-  type: "directory" | "file";
-};
-
-type WorkspaceDirectoryEntries = {
-  directoryPath: string;
-  parentPath: string | null;
-  entries: WorkspaceDirectoryEntry[];
-};
+export { IPC_MAX_PAYLOAD_BYTES } from "../shared/ipc-protocol";
 
 type MessagePortListener = (...args: unknown[]) => void;
 
@@ -228,69 +148,23 @@ function compareWorkspaceDirectoryEntries(
 
 type IpcMainBridgeState = {
   broadcastToRenderer?: (message: MainToRendererMessage) => void;
-  handleRendererInvoke?: (channel: string, args: unknown[]) => Promise<unknown>;
+  handleRendererInvoke?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => Promise<unknown>;
   handleRendererPostMessage?: (
     channel: string,
     message: unknown,
     ports: BridgedMessagePort[],
     sourceUrl?: string,
   ) => void;
-  handleRendererSend?: (channel: string, args: unknown[]) => void;
+  handleRendererSend?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => void;
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((entry) => typeof entry === "string")
-  );
-}
-
-export function isRendererToMainMessage(
-  value: unknown,
-): value is RendererToMainMessage {
-  if (!isRecord(value) || typeof value.type !== "string") {
-    return false;
-  }
-
-  switch (value.type) {
-    case "ipc-renderer-invoke":
-      return (
-        typeof value.requestId === "string" &&
-        typeof value.channel === "string" &&
-        Array.isArray(value.args) &&
-        (value.sourceUrl === undefined || typeof value.sourceUrl === "string")
-      );
-    case "ipc-renderer-send":
-      return (
-        typeof value.channel === "string" &&
-        Array.isArray(value.args) &&
-        (value.sourceUrl === undefined || typeof value.sourceUrl === "string")
-      );
-    case "ipc-renderer-post-message":
-      return (
-        typeof value.channel === "string" &&
-        isStringArray(value.portIds) &&
-        new Set(value.portIds).size === value.portIds.length &&
-        (value.sourceUrl === undefined || typeof value.sourceUrl === "string")
-      );
-    case "message-port-message":
-      return typeof value.portId === "string";
-    case "message-port-close":
-      return typeof value.portId === "string";
-    case "workspace-directory-entries-request":
-      return (
-        typeof value.requestId === "string" &&
-        (value.directoryPath === null ||
-          typeof value.directoryPath === "string") &&
-        typeof value.directoriesOnly === "boolean"
-      );
-    default:
-      return false;
-  }
-}
 
 export function parseRendererToMainMessage(
   rawData: unknown,
@@ -306,7 +180,7 @@ export function parseRendererToMainMessage(
 
   try {
     const message: unknown = JSON.parse(rawData.toString("utf8"));
-    return isRendererToMainMessage(message) ? message : null;
+    return parseWireRendererToMainMessage(message);
   } catch {
     return null;
   }
@@ -531,12 +405,51 @@ function ensureElectronLikeProcessContext(): void {
   processWithElectronFields.type ??= "browser";
 }
 
+export async function bootstrapMainApp(): Promise<void> {
+  ensureElectronLikeProcessContext();
+  installModuleAliasHook();
+
+  const packageJson = JSON.parse(
+    await fs.readFile(
+      path.resolve(__dirname, "../../scratch/asar/package.json"),
+      "utf8",
+    ),
+  );
+
+  globalThis.__CODEX_SHIM_VALUES__ = {
+    version: packageJson.version,
+  };
+
+  const matches = await glob("../../scratch/asar/.vite/build/main-*.js", {
+    nodir: true,
+    cwd: __dirname,
+  });
+
+  if (matches.length === 0) {
+    throw new Error("no main bundle found");
+  }
+
+  if (matches.length > 1) {
+    throw new Error("multiple main bundles found");
+  }
+
+  const mainModule = require(matches[0]!) as {
+    runMainAppStartup: () => Promise<void> | void;
+  };
+  await mainModule.runMainAppStartup();
+}
+
 export async function startIpcBridgeServer(
   options: ServerOptions,
   {
     startMainApp = true,
+    bootstrapMainApp: bootstrap = bootstrapMainApp,
     webviewRoot = path.resolve(__dirname, "../../scratch/asar/webview"),
-  }: { startMainApp?: boolean; webviewRoot?: string } = {},
+  }: {
+    startMainApp?: boolean;
+    bootstrapMainApp?: () => Promise<void> | void;
+    webviewRoot?: string;
+  } = {},
 ): Promise<{ close: () => Promise<void>; port: number }> {
   const bridgeState = getIpcMainBridgeState();
   const app = Fastify({ logger: false });
@@ -640,7 +553,13 @@ export async function startIpcBridgeServer(
   });
 
   bridgeState.broadcastToRenderer = (message: MainToRendererMessage): void => {
-    const payload = JSON.stringify(message);
+    let payload: string;
+    try {
+      payload = serializeMainToRendererMessage(message);
+    } catch (error) {
+      console.error("[ipc-bridge] refused invalid renderer message", error);
+      return;
+    }
     for (const socket of sockets) {
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(payload);
@@ -693,7 +612,11 @@ export async function startIpcBridgeServer(
 
       try {
         if (message.type === "ipc-renderer-send") {
-          bridgeState.handleRendererSend?.(message.channel, message.args);
+          bridgeState.handleRendererSend?.(
+            message.channel,
+            message.args,
+            message.sourceUrl,
+          );
           return;
         }
 
@@ -707,7 +630,7 @@ export async function startIpcBridgeServer(
               portId,
               (message) => {
                 if (socket.readyState === WebSocket.OPEN) {
-                  socket.send(JSON.stringify(message));
+                  socket.send(serializeMainToRendererMessage(message));
                 }
               },
               () => messagePorts.delete(portId),
@@ -746,7 +669,7 @@ export async function startIpcBridgeServer(
                 result,
               };
               if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(payload));
+                socket.send(serializeMainToRendererMessage(payload));
               }
             })
             .catch((error) => {
@@ -757,7 +680,7 @@ export async function startIpcBridgeServer(
                 errorMessage: errorMessage(error),
               };
               if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(payload));
+                socket.send(serializeMainToRendererMessage(payload));
               }
             });
           return;
@@ -766,10 +689,14 @@ export async function startIpcBridgeServer(
         if (message.type === "ipc-renderer-invoke") {
           const { channel, requestId, args } = message;
           Promise.resolve(
-            bridgeState.handleRendererInvoke?.(channel, args) ??
+            bridgeState.handleRendererInvoke?.(
+              channel,
+              args,
+              message.sourceUrl,
+            ) ??
               Promise.reject(
                 new Error(
-                  `[ipc-bridge] no ipcMain.handle for channel ${channel}`,
+                  `[ipc-bridge] unavailable: no ipcMain.handle for channel ${channel}`,
                 ),
               ),
           )
@@ -781,7 +708,7 @@ export async function startIpcBridgeServer(
                 result,
               };
               if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(payload));
+                socket.send(serializeMainToRendererMessage(payload));
               }
             })
             .catch((error) => {
@@ -792,7 +719,7 @@ export async function startIpcBridgeServer(
                 errorMessage: errorMessage(error),
               };
               if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(payload));
+                socket.send(serializeMainToRendererMessage(payload));
               }
             });
         }
@@ -803,6 +730,10 @@ export async function startIpcBridgeServer(
     });
   });
 
+  if (startMainApp) {
+    await bootstrap();
+  }
+
   await app.listen({ host: options.host, port: options.port });
   console.log(`IPC bridge listening at ws://${options.host}:${options.port}`);
 
@@ -810,49 +741,6 @@ export async function startIpcBridgeServer(
   if (!address || typeof address === "string") {
     throw new Error("IPC bridge did not bind a TCP port");
   }
-
-  if (!startMainApp) {
-    return {
-      close: async () => {
-        for (const socket of sockets) {
-          socket.terminate();
-        }
-        websocketServer.close();
-        await app.close();
-      },
-      port: address.port,
-    };
-  }
-
-  ensureElectronLikeProcessContext();
-  installModuleAliasHook();
-
-  const packageJson = JSON.parse(
-    await fs.readFile(
-      path.resolve(__dirname, "../../scratch/asar/package.json"),
-      "utf8",
-    ),
-  );
-
-  globalThis.__CODEX_SHIM_VALUES__ = {
-    version: packageJson.version,
-  };
-
-  const matches = await glob("../../scratch/asar/.vite/build/main-*.js", {
-    nodir: true,
-    cwd: __dirname,
-  });
-
-  if (matches.length === 0) {
-    throw new Error("no main bundle found");
-  }
-
-  if (matches.length > 1) {
-    throw new Error("multiple main bundles found");
-  }
-
-  const module = require(matches[0]!);
-  module.runMainAppStartup();
 
   return {
     close: async () => {

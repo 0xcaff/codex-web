@@ -6,88 +6,22 @@ import {
   handleLocalFilePickerMessage,
   isLocalFilePickerMessage,
 } from "./files";
+import { openSelectWorkspaceRootDialog } from "./workspace-root-dialog";
 import {
-  openSelectWorkspaceRootDialog,
+  IPC_MAX_PAYLOAD_BYTES,
+  parseMainToRendererMessage,
+  serializeRendererToMainMessage,
+  type MainToRendererMessage,
+  type RendererToMainMessage,
   type WorkspaceDirectoryEntries,
-} from "./workspace-root-dialog";
+} from "../shared/ipc-protocol";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
-type RendererToMainMessage =
-  | {
-      type: "ipc-renderer-invoke";
-      requestId: string;
-      channel: string;
-      args: unknown[];
-    }
-  | {
-      type: "ipc-renderer-post-message";
-      channel: string;
-      message: unknown;
-      portIds: string[];
-    }
-  | {
-      type: "message-port-message";
-      portId: string;
-      data: unknown;
-    }
-  | {
-      type: "message-port-close";
-      portId: string;
-    }
-  | {
-      type: "ipc-renderer-send";
-      channel: string;
-      args: unknown[];
-    }
-  | {
-      type: "workspace-directory-entries-request";
-      requestId: string;
-      directoryPath: string | null;
-      directoriesOnly: boolean;
-    };
-
-type MainToRendererMessage =
-  | {
-      type: "ipc-main-event";
-      channel: string;
-      args: unknown[];
-    }
-  | {
-      type: "ipc-renderer-invoke-result";
-      requestId: string;
-      ok: true;
-      result: unknown;
-    }
-  | {
-      type: "ipc-renderer-invoke-result";
-      requestId: string;
-      ok: false;
-      errorMessage: string;
-    }
-  | {
-      type: "workspace-directory-entries-result";
-      requestId: string;
-      ok: true;
-      result: WorkspaceDirectoryEntries;
-    }
-  | {
-      type: "workspace-directory-entries-result";
-      requestId: string;
-      ok: false;
-      errorMessage: string;
-    }
-  | {
-      type: "message-port-message";
-      portId: string;
-      data: unknown;
-    }
-  | {
-      type: "message-port-close";
-      portId: string;
-    };
-
 const RECONNECT_DELAY_MS = 1_000;
+const MAX_PENDING_REQUESTS = 128;
+const MAX_OUTBOUND_QUEUE_MESSAGES = 128;
+const MAX_OUTBOUND_QUEUE_BYTES = 256 * 1024;
 
 type MemoryNavigationChange = {
   action: "POP" | "PUSH" | "REPLACE";
@@ -128,24 +62,296 @@ declare global {
 
 declare const __CODEX_APP_VERSION__: string;
 
-let requestCounter = 0;
-let socket: WebSocket | null = null;
-let reconnectTimeoutId: number | null = null;
-const outboundQueue: RendererToMainMessage[] = [];
-const pendingInvokes = new Map<
-  string,
-  {
-    reject: (reason?: unknown) => void;
-    resolve: (value: unknown) => void;
+type PendingInvoke = {
+  reject: (reason?: unknown) => void;
+  resolve: (value: unknown) => void;
+};
+
+type PendingDirectoryEntries = {
+  reject: (reason?: unknown) => void;
+  resolve: (value: WorkspaceDirectoryEntries) => void;
+};
+
+type BridgeWebSocket = {
+  readyState: number;
+  addEventListener: (
+    event: "close" | "error" | "message" | "open",
+    listener: (event: { data?: unknown }) => void,
+  ) => void;
+  send: (data: string) => void;
+};
+
+type QueuedMessage = {
+  payload: string;
+  payloadBytes: number;
+};
+
+export class IpcBridgeDisconnectedError extends Error {
+  readonly code = "IPC_BRIDGE_DISCONNECTED";
+  readonly retryable = true;
+
+  constructor() {
+    super("The IPC bridge disconnected before the request completed.");
+    this.name = "IpcBridgeDisconnectedError";
   }
->();
-const pendingDirectoryEntries = new Map<
-  string,
-  {
-    reject: (reason?: unknown) => void;
-    resolve: (value: WorkspaceDirectoryEntries) => void;
+}
+
+export class IpcBridgeCapacityError extends Error {
+  readonly code = "IPC_BRIDGE_CAPACITY";
+  readonly retryable = false;
+
+  constructor(message: string) {
+    super(message);
+    this.name = "IpcBridgeCapacityError";
   }
->();
+}
+
+export class IpcBridgeTransport {
+  private requestCounter = 0;
+  private socket: BridgeWebSocket | null = null;
+  private reconnectTimeoutId: number | null = null;
+  private outboundQueue: QueuedMessage[] = [];
+  private outboundQueueBytes = 0;
+  private readonly pendingInvokes = new Map<string, PendingInvoke>();
+  private readonly pendingDirectoryEntries = new Map<
+    string,
+    PendingDirectoryEntries
+  >();
+
+  constructor(
+    private readonly url: string,
+    private readonly createSocket: (url: string) => BridgeWebSocket,
+    private readonly handleIncoming: (message: MainToRendererMessage) => void,
+    private readonly handleDisconnect: () => void,
+    private readonly setReconnectTimeout: (
+      callback: () => void,
+      delay: number,
+    ) => number = window.setTimeout.bind(window),
+  ) {}
+
+  get pendingRequestCount(): number {
+    return this.pendingInvokes.size + this.pendingDirectoryEntries.size;
+  }
+
+  get queuedMessageCount(): number {
+    return this.outboundQueue.length;
+  }
+
+  get queuedByteCount(): number {
+    return this.outboundQueueBytes;
+  }
+
+  connect(): void {
+    this.ensureSocket();
+  }
+
+  allocatePortId(): string {
+    return `message_port_${this.nextRequestId()}`;
+  }
+
+  invoke(channel: string, args: unknown[]): Promise<unknown> {
+    const requestId = this.nextRequestId();
+    return new Promise((resolve, reject) => {
+      if (!this.hasPendingCapacity()) {
+        reject(new IpcBridgeCapacityError("Too many pending IPC requests."));
+        return;
+      }
+      this.pendingInvokes.set(requestId, { resolve, reject });
+      try {
+        this.send({ type: "ipc-renderer-invoke", requestId, channel, args });
+      } catch (error) {
+        this.pendingInvokes.delete(requestId);
+        reject(error);
+      }
+    });
+  }
+
+  requestDirectoryEntries(
+    directoryPath: string | null,
+  ): Promise<WorkspaceDirectoryEntries> {
+    const requestId = this.nextRequestId();
+    return new Promise((resolve, reject) => {
+      if (!this.hasPendingCapacity()) {
+        reject(new IpcBridgeCapacityError("Too many pending IPC requests."));
+        return;
+      }
+      this.pendingDirectoryEntries.set(requestId, { resolve, reject });
+      try {
+        this.send({
+          type: "workspace-directory-entries-request",
+          requestId,
+          directoryPath,
+          directoriesOnly: true,
+        });
+      } catch (error) {
+        this.pendingDirectoryEntries.delete(requestId);
+        reject(error);
+      }
+    });
+  }
+
+  send(message: RendererToMainMessage): void {
+    const payload = serializeRendererToMainMessage(message);
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.sendPayload(payload);
+      return;
+    }
+
+    const payloadBytes = new TextEncoder().encode(payload).byteLength;
+    if (
+      this.outboundQueue.length >= MAX_OUTBOUND_QUEUE_MESSAGES ||
+      this.outboundQueueBytes + payloadBytes > MAX_OUTBOUND_QUEUE_BYTES
+    ) {
+      throw new IpcBridgeCapacityError("The IPC outbound queue is full.");
+    }
+    this.outboundQueue.push({ payload, payloadBytes });
+    this.outboundQueueBytes += payloadBytes;
+    this.ensureSocket();
+    this.flushOutboundQueue();
+  }
+
+  receive(rawData: unknown): void {
+    if (
+      new TextEncoder().encode(String(rawData)).byteLength >
+      IPC_MAX_PAYLOAD_BYTES
+    ) {
+      console.error("[electron-stub] rejected oversized IPC bridge message");
+      return;
+    }
+    let rawMessage: unknown;
+    try {
+      rawMessage = JSON.parse(String(rawData));
+    } catch (error) {
+      console.error(
+        "[electron-stub] failed to parse IPC bridge message",
+        error,
+      );
+      return;
+    }
+    const message = parseMainToRendererMessage(rawMessage);
+    if (!message) {
+      console.error("[electron-stub] rejected invalid IPC bridge message");
+      return;
+    }
+
+    if (message.type === "ipc-renderer-invoke-result") {
+      const pending = this.pendingInvokes.get(message.requestId);
+      if (!pending) {
+        return;
+      }
+      this.pendingInvokes.delete(message.requestId);
+      if (message.ok) {
+        pending.resolve(message.result);
+      } else {
+        pending.reject(new Error(message.errorMessage));
+      }
+      return;
+    }
+
+    if (message.type === "workspace-directory-entries-result") {
+      const pending = this.pendingDirectoryEntries.get(message.requestId);
+      if (!pending) {
+        return;
+      }
+      this.pendingDirectoryEntries.delete(message.requestId);
+      if (message.ok) {
+        pending.resolve(message.result);
+      } else {
+        pending.reject(new Error(message.errorMessage));
+      }
+      return;
+    }
+
+    this.handleIncoming(message);
+  }
+
+  private hasPendingCapacity(): boolean {
+    return this.pendingRequestCount < MAX_PENDING_REQUESTS;
+  }
+
+  private nextRequestId(): string {
+    this.requestCounter += 1;
+    return `ipc_bridge_${this.requestCounter}`;
+  }
+
+  private flushOutboundQueue(): void {
+    if (!this.socket || this.socket.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    while (this.outboundQueue.length > 0) {
+      const message = this.outboundQueue.shift();
+      if (!message) {
+        return;
+      }
+      this.outboundQueueBytes -= message.payloadBytes;
+      this.sendPayload(message.payload);
+      if (this.socket?.readyState !== WebSocket.OPEN) {
+        return;
+      }
+    }
+  }
+
+  private sendPayload(payload: string): void {
+    try {
+      this.socket?.send(payload);
+    } catch {
+      // A send may have reached the peer before throwing; do not replay it.
+      this.onSocketDisconnected();
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectTimeoutId !== null) {
+      return;
+    }
+    this.reconnectTimeoutId = this.setReconnectTimeout(() => {
+      this.reconnectTimeoutId = null;
+      this.ensureSocket();
+    }, RECONNECT_DELAY_MS);
+  }
+
+  private ensureSocket(): void {
+    if (
+      this.socket &&
+      (this.socket.readyState === WebSocket.OPEN ||
+        this.socket.readyState === WebSocket.CONNECTING)
+    ) {
+      return;
+    }
+
+    try {
+      const socket = this.createSocket(this.url);
+      this.socket = socket;
+      socket.addEventListener("open", () => this.flushOutboundQueue());
+      socket.addEventListener("message", (event) => this.receive(event.data));
+      socket.addEventListener("close", () => this.onSocketDisconnected(socket));
+      socket.addEventListener("error", () => this.scheduleReconnect());
+    } catch {
+      this.onSocketDisconnected();
+    }
+  }
+
+  private onSocketDisconnected(disconnectedSocket?: BridgeWebSocket): void {
+    if (disconnectedSocket && this.socket !== disconnectedSocket) {
+      return;
+    }
+    this.socket = null;
+    this.outboundQueue = [];
+    this.outboundQueueBytes = 0;
+    const error = new IpcBridgeDisconnectedError();
+    for (const pending of this.pendingInvokes.values()) {
+      pending.reject(error);
+    }
+    this.pendingInvokes.clear();
+    for (const pending of this.pendingDirectoryEntries.values()) {
+      pending.reject(error);
+    }
+    this.pendingDirectoryEntries.clear();
+    this.handleDisconnect();
+    this.scheduleReconnect();
+  }
+}
+
 const rendererListeners = new Map<string, Set<IpcListener>>();
 const messagePorts = new Map<string, MessagePort>();
 
@@ -171,20 +377,6 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
     return;
   }
 
-  if (message.type === "ipc-renderer-invoke-result") {
-    const pending = pendingInvokes.get(message.requestId);
-    if (!pending) {
-      return;
-    }
-    pendingInvokes.delete(message.requestId);
-    if (message.ok) {
-      pending.resolve(message.result);
-      return;
-    }
-    pending.reject(new Error(message.errorMessage));
-    return;
-  }
-
   if (message.type === "message-port-message") {
     messagePorts.get(message.portId)?.postMessage(message.data);
     return;
@@ -196,100 +388,26 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
     port?.close();
     return;
   }
-
-  if (message.type === "workspace-directory-entries-result") {
-    const pending = pendingDirectoryEntries.get(message.requestId);
-    if (!pending) {
-      return;
-    }
-    pendingDirectoryEntries.delete(message.requestId);
-    if (message.ok) {
-      pending.resolve(message.result);
-      return;
-    }
-    pending.reject(new Error(message.errorMessage));
-  }
 }
 
-function flushOutboundQueue(): void {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
-    return;
-  }
-  for (const message of outboundQueue.splice(0)) {
-    socket.send(JSON.stringify(message));
-  }
-}
-
-function scheduleReconnect(): void {
-  if (reconnectTimeoutId !== null) {
-    return;
-  }
-  reconnectTimeoutId = window.setTimeout(() => {
-    reconnectTimeoutId = null;
-    ensureSocket();
-  }, RECONNECT_DELAY_MS);
-}
-
-function ensureSocket(): void {
-  if (
-    socket &&
-    (socket.readyState === WebSocket.OPEN ||
-      socket.readyState === WebSocket.CONNECTING)
-  ) {
-    return;
-  }
-
-  socket = new WebSocket(
-    `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
-  );
-  socket.addEventListener("open", () => {
-    flushOutboundQueue();
-  });
-  socket.addEventListener("message", (event) => {
-    try {
-      const message = JSON.parse(String(event.data)) as MainToRendererMessage;
-      handleIncomingMessage(message);
-    } catch (error) {
-      console.error(
-        "[electron-stub] failed to parse IPC bridge message",
-        error,
-      );
-    }
-  });
-  socket.addEventListener("close", () => {
+const ipcTransport = new IpcBridgeTransport(
+  `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
+  (url) => new WebSocket(url),
+  handleIncomingMessage,
+  () => {
     for (const port of messagePorts.values()) {
       port.close();
     }
     messagePorts.clear();
-    scheduleReconnect();
-  });
-  socket.addEventListener("error", () => {
-    scheduleReconnect();
-  });
-}
+  },
+);
 
 function enqueueMessage(message: RendererToMainMessage): void {
-  outboundQueue.push(message);
-  ensureSocket();
-  flushOutboundQueue();
-}
-
-function nextRequestId(): string {
-  requestCounter += 1;
-  return `ipc_bridge_${requestCounter}`;
+  ipcTransport.send(message);
 }
 
 function invokeMain(channel: string, args: unknown[]): Promise<unknown> {
-  const requestId = nextRequestId();
-  return new Promise((resolve, reject) => {
-    pendingInvokes.set(requestId, { resolve, reject });
-    enqueueMessage({
-      type: "ipc-renderer-invoke",
-      requestId,
-      channel,
-      args,
-    });
-  });
+  return ipcTransport.invoke(channel, args);
 }
 
 function addIpcListener(channel: string, listener: IpcListener): void {
@@ -336,16 +454,7 @@ function isOpenInBrowserMessage(value: unknown): value is {
 function requestWorkspaceDirectoryEntries(
   directoryPath: string | null,
 ): Promise<WorkspaceDirectoryEntries> {
-  const requestId = nextRequestId();
-  return new Promise((resolve, reject) => {
-    pendingDirectoryEntries.set(requestId, { resolve, reject });
-    enqueueMessage({
-      type: "workspace-directory-entries-request",
-      requestId,
-      directoryPath,
-      directoriesOnly: true,
-    });
-  });
+  return ipcTransport.requestDirectoryEntries(directoryPath);
 }
 
 const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
@@ -494,7 +603,7 @@ export const ipcRenderer = {
           );
         }
 
-        const portId = `message_port_${nextRequestId()}`;
+        const portId = ipcTransport.allocatePortId();
         messagePorts.set(portId, transferable);
         transferable.addEventListener("message", (event) => {
           enqueueMessage({
@@ -569,7 +678,7 @@ export const ipcRenderer = {
   },
 };
 
-ensureSocket();
+ipcTransport.connect();
 
 export const contextBridge = {
   exposeInMainWorld(_key: string, _api: unknown): void {
