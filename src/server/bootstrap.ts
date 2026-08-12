@@ -44,5 +44,14 @@ export async function bootstrapMainApp(): Promise<void> {
   const mainModule = require(matches[0]!) as {
     runMainAppStartup: () => Promise<void> | void;
   };
-  await mainModule.runMainAppStartup();
+  // Upstream keeps this promise alive for the Electron application lifecycle.
+  // Starting the bridge must not wait for it: IPC readiness is determined by
+  // registered bridge handlers, not by lifecycle completion.
+  try {
+    void Promise.resolve(mainModule.runMainAppStartup()).catch((error) => {
+      console.error("[ipc-bridge] upstream startup failed", error);
+    });
+  } catch (error) {
+    console.error("[ipc-bridge] upstream startup failed", error);
+  }
 }

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { WebSocket } from "ws";
 import {
   formatHttpUrl,
@@ -208,13 +208,12 @@ describe("IPC bridge readiness", () => {
     await bridge.close();
   });
 
-  it("awaits bootstrap before exposing a handler-backed bridge", async () => {
+  it("binds while the upstream lifecycle promise remains pending", async () => {
     let bootstrapped = false;
     const bridge = await startIpcBridgeServer(
       { host: "127.0.0.1", port: 0, allowedOrigins: [] },
       {
-        bootstrapMainApp: async () => {
-          await Promise.resolve();
+        bootstrapMainApp: () => {
           bootstrapped = true;
           const globals = globalThis as IpcBridgeGlobals;
           const bridgeState = (globals.__codexElectronIpcBridge ??= {});
@@ -222,6 +221,7 @@ describe("IPC bridge readiness", () => {
             channel,
             args,
           });
+          return new Promise<void>(() => undefined);
         },
       },
     );
@@ -277,17 +277,25 @@ describe("IPC bridge readiness", () => {
     await bridge.close();
   });
 
-  it("rejects startup failure without binding a usable bridge", async () => {
-    await expect(
-      startIpcBridgeServer(
-        { host: "127.0.0.1", port: 0, allowedOrigins: [] },
-        {
-          bootstrapMainApp: async () => {
-            throw new Error("startup failed");
-          },
+  it("logs a startup rejection without preventing HTTP binding", async () => {
+    const error = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const bridge = await startIpcBridgeServer(
+      { host: "127.0.0.1", port: 0, allowedOrigins: [] },
+      {
+        bootstrapMainApp: async () => {
+          throw new Error("startup failed");
         },
-      ),
-    ).rejects.toThrow("startup failed");
+      },
+    );
+    await Promise.resolve();
+    expect(error).toHaveBeenCalledWith(
+      "[ipc-bridge] startup failed",
+      expect.any(Error),
+    );
+    error.mockRestore();
+    await bridge.close();
   });
 });
 

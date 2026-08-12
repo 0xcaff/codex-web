@@ -504,11 +504,12 @@ export async function startIpcBridgeServer(
         }
 
         if (message.type === "ipc-renderer-send") {
-          bridgeState.handleRendererSend?.(
-            message.channel,
-            message.args,
-            message.sourceUrl,
-          );
+          const handler = bridgeState.handleRendererSend;
+          if (!handler) {
+            closeWithProtocolError(socket, "IPC bridge unavailable");
+            return;
+          }
+          handler(message.channel, message.args, message.sourceUrl);
           return;
         }
 
@@ -623,7 +624,16 @@ export async function startIpcBridgeServer(
   });
 
   if (startMainApp) {
-    await bootstrap();
+    // Startup may return the upstream application's lifecycle promise. Bind
+    // HTTP immediately and use handler presence below as the IPC readiness
+    // signal instead of blocking on a promise that normally never resolves.
+    try {
+      void Promise.resolve(bootstrap()).catch((error) => {
+        console.error("[ipc-bridge] startup failed", error);
+      });
+    } catch (error) {
+      console.error("[ipc-bridge] startup failed", error);
+    }
   }
 
   await app.listen({ host: options.host, port: options.port });
