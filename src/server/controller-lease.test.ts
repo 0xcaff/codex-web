@@ -49,6 +49,17 @@ describe("controller lease", () => {
     expect(lease.statusFor("first")).toBe("secondary");
   });
 
+  it("resolves simultaneous take-control messages in arrival order", () => {
+    const time = clock();
+    const lease = new ControllerLeaseManager(time.now);
+    lease.connect("first");
+    lease.connect("second");
+    lease.takeControl("second");
+    lease.takeControl("first");
+    expect(lease.statusFor("first")).toBe("active");
+    expect(lease.statusFor("second")).toBe("secondary");
+  });
+
   it("expires a stale controller but grants reconnect grace", () => {
     const time = clock();
     const lease = new ControllerLeaseManager(time.now);

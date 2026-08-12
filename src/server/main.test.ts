@@ -319,6 +319,18 @@ describe("IPC controller lease enforcement", () => {
       errorMessage: "Controller lease required for this operation",
     });
     second.send(
+      JSON.stringify({
+        type: "ipc-renderer-invoke",
+        requestId: "read-only",
+        channel: "get-app-version",
+        args: [],
+      }),
+    );
+    await expect(nextIpcMessage(second)).resolves.toMatchObject({
+      requestId: "read-only",
+      ok: true,
+    });
+    second.send(
       JSON.stringify({ type: "controller-take-control", clientId: "second" }),
     );
     await expect(nextIpcMessage(second)).resolves.toEqual({
