@@ -71,6 +71,12 @@ type IpcBridgeGlobals = typeof globalThis & {
       args: unknown[],
       sourceUrl?: string,
     ) => Promise<unknown>;
+    handleRendererPostMessage?: (
+      channel: string,
+      message: unknown,
+      ports: unknown[],
+      sourceUrl?: string,
+    ) => void;
   };
 };
 
@@ -273,6 +279,40 @@ describe("IPC bridge readiness", () => {
       requestId: "undefined-result",
       ok: true,
     });
+    socket.close();
+    await bridge.close();
+  });
+
+  it("delivers an omitted postMessage payload to the Electron handler as undefined", async () => {
+    let resolveDelivered: (() => void) | undefined;
+    const delivered = new Promise<void>((resolve) => {
+      resolveDelivered = resolve;
+    });
+    let receivedPayload: unknown = null;
+    const bridge = await startIpcBridgeServer(
+      { host: "127.0.0.1", port: 0, allowedOrigins: [] },
+      {
+        bootstrapMainApp: () => {
+          const globals = globalThis as IpcBridgeGlobals;
+          const bridgeState = (globals.__codexElectronIpcBridge ??= {});
+          bridgeState.handleRendererPostMessage = (_channel, message) => {
+            receivedPayload = message;
+            resolveDelivered?.();
+          };
+        },
+      },
+    );
+    const socket = await connectIpc(bridge.port);
+    socket.send(
+      JSON.stringify({
+        type: "ipc-renderer-post-message",
+        channel: "undefined-payload",
+        portIds: [],
+      }),
+    );
+
+    await delivered;
+    expect(receivedPayload).toBeUndefined();
     socket.close();
     await bridge.close();
   });

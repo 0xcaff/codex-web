@@ -134,7 +134,7 @@ describe("IPC wire protocol", () => {
     ).toThrow("maximum payload size");
   });
 
-  it("refuses messages whose JSON serialization would omit required fields", () => {
+  it("permits browser-compatible fields that JSON omits", () => {
     expect(() =>
       serializeRendererToMainMessage({
         type: "ipc-renderer-invoke",
@@ -151,7 +151,23 @@ describe("IPC wire protocol", () => {
         message: undefined,
         portIds: [],
       }),
-    ).toThrow("changes shape");
+    ).not.toThrow();
+  });
+
+  it("round-trips an undefined postMessage payload as the compatible omitted wire field", () => {
+    const serialized = serializeRendererToMainMessage({
+      type: "ipc-renderer-post-message",
+      channel: "post",
+      message: undefined,
+      portIds: [],
+    });
+
+    expect(serialized).not.toContain('"message":');
+    expect(parseRendererToMainMessage(JSON.parse(serialized))).toEqual({
+      type: "ipc-renderer-post-message",
+      channel: "post",
+      portIds: [],
+    });
   });
 
   it("round-trips an undefined invoke result as the compatible omitted wire field", () => {

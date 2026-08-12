@@ -41,7 +41,11 @@ export type RendererToMainMessage =
   | {
       type: "ipc-renderer-post-message";
       channel: string;
-      message: unknown;
+      /**
+       * Electron permits `undefined` as a postMessage payload. JSON omits that
+       * property on the wire, so an absent field represents `undefined` here.
+       */
+      message?: unknown;
       portIds: string[];
       sourceUrl?: string;
     }
@@ -229,7 +233,6 @@ export function isRendererToMainMessage(
           "sourceUrl",
         ]) &&
         isChannel(value.channel) &&
-        hasOwnKey(value, "message") &&
         Array.isArray(value.portIds) &&
         value.portIds.length <= IPC_MAX_PORTS_PER_MESSAGE &&
         value.portIds.every(isPortId) &&
