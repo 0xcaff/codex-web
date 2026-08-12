@@ -34,5 +34,21 @@
   },
   "nativeAddon": {
     "betterSqlite3Version": "12.9.0"
-  }
+  },
+  "patchSeries": [
+    "webview-remove-csp.patch",
+    "webview-style.patch",
+    "webview-preload.patch",
+    "webview-favicon.patch",
+    "webview-pwa.patch",
+    "webview-thread-title.patch",
+    "webview-initial-route.patch",
+    "webview-electron-shim-close-sidebar.patch",
+    "webview-prosemirror-inputmode.patch",
+    "webview-use-atfs-for-local-files.patch",
+    "webview-statsig-override-adapter.patch",
+    "webview-prompt-search-param.patch",
+    "sentry-disable-shell.patch",
+    "sentry-disable-webview.patch"
+  ]
 }

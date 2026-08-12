@@ -89,7 +89,8 @@ Run the compatibility gate separately against the already-pinned extraction:
 ```bash
 npm run test:compatibility
 npm run check:compatibility
-# → validates every patch target and hunk anchor without modifying scratch/
+# → validates every patch target and hunk anchor in shared series order,
+#   without modifying scratch/
 ```
 
 The compatibility report includes the extracted asset count and byte budget.

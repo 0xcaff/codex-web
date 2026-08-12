@@ -1,3 +1,13 @@
 node_modules/
 scratch*/
 sentry
+
+# TypeScript compiler outputs from co-located server/shared sources.
+/src/server/**/*.js
+/src/server/**/*.js.map
+/src/server/**/*.d.ts
+/src/server/**/*.d.ts.map
+/src/shared/**/*.js
+/src/shared/**/*.js.map
+/src/shared/**/*.d.ts
+/src/shared/**/*.d.ts.map

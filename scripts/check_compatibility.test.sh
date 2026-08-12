@@ -7,3 +7,4 @@ if node scripts/check_compatibility.mjs "$fixture/tree" >/dev/null 2>&1; then
   echo "compatibility gate accepted a missing target" >&2
   exit 1
 fi
+node scripts/patch_series.test.mjs

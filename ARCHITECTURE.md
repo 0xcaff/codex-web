@@ -95,10 +95,11 @@ recognizably generated upload directories; it leaves unexpected paths alone.
 - `scripts/codex_remote_proxy.test.sh` uses a stub `websocat` to prove argument
   forwarding without making a network connection.
 - Browser and IPC protocol tests protect the renderer shim boundary.
-- `npm run check:compatibility` separately reverse-dry-runs every patch against
-  the pinned extracted tree. Its patch target/hunk list is machine readable
-  and the JSON report includes extracted-tree asset/startup budgets; this gate
-  never prepares, rewrites, or downloads the proprietary archive.
+- `npm run check:compatibility` separately reverses the machine-readable,
+  ordered patch series against a disposable copy of the pinned extracted tree.
+  The JSON report includes patch targets and extracted-tree asset/startup
+  budgets; this gate never prepares, rewrites, or downloads the proprietary
+  archive. `scripts/prepare_asar` consumes the same series order.
 
 When upstream changes, regenerate and review the smallest possible patches;
 then run the full update gates in [UPGRADING.md](UPGRADING.md).

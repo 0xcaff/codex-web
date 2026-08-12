@@ -24,18 +24,5 @@ else
   )
   prettier --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
 fi
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-style.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-preload.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-favicon.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-pwa.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-thread-title.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-initial-route.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-electron-shim-close-sidebar.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prosemirror-inputmode.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-use-atfs-for-local-files.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-statsig-override-adapter.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-prompt-search-param.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-shell.patch
-patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disable-webview.patch
+node scripts/patch_series.mjs apply scratch/asar
 rm -rf scratch/asar/node_modules/better-sqlite3
