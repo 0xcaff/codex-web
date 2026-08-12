@@ -67,6 +67,10 @@ npx --yes github:0xcaff/codex-web
 # → codex-web listening at http://127.0.0.1:8214
 ```
 
+This non-Nix path streams and verifies the downloaded Desktop archive against
+the pinned SHA-256 before extraction. Do not bypass this check or substitute an
+unpinned archive.
+
 ## Trusted LAN
 
 Use `--lan` only for a network where every reachable client is trusted. It is

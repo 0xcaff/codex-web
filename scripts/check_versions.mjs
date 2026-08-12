@@ -91,6 +91,7 @@ expectIncludes(
   "compatibility.codexCli.platforms.${system}",
 );
 expectIncludes("scripts/prepare", "desktop.version");
+expectIncludes("scripts/prepare", "desktop.archive.sha256");
 expectIncludes("vite.browser.config.ts", "compatibility.desktop.version");
 expectIncludes(
   "vite.browser.config.ts",

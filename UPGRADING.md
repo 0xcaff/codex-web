@@ -13,6 +13,9 @@ gates before publishing a new build.
 - An npm-only workflow also needs Node.js/npm, Python, a C/C++ build toolchain,
   and network access for the initial native-dependency build. Run `npm ci`
   before its checks.
+- The npm/npx preparation path verifies the downloaded archive against
+  `compatibility.json`'s pinned SRI SHA-256 before extraction; update the hash
+  with the version rather than bypassing verification.
 - Back up an existing `scratch/` directory outside the repository before any
   destructive preparation command. The commands below replace `scratch/`.
 
