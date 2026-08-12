@@ -50,13 +50,15 @@ describe("server CLI and trusted-network reporting", () => {
       "http://10.0.0.7:8214",
       "http://203.0.113.9:8214",
     ]);
-    expect(
-      getServerStartupReport(
-        { allowedOrigins: [], host: "0.0.0.0", port: 8214 },
-        8214,
-        networkInterfaces,
-      ),
-    ).toContain(
+    const lanReport = getServerStartupReport(
+      { allowedOrigins: [], host: "0.0.0.0", port: 8214 },
+      8214,
+      networkInterfaces,
+    );
+    expect(lanReport).toContain("  http://10.0.0.7:8214");
+    expect(lanReport).toContain("  http://203.0.113.9:8214");
+    expect(lanReport).not.toContain("  http://[fe80::a]:8214");
+    expect(lanReport).toContain(
       "TRUSTED NETWORK WARNING: anyone who can reach this service can operate Codex with the permissions and credentials of this host user. Do not expose it to an untrusted network or the public internet.",
     );
   });

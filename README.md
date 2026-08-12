@@ -38,8 +38,10 @@ codex login --device-auth
 
 ## Recommended: Nix first run
 
-Nix packages the pinned Codex CLI and avoids relying on a workstation-global
-Node installation:
+Nix builds the pinned Codex Desktop artifact and avoids relying on a
+workstation-global Node installation. The packaged server still needs `codex`
+available on `PATH`; use an existing Codex CLI installation or the repository’s
+Nix development shell for that CLI.
 
 ```bash
 nix run github:0xcaff/codex-web
@@ -72,12 +74,12 @@ an explicit alias for `--host 0.0.0.0`; it cannot be combined with `--host`.
 
 ```bash
 nix run github:0xcaff/codex-web -- --lan
-# → prints non-loopback IPv4/IPv6 candidate URLs and a TRUSTED NETWORK WARNING
+# → prints non-loopback IPv4 candidate URLs and a TRUSTED NETWORK WARNING
 ```
 
-The startup report lists only non-internal IPv4 and IPv6 interface addresses;
-IPv6 URLs are correctly bracketed. They are candidates to check against the
-host’s routing and firewall policy. `--lan` binds the IPv4 wildcard address.
+Because `--lan` binds the IPv4 wildcard address, the startup report lists only
+non-internal IPv4 interface addresses that can reach that listener. They are
+candidates to check against the host’s routing and firewall policy.
 
 The browser UI is equivalent to giving a user access to Codex running as the
 server account. Anyone who can reach it may run commands, read or modify files

@@ -217,9 +217,9 @@ function printUsage(): void {
       "  override with --upload-max-file-bytes, --upload-max-files, --upload-max-aggregate-bytes, or CODEX_WEB_UPLOAD_* environment variables",
       "",
       "Examples:",
-      "  yarn server",
-      "  yarn server --port 9000",
-      "  yarn server --lan",
+      "  npm run server",
+      "  npm run server -- --port 9000",
+      "  npm run server -- --lan",
     ].join("\n"),
   );
 }
@@ -248,14 +248,14 @@ export function formatHttpUrl(host: string, port: number): string {
 export function getTrustedNetworkUrls(
   port: number,
   networkInterfaces: NetworkInterfaces = os.networkInterfaces,
+  families: readonly string[] = ["IPv4", "IPv6"],
 ): string[] {
   const urls = Object.values(networkInterfaces())
     .flatMap((interfaces) => interfaces ?? [])
     .filter(
       (networkInterface) =>
         !networkInterface.internal &&
-        (networkInterface.family === "IPv4" ||
-          networkInterface.family === "IPv6"),
+        families.includes(networkInterface.family),
     )
     .map((networkInterface) => formatHttpUrl(networkInterface.address, port));
 
@@ -271,13 +271,17 @@ export function getServerStartupReport(
     return [`codex-web listening at ${formatHttpUrl(options.host, port)}`];
   }
 
-  const candidateUrls = getTrustedNetworkUrls(port, networkInterfaces);
+  // --lan binds the IPv4 wildcard (0.0.0.0), so only advertise addresses that
+  // can reach that listener. IPv6, especially link-local addresses, cannot.
+  const candidateUrls = getTrustedNetworkUrls(port, networkInterfaces, [
+    "IPv4",
+  ]);
   return [
     `codex-web listening at ${formatHttpUrl(options.host, port)}`,
-    "Trusted-network candidate URLs (non-loopback interfaces):",
+    "Trusted-network candidate URLs (non-loopback IPv4 interfaces):",
     ...(candidateUrls.length > 0
       ? candidateUrls.map((url) => `  ${url}`)
-      : ["  (no non-loopback IPv4 or IPv6 interfaces found)"]),
+      : ["  (no non-loopback IPv4 interfaces found)"]),
     "",
     "TRUSTED NETWORK WARNING: anyone who can reach this service can operate Codex with the permissions and credentials of this host user. Do not expose it to an untrusted network or the public internet.",
   ];

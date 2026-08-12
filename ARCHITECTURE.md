@@ -61,8 +61,8 @@ flowchart TB
 ```
 
 The default bind is `127.0.0.1`. `--lan` deliberately binds `0.0.0.0`, reports
-non-loopback interface candidates, and prints a warning because network reach
-is host capability. Exact same-origin IPC is accepted. When a reverse proxy’s
+only non-loopback IPv4 candidates that can reach that listener, and prints a
+warning because network reach is host capability. Exact same-origin IPC is accepted. When a reverse proxy’s
 external browser origin does not match the received Host, the operator must add
 each exact HTTP(S) origin with repeatable `--allowed-origin`.
 
