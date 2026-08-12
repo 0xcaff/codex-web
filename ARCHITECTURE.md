@@ -1,66 +1,88 @@
-# architecture
+# Architecture
 
-a bit on how this whole thing is put together.
+codex-web repackages a pinned Codex Desktop application, applies small patches,
+and replaces its Electron boundaries with a browser-to-server bridge. The goal
+is compatibility with the upstream app, not a new authorization system.
 
-the general approach here is to download the electron app, unpack it and apply
-as small a set of patches to it as possible to get it working.
+## Build and patch flow
 
-an electron app has two parts, a part which runs in the main process and a part
-which runs in the renderer process.
+```mermaid
+flowchart LR
+  A["Pinned Codex Desktop archive"] --> B["prepare_asar extracts scratch/asar"]
+  C["Browser shim and static assets"] --> B
+  D["Small patches in patches/"] --> B
+  B --> E["Patched Electron main and renderer bundles"]
+  E --> F["Vite browser build"]
+  F --> G["Packaged codex-web server"]
+  T["Typecheck, Vitest, format, shell proxy test"] --> G
+```
 
-the main process part is basically a node process with a `require('electron')`
-dependency. it runs even before anything is visible on the screen, setting up
-the system tray widget, running background tasks and hooking up listeners for
-app launcher events. there is a single instance of the main process regardless
-of how many windows are open.
+`scripts/prepare_asar` unpacks the upstream archive into `scratch/asar`, copies
+assets, and applies the reviewed patches. The build never redistributes the
+original application source as patches; it carries only the narrow changes in
+`patches/`. `src/browser/shim.ts` is bundled by Vite and stands in for the
+renderer-facing Electron APIs.
 
-the ui runs inside an electron renderer process. in the desktop app, this looks
-sorta like a browser with some modifications to the browser's chrome. it handles
-displaying the interface, reacting to events from user interaction and holding
-onto state which lives close to the ui (what text is in the prompt box for
-example).
+## Runtime, readiness, and reconnect
 
-the electron renderer process usually launched by the electron main process. the
-main process and render process communicate via an IPC setup in a [preload
-script]. the preload script is injected into the renderer process before
-anything else loads, has privileged access and can expose functions and data to
-the renderer realm through `contextBridge.exposeInMainWorld`. the preload script
-has access to [`ipcRenderer`].
+```mermaid
+flowchart LR
+  U["Browser renderer"] -->|"HTTP assets"| S["Fastify server"]
+  U -->|"same-origin WebSocket /__backend/ipc"| S
+  S -->|"bootstrap before handlers"| M["Patched Electron main bundle"]
+  M -->|"IPC bridge state"| S
+  S -->|"IPC results and broadcasts"| U
+  U -. "tab closes or network drops" .-> R["WebSocket closes; a new tab reconnects"]
+```
 
-codex-web hooks the preload script by providing [shim.ts](./src/browser/shim.ts)
-as a stand-in for electron in the renderer process and then setting up preload
-to run in the renderer realm (see
-[vite.browser.config.ts](./vite.browser.config.ts)).
+`src/server/main.ts` serves the browser bundle and bridges the renderer’s
+validated IPC envelope over `/__backend/ipc`. It boots the main application
+before exposing handler-backed work. A very early invoke gets a deterministic
+unavailable response instead of being silently dropped. A disconnected browser
+can open a new WebSocket, but this is not persistence or authentication for the
+old renderer session.
 
-next, we apply a series of patches to both code running in the main process and
-the renderer process. these are applied at postinstall time through the
-[`prepare_asar`](./scripts/prepare_asar) script. patches are located
-in [./patches](./patches) and applied ontop of the prettified code extracted
-from the upstream app. care was taken here to patch at installation time to
-avoid redistributing the original code.
-the [./patches/webview-preload.patch](patches/webview-preload.patch) connects
-the shimmed preload script to the index.html entrypoint.
+The normal runtime starts Codex through the server’s child lifecycle. The
+optional `scripts/codex_remote_proxy` changes only that transport: it maps the
+expected noninteractive stdio app-server protocol to an already-running Unix
+socket using `websocat`. It must remain a private Unix socket; this mechanism is
+not a TCP remote-control service.
 
-we aim for the patches to be as small as possible as they're the most annoying
-part to change. the patches today are mostly around routing, urls, page title,
-pwa and mobile behavior.
+## Trust boundaries
 
-to connect the ipc from the renderer process to the main process, we use a
-websocket for most messages intercepting and handing a small handful of messages
-directly (file picker, workspace picker). today, the remaining parts of shim are
-for connecting the in memory router to the browser history and setting up the
-sidebar behavior on mobile.
+```mermaid
+flowchart TB
+  B["Browser on a trusted path"] --> P["Loopback, VPN, SSH, or authenticated TLS proxy"]
+  P --> S["codex-web process as dedicated host user"]
+  S --> C["Codex CLI, files, and credentials available to that user"]
+  B -->|"Origin and Host checked for IPC"| S
+  B -->|"multipart upload"| U["Private temporary upload directory"]
+  U -->|"finite limits; expiry scavenger"| S
+```
 
-the ipc websocket is hosted by [main.ts](./src/server/main.ts). this process
-binds a port and listens for incoming websocket connections. it also shims
-electron (see `installModuleAliasHook`) before loading the electron shell
-entrypoint. the shims are located in
-[./src/server/electron](./src/server/electron) and focus on providing the
-minimum amount of functionality needed to make the app work. this comes down to
-some network transport to the outside world and hooking up to the ipc pipe from
-the renderer. this part is the most sloppy part of the codebase as i left codex
-to figure it out unattended. the parts around `__codexElectronIpcBridge` are the
-important bits related to wiring up the ipc bridge.
+The default bind is `127.0.0.1`. `--lan` deliberately binds `0.0.0.0`, reports
+non-loopback interface candidates, and prints a warning because network reach
+is host capability. Exact same-origin IPC is accepted. When a reverse proxy’s
+external browser origin does not match the received Host, the operator must add
+each exact HTTP(S) origin with repeatable `--allowed-origin`.
 
-[preload script]: https://www.electronjs.org/docs/latest/tutorial/tutorial-preload
-[`ipcRenderer`]: https://www.electronjs.org/docs/latest/api/ipc-renderer
+codex-web does not provide TLS, authentication, or authorization. Network
+isolation, an SSH tunnel, a VPN, or an authenticated reverse proxy must provide
+those controls. Run the process as a dedicated unprivileged user and scope its
+filesystem and credential access accordingly.
+
+Uploads have finite per-file, count, and aggregate limits and are stored in
+metadata-marked private temporary directories. The scavenger only removes old,
+recognizably generated upload directories; it leaves unexpected paths alone.
+
+## Tests and change boundaries
+
+- `src/server/main.test.ts` exercises origin checks, startup/readiness behavior,
+  CLI defaults and conflicts, plus deterministic LAN candidate reporting.
+- `src/server/uploads.test.ts` exercises bounded upload and retention behavior.
+- `scripts/codex_remote_proxy.test.sh` uses a stub `websocat` to prove argument
+  forwarding without making a network connection.
+- Browser and IPC protocol tests protect the renderer shim boundary.
+
+When upstream changes, regenerate and review the smallest possible patches;
+then run the full update gates in [UPGRADING.md](UPGRADING.md).

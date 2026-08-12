@@ -206,11 +206,12 @@ function printUsage(): void {
   console.log(
     [
       "Usage:",
-      "  server [--host <host>] [--port <port>] [--allowed-origin <origin>]",
+      "  server [--lan | --host <host>] [--port <port>] [--allowed-origin <origin>]",
       "",
       "Defaults:",
       "  --host 127.0.0.1",
       "  --port 8214",
+      "  --lan binds 0.0.0.0 for a trusted local network (cannot be combined with --host)",
       "  --allowed-origin may be repeated to allow an exact HTTP(S) reverse-proxy origin",
       `  upload limit defaults: ${DEFAULT_UPLOAD_LIMITS.maxFileBytes} bytes per file, ${DEFAULT_UPLOAD_LIMITS.maxFiles} files, ${DEFAULT_UPLOAD_LIMITS.maxAggregateBytes} bytes total`,
       "  override with --upload-max-file-bytes, --upload-max-files, --upload-max-aggregate-bytes, or CODEX_WEB_UPLOAD_* environment variables",
@@ -218,8 +219,68 @@ function printUsage(): void {
       "Examples:",
       "  yarn server",
       "  yarn server --port 9000",
+      "  yarn server --lan",
     ].join("\n"),
   );
+}
+
+type NetworkInterfaceAddress = {
+  address: string;
+  family: string;
+  internal: boolean;
+};
+type NetworkInterfaces = () => Record<
+  string,
+  NetworkInterfaceAddress[] | undefined
+>;
+
+/** Formats a browser URL, including the brackets required around IPv6 hosts. */
+export function formatHttpUrl(host: string, port: number): string {
+  const formattedHost = host.includes(":") ? `[${host}]` : host;
+  return `http://${formattedHost}:${port}`;
+}
+
+/**
+ * Returns deterministic, non-loopback addresses an operator can consider for
+ * trusted-network access. The injected seam keeps startup reporting testable
+ * without depending on the host running the tests.
+ */
+export function getTrustedNetworkUrls(
+  port: number,
+  networkInterfaces: NetworkInterfaces = os.networkInterfaces,
+): string[] {
+  const urls = Object.values(networkInterfaces())
+    .flatMap((interfaces) => interfaces ?? [])
+    .filter(
+      (networkInterface) =>
+        !networkInterface.internal &&
+        (networkInterface.family === "IPv4" ||
+          networkInterface.family === "IPv6"),
+    )
+    .map((networkInterface) => formatHttpUrl(networkInterface.address, port));
+
+  return [...new Set(urls)].sort((left, right) => left.localeCompare(right));
+}
+
+export function getServerStartupReport(
+  options: ServerOptions,
+  port: number,
+  networkInterfaces: NetworkInterfaces = os.networkInterfaces,
+): string[] {
+  if (options.host !== "0.0.0.0") {
+    return [`codex-web listening at ${formatHttpUrl(options.host, port)}`];
+  }
+
+  const candidateUrls = getTrustedNetworkUrls(port, networkInterfaces);
+  return [
+    `codex-web listening at ${formatHttpUrl(options.host, port)}`,
+    "Trusted-network candidate URLs (non-loopback interfaces):",
+    ...(candidateUrls.length > 0
+      ? candidateUrls.map((url) => `  ${url}`)
+      : ["  (no non-loopback IPv4 or IPv6 interfaces found)"]),
+    "",
+    "TRUSTED NETWORK WARNING: anyone who can reach this service can operate Codex with the permissions and credentials of this host user. Do not expose it to an untrusted network or the public internet.",
+  ];
 }
 
 export function normalizeHttpOrigin(value: string): string | null {
@@ -300,6 +361,9 @@ export function parseServerArgs(args: string[]): ServerOptions {
       host: {
         type: "string",
       },
+      lan: {
+        type: "boolean",
+      },
       port: {
         type: "string",
       },
@@ -320,6 +384,12 @@ export function parseServerArgs(args: string[]): ServerOptions {
     process.exit(0);
   }
 
+  if (parsed.values.lan && parsed.values.host !== undefined) {
+    throw new Error(
+      "--lan cannot be combined with --host; use one or the other",
+    );
+  }
+
   const rawAllowedOrigins = parsed.values["allowed-origin"] ?? [];
   const allowedOrigins = rawAllowedOrigins.map((origin) => {
     const normalized = normalizeHttpOrigin(origin);
@@ -332,7 +402,7 @@ export function parseServerArgs(args: string[]): ServerOptions {
   });
 
   return {
-    host: parsed.values.host ?? "127.0.0.1",
+    host: parsed.values.lan ? "0.0.0.0" : (parsed.values.host ?? "127.0.0.1"),
     port: parsed.values.port ? parsePort(parsed.values.port) : 8214,
     allowedOrigins,
     uploadLimits: parseUploadLimits({
@@ -763,11 +833,14 @@ export async function startIpcBridgeServer(
   }
 
   await app.listen({ host: options.host, port: options.port });
-  console.log(`IPC bridge listening at ws://${options.host}:${options.port}`);
 
   const address = app.server.address();
   if (!address || typeof address === "string") {
     throw new Error("IPC bridge did not bind a TCP port");
+  }
+
+  for (const line of getServerStartupReport(options, address.port)) {
+    console.log(line);
   }
 
   return {

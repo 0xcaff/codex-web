@@ -1,99 +1,107 @@
-# upgrading
+# Upgrading Codex Desktop
 
-instructions for upgrading codex-web to point at a new version of upstream
-Codex Desktop.
+This repository carries a pinned upstream Codex Desktop archive plus a small
+set of patches. Treat an upgrade as a compatibility exercise: preserve a known
+good extracted copy, port each patch intentionally, then pass server and browser
+gates before publishing a new build.
 
-## backing up
+## Prerequisites and safe workspace
 
-we will start by generating a scratch directory and backing it up. first, let's
-get the `scratch` directory to a known state by running the following
+- Use a clean worktree with enough disk space for several extracted app copies.
+- Use the Nix development environment for the pinned CLI, Node, unzip, and
+  patch tools. `nix develop` is the reproducible route.
+- An npm-only workflow also needs Node.js/npm, Python, a C/C++ build toolchain,
+  and network access for the initial native-dependency build. Run `npm ci`
+  before its checks.
+- Back up an existing `scratch/` directory outside the repository before any
+  destructive preparation command. The commands below replace `scratch/`.
+
+Check the current formatting and test baseline first:
 
 ```bash
-rm -rf scratch scratch-backup # remove existing past scratch directories to start from clean state
-DEV=1 nix develop --command yarn run prepare:asar 
+nix develop --command npm run check
+# → type checks, tests, proxy test, and formatting pass
+```
+
+## 1. Update the pinned archive
+
+Update the archive version and hash in `default.nix`, and keep
+`scripts/prepare`’s `APP_VERSION` in sync. Update `nix/codex/default.nix` when
+the bundled Codex CLI version changes.
+
+Confirm the flake still evaluates before downloading or extracting anything:
+
+```bash
+nix flake check --no-build
+# → evaluates flake checks without building packages
+```
+
+## 2. Preserve the known-good extraction
+
+With a reviewed backup location chosen by the operator, prepare the current
+version and move it aside. This intentionally replaces the repository’s
+`scratch/` directory:
+
+```bash
+DEV=1 nix develop --command npm run prepare:asar
 mv scratch scratch-backup
+# → scratch-backup contains the known-good patched extraction
 ```
 
-the `scratch-backup` directory holds the patched, working version of codex-web.
-we will use this when moving the patches over to the new version to understand
-the context the patches were being applied in.
-
-## updating urls
-
-there are a few places to update next.
-
-1. `appVersion` in default.nix and `hash` in `codexZip`.
-2. `APP_VERSION` in ./scripts/prepare
-
-then temporarily comment out the patch lines in ./scripts/prepare_asar and run
+For the new upstream version, temporarily disable patch application in
+`scripts/prepare_asar`, then extract its unmodified tree:
 
 ```bash
-DEV=1 nix develop --command yarn run prepare:asar 
-cp -r scratch scratch-new-version-unmodified
+DEV=1 nix develop --command npm run prepare:asar
+mv scratch scratch-new-version-unmodified
+# → scratch-new-version-unmodified contains the new unpatched tree
 ```
 
-## upgrading the codex-cli version
+## 3. Port and regenerate patches
 
-this part can be run concurrently with the rest of the upgrade process. make
-sure to wait for its completion before doing validation. run it in a subagent.
+Compare `scratch-backup`, `scratch-new-version-unmodified`, and the current
+`patches/` entries. Apply the required changes to a fresh `scratch/` copy first.
+Generate patch files with `diff`; do not hand-edit large generated patches.
 
-run the following to get the version of the new codex-cli
+Re-enable the patch lines and regenerate:
 
 ```bash
-scratch/ChatGPT.app/Contents/Resources/codex --version
+DEV=1 nix develop --command npm run prepare:asar
+# → scratch/ contains the newly extracted, patched application
 ```
 
-then update the `nix/codex/default.nix` file's `version` field and hashes to
-point to the new version.
+Inspect the generated diff against the unmodified extraction. Every changed
+upstream file needs a corresponding intentional patch or documented reason.
 
-## porting over patches
+## 4. Validate package, server, and browser/mobile behavior
 
-now we have a few folders
-
-* `scratch-backup`: patches applied on top of old version of Codex Desktop
-* `scratch-new-version-unmodified`: plain extracted new version of Codex Desktop
-* `scratch`: working copy we will be modifying
-
-now carefully look at the patches in `patches/` and how they were applied in
-`scratch-backup` and bring the changes over to `scratch`. apply them directly
-in-tree first. don't worry immediately about updating the patches yet.
-
-## updating patches
-
-once the patches have been made in `scratch`, diff the changes in `scratch`
-against `scratch-new-version-unmodified` and update the patches in `patches/`.
-always generate the patches by running `diff` and always avoid writing the
-patches manually as it's very easy to get them wrong.
-
-once that is done, uncomment the patch lines in `scripts/prepare_asar` and run
+Run the full npm gate twice. The repeated run catches build products or ordering
+issues hidden by a warm first run:
 
 ```bash
-mv scratch scratch-patched-inplace
-rm -rf scratch
-DEV=1 nix develop --command yarn run prepare:asar 
+npm run check
+npm run check
+# → both runs pass typecheck, Vitest, proxy argument-flow, and formatting
 ```
 
-then diff `./scratch-patched-inplace` with the resulting `./scratch` to validate
-the patches were applied as expected.
-
-## validation
-
-to validate things are still working, we'll first validate the server, then the
-client. before starting this step, make sure to wait for the
-`upgrading the codex-cli version` subagent to finish.
-
-to validate the server, run the following
+Run the reproducible Nix gate as well:
 
 ```bash
-nix develop --command yarn server
+nix develop --command npm run check
+# → the same check passes in the Nix development environment
 ```
 
-next validate the client by opening a browser window to `http://localhost:8214`
-and validating things show up on the page.
+Start the server on loopback, open <http://127.0.0.1:8214>, and verify in a
+desktop browser and a narrow mobile viewport:
 
-look in the console for errors. also, look on the screen to see whether any
-error dialogs popped up. sometimes errors occur, but they're silent and exhibit
-as loading taking forever (more than 1m). look out for that case too.
+- the app reaches a ready state without console errors or silent loading beyond
+  one minute;
+- a new browser tab can connect, an IPC-backed action completes, and a tab
+  disconnect/reconnect behaves predictably;
+- a bounded upload works and an oversized upload is rejected;
+- mobile navigation, focus, and touch-sized controls remain usable;
+- a reverse-proxy deployment upgrades `/__backend/ipc` to WebSocket and has the
+  right exact external `--allowed-origin` entries when the upstream Host differs.
 
-if there are errors, bring them to the users attention and we will decide how to
-proceed.
+Do not claim that codex-web supplies TLS or authentication during this process;
+those remain reverse-proxy or private-network responsibilities.

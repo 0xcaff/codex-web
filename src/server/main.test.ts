@@ -1,12 +1,66 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { WebSocket } from "ws";
 import {
+  formatHttpUrl,
+  getServerStartupReport,
+  getTrustedNetworkUrls,
   IPC_MAX_PAYLOAD_BYTES,
   isAllowedIpcOrigin,
   parseRendererToMainMessage,
   parseServerArgs,
   startIpcBridgeServer,
 } from "./main";
+
+describe("server CLI and trusted-network reporting", () => {
+  it("defaults to loopback and supports an explicit LAN alias", () => {
+    expect(parseServerArgs([])).toMatchObject({
+      allowedOrigins: [],
+      host: "127.0.0.1",
+      port: 8214,
+    });
+    expect(parseServerArgs(["--lan"])).toMatchObject({ host: "0.0.0.0" });
+  });
+
+  it("rejects conflicting host choices and invalid ports", () => {
+    expect(() => parseServerArgs(["--lan", "--host", "127.0.0.1"])).toThrow(
+      "--lan cannot be combined with --host",
+    );
+    for (const port of ["0", "65536", "not-a-port"]) {
+      expect(() => parseServerArgs(["--port", port])).toThrow("Invalid port");
+    }
+    expect(() => parseServerArgs(["--port=-1"])).toThrow("Invalid port");
+  });
+
+  it("formats IPv6 and reports a deterministic non-loopback URL set", () => {
+    const networkInterfaces = () => ({
+      ignored: [
+        { address: "127.0.0.1", family: "IPv4", internal: true },
+        { address: "10.0.0.7", family: "IPv4", internal: false },
+      ],
+      alsoIgnored: [
+        { address: "203.0.113.9", family: "IPv4", internal: false },
+        { address: "fe80::a", family: "IPv6", internal: false },
+        { address: "10.0.0.7", family: "IPv4", internal: false },
+        { address: "00:11:22:33:44:55", family: "MAC", internal: false },
+      ],
+    });
+    expect(formatHttpUrl("fe80::a", 8214)).toBe("http://[fe80::a]:8214");
+    expect(getTrustedNetworkUrls(8214, networkInterfaces)).toEqual([
+      "http://[fe80::a]:8214",
+      "http://10.0.0.7:8214",
+      "http://203.0.113.9:8214",
+    ]);
+    expect(
+      getServerStartupReport(
+        { allowedOrigins: [], host: "0.0.0.0", port: 8214 },
+        8214,
+        networkInterfaces,
+      ),
+    ).toContain(
+      "TRUSTED NETWORK WARNING: anyone who can reach this service can operate Codex with the permissions and credentials of this host user. Do not expose it to an untrusted network or the public internet.",
+    );
+  });
+});
 
 type IpcBridgeGlobals = typeof globalThis & {
   __codexElectronIpcBridge?: {
