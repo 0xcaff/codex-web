@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import base64
+import binascii
 from datetime import datetime, timezone
+import os
 from pathlib import Path
+import tempfile
 from urllib.parse import urljoin
 
 from cryptography.exceptions import InvalidSignature
@@ -32,7 +35,7 @@ def verify_sparkle_signature(data: bytes, signature: str) -> None:
     try:
         decoded_signature = base64.b64decode(signature, validate=True)
         SPARKLE_VERIFY_KEY.verify(decoded_signature, data)
-    except InvalidSignature as e:
+    except (InvalidSignature, binascii.Error) as e:
         raise RuntimeError("Sparkle signature verification failed") from e
 
 
@@ -44,13 +47,19 @@ def download_enclosure(enclosure: etree._Element, dest: Path) -> None:
         resp.raise_for_status()
         data = resp.content
 
-    try:
-        verify_sparkle_signature(data, ed_signature)
-    except RuntimeError as e:
-        print(f"warning {e} for {url}")
-
     dest.parent.mkdir(parents=True, exist_ok=True)
-    dest.write_bytes(data)
+    with tempfile.NamedTemporaryFile(
+        mode="wb", dir=dest.parent, prefix=f".{dest.name}.", delete=False
+    ) as temp_file:
+        temp_file.write(data)
+        temp_path = Path(temp_file.name)
+
+    try:
+        verify_sparkle_signature(temp_path.read_bytes(), ed_signature)
+        os.replace(temp_path, dest)
+    except Exception:
+        temp_path.unlink(missing_ok=True)
+        raise
 
 
 def appcast_snapshot_path(output_root: Path) -> Path:
@@ -106,6 +115,7 @@ def run(args: argparse.Namespace) -> None:
     root = etree.fromstring(
         resp.content, parser=etree.XMLParser(resolve_entities=False, no_network=True)
     )
+    failures = []
     for item in root.findall("./channel/item"):
         sparkle_version = safe_path_component(item.find(sparkle_name("version")).text)
         short_version = safe_path_component(
@@ -117,6 +127,10 @@ def run(args: argparse.Namespace) -> None:
             process_item(version_dir, item)
         except Exception as e:
             print(f"error {e} for {version_dir}")
+            failures.append((version_dir, e))
+
+    if failures:
+        raise RuntimeError(f"Failed to stage {len(failures)} update(s)")
 
 
 def main() -> None:

@@ -21,7 +21,7 @@
     "typecheck:browser": "tsc --noEmit -p tsconfig.browser.json",
     "typecheck": "npm run typecheck:server && npm run typecheck:browser",
     "test": "vitest run",
-    "format:check": "prettier --check package.json package-lock.json tsconfig.browser.json vitest.config.ts vite.browser.config.ts .github/workflows/ci.yml src/browser/routes.ts src/browser/shim.ts src/browser/routes.test.ts",
+    "format:check": "prettier --check package.json package-lock.json tsconfig.browser.json vitest.config.ts vite.browser.config.ts .github/workflows/ci.yml src/browser/routes.ts src/browser/shim.ts src/browser/routes.test.ts src/server/main.ts src/server/main.test.ts",
     "check": "npm run typecheck && npm test && npm run format:check",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
@@ -33,19 +33,19 @@
   "dependencies": {
     "@electron/asar": "^4.2.0",
     "@fastify/multipart": "^10.0.0",
-    "@fastify/static": "^9.1.1",
+    "@fastify/static": "^10.1.3",
     "@tanstack/react-query": "^5.100.9",
     "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.9.0",
-    "fastify": "^5.8.5",
+    "fastify": "^5.11.3",
     "glob": "^13.0.6",
     "prettier": "^3.8.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp-cli": "^5.2.0",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8",
-    "ws": "^8.20.0"
+    "vite": "^8.2.1",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/node": "^24.12.2",
@@ -55,5 +55,11 @@
     "happy-dom": "^20.11.2",
     "http-server": "^14.1.1",
     "vitest": "^4.1.10"
+  },
+  "overrides": {
+    "brace-expansion": "^5.0.9",
+    "fast-uri": "^3.1.5",
+    "glob": "^13.0.6",
+    "sharp": "0.35.3"
   }
 }
