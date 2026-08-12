@@ -97,7 +97,7 @@ expectIncludes(
   "compatibility.electronEmulation.version",
 );
 expectIncludes(
-  "src/server/main.ts",
+  "src/server/bootstrap.ts",
   "compatibilityManifest.electronEmulation.version",
 );
 expectIncludes(

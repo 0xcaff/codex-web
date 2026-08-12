@@ -94,8 +94,12 @@ npm run check:compatibility
 
 The compatibility report includes the extracted asset count and byte budget.
 It intentionally stays outside ordinary CI checks so CI does not need the
-proprietary archive. A failed target/anchor check means stop and port that
-patch intentionally; never regenerate or rewrite the extracted tree in place.
+proprietary archive. Run it only against a freshly prepared, pre-build pinned
+tree: a post-build fixture can have changed asset formatting or generated
+content and is not valid anchor evidence. A failed target/anchor check means
+stop, re-prepare a clean pinned tree, and then port the patch intentionally if
+the clean fixture still fails; never regenerate or rewrite the extracted tree
+in place.
 
 Run the reproducible Nix gate as well:
 
