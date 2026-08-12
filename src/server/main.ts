@@ -6,7 +6,6 @@ declare global {
   };
 }
 
-import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -16,6 +15,16 @@ import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
+import {
+  DEFAULT_UPLOAD_LIMITS,
+  parseUploadLimits,
+  createUploadDirectory,
+  receiveUploadFiles,
+  scavengeExpiredUploads,
+  UploadError,
+  type UploadLimits,
+} from "./uploads";
+import { setStaticAssetHeaders } from "./static-assets";
 import { glob } from "glob";
 import {
   IPC_MAX_PAYLOAD_BYTES,
@@ -31,6 +40,7 @@ export type ServerOptions = {
   host: string;
   port: number;
   allowedOrigins: string[];
+  uploadLimits?: UploadLimits;
 };
 
 export { IPC_MAX_PAYLOAD_BYTES } from "../shared/ipc-protocol";
@@ -202,6 +212,8 @@ function printUsage(): void {
       "  --host 127.0.0.1",
       "  --port 8214",
       "  --allowed-origin may be repeated to allow an exact HTTP(S) reverse-proxy origin",
+      `  upload limit defaults: ${DEFAULT_UPLOAD_LIMITS.maxFileBytes} bytes per file, ${DEFAULT_UPLOAD_LIMITS.maxFiles} files, ${DEFAULT_UPLOAD_LIMITS.maxAggregateBytes} bytes total`,
+      "  override with --upload-max-file-bytes, --upload-max-files, --upload-max-aggregate-bytes, or CODEX_WEB_UPLOAD_* environment variables",
       "",
       "Examples:",
       "  yarn server",
@@ -295,6 +307,10 @@ export function parseServerArgs(args: string[]): ServerOptions {
         type: "string",
         multiple: true,
       },
+      "upload-max-file-bytes": { type: "string" },
+      "upload-max-files": { type: "string" },
+      "upload-max-aggregate-bytes": { type: "string" },
+      "upload-retention-ms": { type: "string" },
     },
     strict: true,
   });
@@ -319,6 +335,14 @@ export function parseServerArgs(args: string[]): ServerOptions {
     host: parsed.values.host ?? "127.0.0.1",
     port: parsed.values.port ? parsePort(parsed.values.port) : 8214,
     allowedOrigins,
+    uploadLimits: parseUploadLimits({
+      values: {
+        maxFileBytes: parsed.values["upload-max-file-bytes"],
+        maxFiles: parsed.values["upload-max-files"],
+        maxAggregateBytes: parsed.values["upload-max-aggregate-bytes"],
+        retentionMs: parsed.values["upload-retention-ms"],
+      },
+    }),
   };
 }
 
@@ -452,6 +476,7 @@ export async function startIpcBridgeServer(
   } = {},
 ): Promise<{ close: () => Promise<void>; port: number }> {
   const bridgeState = getIpcMainBridgeState();
+  const uploadLimits = options.uploadLimits ?? DEFAULT_UPLOAD_LIMITS;
   const app = Fastify({ logger: false });
   const websocketServer = new WebSocketServer({
     noServer: true,
@@ -460,39 +485,40 @@ export async function startIpcBridgeServer(
   const sockets = new Set<WebSocket>();
 
   await app.register(fastifyMultipart, {
+    throwFileSizeLimit: true,
     limits: {
-      fileSize: Infinity,
+      fields: 0,
+      fileSize: uploadLimits.maxFileBytes,
+      files: uploadLimits.maxFiles,
+      parts: uploadLimits.maxFiles,
     },
   });
 
-  const uploadRoot = await fs.mkdtemp(
-    path.join(os.tmpdir(), "codex-web-uploads-"),
-  );
+  // Scavenging only recognizes our marker and exact generated names. It is
+  // deliberately best-effort: a manual file or a symlink makes that directory
+  // ineligible rather than something to recursively remove.
+  await scavengeExpiredUploads({ retentionMs: uploadLimits.retentionMs });
+  const uploadRoot = await createUploadDirectory();
 
   app.post("/__backend/upload", async (request, reply) => {
     if (!request.isMultipart()) {
       return reply.code(400).send({ error: "expected multipart upload body" });
     }
 
-    const files = await Array.fromAsync(
-      (async function* () {
-        for await (const part of request.files()) {
-          const label = part.filename?.trim() || "upload";
-
-          const uploadedPath = path.join(uploadRoot, randomUUID());
-
-          await fs.writeFile(uploadedPath, await part.toBuffer());
-
-          yield {
-            label,
-            path: uploadedPath,
-            fsPath: uploadedPath,
-          };
-        }
-      })(),
-    );
-
-    return reply.send({ files });
+    try {
+      return reply.send({
+        files: await receiveUploadFiles({
+          request,
+          limits: uploadLimits,
+          uploadDirectory: uploadRoot,
+        }),
+      });
+    } catch (error) {
+      if (error instanceof UploadError) {
+        return reply.code(error.statusCode).send({ error: error.message });
+      }
+      throw error;
+    }
   });
 
   await app.register(fastifyStatic, {
@@ -504,6 +530,8 @@ export async function startIpcBridgeServer(
   await app.register(fastifyStatic, {
     root: webviewRoot,
     prefix: "/",
+    preCompressed: true,
+    setHeaders: setStaticAssetHeaders,
   });
 
   app.get("/", async (_request, reply) => {
@@ -756,8 +784,19 @@ export async function startIpcBridgeServer(
 
 async function main(args: string[]) {
   const options = parseServerArgs(args);
-
-  await startIpcBridgeServer(options);
+  const bridge = await startIpcBridgeServer(options);
+  let closing = false;
+  const closeGracefully = (signal: NodeJS.Signals): void => {
+    if (closing) {
+      return;
+    }
+    closing = true;
+    void bridge.close().catch((error: unknown) => {
+      console.error(`[ipc-bridge] failed graceful ${signal} shutdown`, error);
+    });
+  };
+  process.once("SIGINT", () => closeGracefully("SIGINT"));
+  process.once("SIGTERM", () => closeGracefully("SIGTERM"));
 }
 
 if (require.main === module) {

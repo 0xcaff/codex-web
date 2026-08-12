@@ -101,7 +101,15 @@ async function uploadFiles(files: File[]) {
   });
 
   if (!response.ok) {
-    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+    const detail = await response
+      .json()
+      .then((body: unknown) =>
+        isRecord(body) && typeof body.error === "string" ? body.error : null,
+      )
+      .catch(() => null);
+    throw new Error(
+      detail ?? `Upload failed: ${response.status} ${response.statusText}`,
+    );
   }
 
   return (await response.json()).files;
