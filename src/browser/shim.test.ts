@@ -133,7 +133,8 @@ describe("IPC browser transport", () => {
     const { reconnectCallbacks, sockets, transport } = createTransport();
     const pending = transport.invoke("already-sent", []);
     sockets[0]?.open();
-    expect(sockets[0]?.sent).toHaveLength(1);
+    expect(sockets[0]?.sent).toHaveLength(2);
+    expect(sockets[0]?.sent[0]).toContain("controller-connect");
     sockets[0]?.close();
     await expect(pending).rejects.toBeInstanceOf(IpcBridgeDisconnectedError);
 
@@ -145,7 +146,8 @@ describe("IPC browser transport", () => {
     });
     sockets[1]?.open();
 
-    expect(sockets[1]?.sent).toHaveLength(1);
-    expect(sockets[1]?.sent[0]).toContain("new-work");
+    expect(sockets[1]?.sent).toHaveLength(2);
+    expect(sockets[1]?.sent[0]).toContain("controller-connect");
+    expect(sockets[1]?.sent[1]).toContain("new-work");
   });
 });

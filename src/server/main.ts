@@ -22,6 +22,7 @@ import {
   type ServerOptions,
 } from "./config";
 import { bootstrapMainApp } from "./bootstrap";
+import { ControllerLeaseManager, isSafeReadOnlyIpc } from "./controller-lease";
 import {
   IPC_MAX_PAYLOAD_BYTES,
   parseRendererToMainMessage as parseWireRendererToMainMessage,
@@ -282,6 +283,8 @@ export async function startIpcBridgeServer(
     maxPayload: IPC_MAX_PAYLOAD_BYTES,
   });
   const sockets = new Set<WebSocket>();
+  const controllerLease = new ControllerLeaseManager();
+  const socketClientIds = new Map<WebSocket, string>();
 
   await app.register(fastifyMultipart, {
     throwFileSizeLimit: true,
@@ -394,8 +397,22 @@ export async function startIpcBridgeServer(
     }
   };
 
+  const publishControllerStatuses = (): void => {
+    for (const [connectedSocket, connectedClientId] of socketClientIds) {
+      if (connectedSocket.readyState === WebSocket.OPEN) {
+        connectedSocket.send(
+          serializeMainToRendererMessage({
+            type: "controller-status",
+            status: controllerLease.statusFor(connectedClientId),
+          }),
+        );
+      }
+    }
+  };
+
   websocketServer.on("connection", (socket) => {
     sockets.add(socket);
+    let clientId: string | null = null;
 
     const messagePorts = new Map<string, WebSocketMessagePort>();
     const dispatchPostMessage = (
@@ -420,6 +437,11 @@ export async function startIpcBridgeServer(
 
     socket.on("close", () => {
       sockets.delete(socket);
+      if (clientId) {
+        socketClientIds.delete(socket);
+        controllerLease.disconnect(clientId);
+        publishControllerStatuses();
+      }
       for (const port of messagePorts.values()) {
         port.disconnect();
       }
@@ -438,6 +460,49 @@ export async function startIpcBridgeServer(
       }
 
       try {
+        if (
+          message.type === "controller-connect" ||
+          message.type === "controller-heartbeat" ||
+          message.type === "controller-take-control"
+        ) {
+          if (clientId && clientId !== message.clientId) {
+            closeWithProtocolError(socket, "Controller identity changed");
+            return;
+          }
+          clientId = message.clientId;
+          socketClientIds.set(socket, clientId);
+          if (message.type === "controller-connect")
+            controllerLease.connect(clientId);
+          if (message.type === "controller-heartbeat")
+            controllerLease.heartbeat(clientId);
+          if (message.type === "controller-take-control")
+            controllerLease.takeControl(clientId);
+          publishControllerStatuses();
+          return;
+        }
+
+        if (!clientId) {
+          closeWithProtocolError(socket, "Controller identity required");
+          return;
+        }
+
+        if (
+          !isSafeReadOnlyIpc(message) &&
+          !controllerLease.canMutate(clientId)
+        ) {
+          if (message.type === "ipc-renderer-invoke") {
+            socket.send(
+              serializeMainToRendererMessage({
+                type: "ipc-renderer-invoke-result",
+                requestId: message.requestId,
+                ok: false,
+                errorMessage: "Controller lease required for this operation",
+              }),
+            );
+          }
+          return;
+        }
+
         if (message.type === "ipc-renderer-send") {
           bridgeState.handleRendererSend?.(
             message.channel,

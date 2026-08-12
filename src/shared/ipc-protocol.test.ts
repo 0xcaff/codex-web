@@ -14,6 +14,10 @@ describe("IPC wire protocol", () => {
   it("accepts every renderer-to-main envelope, including browser-compatible sourceUrl omission", () => {
     const messages = [
       {
+        type: "controller-connect",
+        clientId: "stable-tab-id",
+      },
+      {
         type: "ipc-renderer-invoke",
         requestId: "1",
         channel: "test",
@@ -46,6 +50,7 @@ describe("IPC wire protocol", () => {
   it("accepts every main-to-renderer envelope", () => {
     const messages = [
       { type: "ipc-main-event", channel: "event", args: [] },
+      { type: "controller-status", status: "active" },
       {
         type: "ipc-renderer-invoke-result",
         requestId: "1",

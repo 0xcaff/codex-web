@@ -78,7 +78,10 @@ afterEach(() => {
   delete (globalThis as IpcBridgeGlobals).__codexElectronIpcBridge;
 });
 
-async function connectIpc(port: number): Promise<WebSocket> {
+async function connectIpc(
+  port: number,
+  clientId: string = crypto.randomUUID(),
+): Promise<WebSocket> {
   const socket = new WebSocket(`ws://127.0.0.1:${port}/__backend/ipc`, {
     origin: `http://127.0.0.1:${port}`,
   });
@@ -86,6 +89,13 @@ async function connectIpc(port: number): Promise<WebSocket> {
     socket.once("open", resolve);
     socket.once("error", reject);
   });
+  socket.send(
+    JSON.stringify({
+      type: "controller-connect",
+      clientId,
+    }),
+  );
+  await nextIpcMessage(socket);
   return socket;
 }
 
@@ -278,5 +288,57 @@ describe("IPC bridge readiness", () => {
         },
       ),
     ).rejects.toThrow("startup failed");
+  });
+});
+
+describe("IPC controller lease enforcement", () => {
+  it("denies a secondary mutation and permits explicit takeover", async () => {
+    const bridge = await startIpcBridgeServer(
+      { host: "127.0.0.1", port: 0, allowedOrigins: [] },
+      {
+        bootstrapMainApp: () => {
+          const globals = globalThis as IpcBridgeGlobals;
+          const bridgeState = (globals.__codexElectronIpcBridge ??= {});
+          bridgeState.handleRendererInvoke = async (channel) => channel;
+        },
+      },
+    );
+    const first = await connectIpc(bridge.port, "first");
+    const second = await connectIpc(bridge.port, "second");
+    second.send(
+      JSON.stringify({
+        type: "ipc-renderer-invoke",
+        requestId: "denied",
+        channel: "mutating-channel",
+        args: [],
+      }),
+    );
+    await expect(nextIpcMessage(second)).resolves.toMatchObject({
+      requestId: "denied",
+      ok: false,
+      errorMessage: "Controller lease required for this operation",
+    });
+    second.send(
+      JSON.stringify({ type: "controller-take-control", clientId: "second" }),
+    );
+    await expect(nextIpcMessage(second)).resolves.toEqual({
+      type: "controller-status",
+      status: "active",
+    });
+    second.send(
+      JSON.stringify({
+        type: "ipc-renderer-invoke",
+        requestId: "taken",
+        channel: "mutating-channel",
+        args: [],
+      }),
+    );
+    await expect(nextIpcMessage(second)).resolves.toMatchObject({
+      requestId: "taken",
+      ok: true,
+    });
+    first.close();
+    second.close();
+    await bridge.close();
   });
 });

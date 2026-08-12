@@ -22,6 +22,8 @@ const RECONNECT_DELAY_MS = 1_000;
 const MAX_PENDING_REQUESTS = 128;
 const MAX_OUTBOUND_QUEUE_MESSAGES = 128;
 const MAX_OUTBOUND_QUEUE_BYTES = 256 * 1024;
+const CONTROLLER_HEARTBEAT_MS = 5_000;
+const CONTROLLER_STORAGE_KEY = "codex-web-controller-client-id";
 
 type MemoryNavigationChange = {
   action: "POP" | "PUSH" | "REPLACE";
@@ -118,6 +120,7 @@ export class IpcBridgeTransport {
     string,
     PendingDirectoryEntries
   >();
+  private readonly clientId: string;
 
   constructor(
     private readonly url: string,
@@ -128,7 +131,10 @@ export class IpcBridgeTransport {
       callback: () => void,
       delay: number,
     ) => number = window.setTimeout.bind(window),
-  ) {}
+    clientId = getStableControllerClientId(),
+  ) {
+    this.clientId = clientId;
+  }
 
   get pendingRequestCount(): number {
     return this.pendingInvokes.size + this.pendingDirectoryEntries.size;
@@ -189,6 +195,18 @@ export class IpcBridgeTransport {
         reject(error);
       }
     });
+  }
+
+  heartbeat(): void {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.sendControlMessage("controller-heartbeat");
+    }
+  }
+
+  takeControl(): void {
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.sendControlMessage("controller-take-control");
+    }
   }
 
   send(message: RendererToMainMessage): void {
@@ -292,6 +310,17 @@ export class IpcBridgeTransport {
     }
   }
 
+  private sendControlMessage(
+    type:
+      | "controller-connect"
+      | "controller-heartbeat"
+      | "controller-take-control",
+  ): void {
+    this.sendPayload(
+      serializeRendererToMainMessage({ type, clientId: this.clientId }),
+    );
+  }
+
   private sendPayload(payload: string): void {
     try {
       this.socket?.send(payload);
@@ -323,7 +352,10 @@ export class IpcBridgeTransport {
     try {
       const socket = this.createSocket(this.url);
       this.socket = socket;
-      socket.addEventListener("open", () => this.flushOutboundQueue());
+      socket.addEventListener("open", () => {
+        this.sendControlMessage("controller-connect");
+        this.flushOutboundQueue();
+      });
       socket.addEventListener("message", (event) => this.receive(event.data));
       socket.addEventListener("close", () => this.onSocketDisconnected(socket));
       socket.addEventListener("error", () => this.scheduleReconnect());
@@ -353,6 +385,18 @@ export class IpcBridgeTransport {
   }
 }
 
+function getStableControllerClientId(): string {
+  try {
+    const existing = sessionStorage.getItem(CONTROLLER_STORAGE_KEY);
+    if (existing) return existing;
+    const clientId = crypto.randomUUID();
+    sessionStorage.setItem(CONTROLLER_STORAGE_KEY, clientId);
+    return clientId;
+  } catch {
+    return `tab-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  }
+}
+
 const rendererListeners = new Map<string, Set<IpcListener>>();
 const messagePorts = new Map<string, MessagePort>();
 
@@ -373,6 +417,10 @@ export function emitRendererEvent(channel: string, args: unknown[]): void {
 }
 
 function handleIncomingMessage(message: MainToRendererMessage): void {
+  if (message.type === "controller-status") {
+    updateControllerStatus(message.status);
+    return;
+  }
   if (message.type === "ipc-main-event") {
     emitRendererEvent(message.channel, message.args);
     return;
@@ -391,6 +439,28 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
   }
 }
 
+let controllerStatusElement: HTMLDivElement | null = null;
+
+function updateControllerStatus(status: "active" | "secondary"): void {
+  const element = (controllerStatusElement ??= document.createElement("div"));
+  element.setAttribute("role", "status");
+  element.style.cssText =
+    "position:fixed;right:12px;bottom:12px;z-index:2147483647;padding:8px 10px;border-radius:6px;background:#1f2937;color:#fff;font:12px system-ui;box-shadow:0 2px 8px #0006";
+  element.replaceChildren();
+  if (status === "active") {
+    element.textContent = "This tab controls Codex";
+  } else {
+    element.append("View-only tab. ");
+    const takeControl = document.createElement("button");
+    takeControl.type = "button";
+    takeControl.textContent = "Take control";
+    takeControl.style.cssText = "margin-left:6px;font:inherit";
+    takeControl.addEventListener("click", () => ipcTransport.takeControl());
+    element.append(takeControl);
+  }
+  if (!element.isConnected) document.body.append(element);
+}
+
 const ipcTransport = new IpcBridgeTransport(
   `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   (url) => new WebSocket(url),
@@ -402,6 +472,8 @@ const ipcTransport = new IpcBridgeTransport(
     messagePorts.clear();
   },
 );
+
+window.setInterval(() => ipcTransport.heartbeat(), CONTROLLER_HEARTBEAT_MS);
 
 function enqueueMessage(message: RendererToMainMessage): void {
   ipcTransport.send(message);
