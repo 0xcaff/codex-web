@@ -2,12 +2,27 @@ import path from "node:path";
 
 export type ElectronPathName =
   | "appData"
+  | "crashDumps"
   | "desktop"
   | "documents"
   | "downloads"
   | "home"
   | "temp"
   | "userData";
+
+/**
+ * Exact literal app.getPath names consumed by the pinned upstream main bundle.
+ * Update this list with the bundle review whenever the Desktop archive moves.
+ */
+export const PINNED_UPSTREAM_GET_PATH_NAMES = [
+  "appData",
+  "userData",
+  "desktop",
+  "documents",
+  "downloads",
+  "home",
+  "crashDumps",
+] as const satisfies readonly ElectronPathName[];
 
 type Platform = "darwin" | "linux";
 
@@ -88,6 +103,11 @@ export class ElectronPathResolver {
         return homeDir;
       case "temp":
         return tempDir;
+      case "crashDumps":
+        // Electron callers may create this lazily. Returning a deterministic
+        // temp-derived path keeps crash reporting off a read-only cwd without
+        // making directories as a side effect of getPath.
+        return path.join(tempDir, "codex-web", "crashDumps");
       case "appData":
         return platform === "darwin"
           ? path.join(homeDir, "Library", "Application Support")

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { ElectronPathResolver, type ElectronPathEnvironment } from "./paths";
+import {
+  ElectronPathResolver,
+  PINNED_UPSTREAM_GET_PATH_NAMES,
+  type ElectronPathEnvironment,
+} from "./paths";
 
 function resolver(
   overrides: Partial<ElectronPathEnvironment> = {},
@@ -27,6 +31,7 @@ describe("ElectronPathResolver", () => {
 
     expect(paths.getPath("home")).toBe("/Users/codex");
     expect(paths.getPath("temp")).toBe("/tmp");
+    expect(paths.getPath("crashDumps")).toBe("/tmp/codex-web/crashDumps");
     expect(paths.getPath("userData")).toBe(
       "/Users/codex/Library/Application Support/codex-web",
     );
@@ -71,9 +76,18 @@ describe("ElectronPathResolver", () => {
 
     paths.setPath("userData", "/state/custom-codex-web");
     expect(paths.getPath("userData")).toBe("/state/custom-codex-web");
+    paths.setPath("crashDumps", "/state/crash-dumps");
+    expect(paths.getPath("crashDumps")).toBe("/state/crash-dumps");
     expect(() => paths.setPath("userData", "relative-state")).toThrow(
       "absolute",
     );
+  });
+
+  it("supports every app.getPath name consumed by the pinned upstream bundle", () => {
+    const paths = resolver();
+    for (const name of PINNED_UPSTREAM_GET_PATH_NAMES) {
+      expect(paths.getPath(name)).toEqual(expect.any(String));
+    }
   });
 
   it("does not use a read-only cwd and rejects unknown paths", () => {
