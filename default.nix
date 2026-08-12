@@ -16,10 +16,11 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.707.30751";
+    compatibility = builtins.fromJSON (builtins.readFile ./compatibility.json);
+    appVersion = compatibility.desktop.version;
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-+BAjhFrlbruYs0nkvIHXtJBTNWSJfOoOpPxKFxBPOJI=";
+      hash = compatibility.desktop.archive.sha256;
     };
     codex = self.packages.${system}.codex;
   in
@@ -44,7 +45,7 @@ flake-utils.lib.eachSystem systems (
 
         betterSqlite3Native = pkgs.stdenv.mkDerivation {
           pname = "better-sqlite3-native";
-          version = "12.9.0";
+          version = compatibility.nativeAddon.betterSqlite3Version;
           src = pkgs.lib.fileset.toSource {
             root = ./.;
             fileset = pkgs.lib.fileset.unions [
@@ -92,7 +93,7 @@ flake-utils.lib.eachSystem systems (
           HOSTED_CODEX_APP_ZIP = codexZip;
 
           pname = "codex-web";
-          version = "1.0.0";
+          version = compatibility.project.version;
           src = ./.;
 
           inherit npmDeps;

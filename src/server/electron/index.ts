@@ -1,4 +1,8 @@
 import type { MainToRendererMessage } from "../../shared/ipc-protocol";
+import os from "node:os";
+import fs from "node:fs";
+import compatibilityManifest from "../../../compatibility.json";
+import { ElectronPathResolver } from "./paths";
 
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
@@ -311,6 +315,20 @@ function createIpcMainStub(): {
 let appReady = false;
 const commandLineSwitches = new Map<string, string>();
 const commandLineArguments: string[] = [];
+const electronPaths = new ElectronPathResolver({
+  cwd: process.cwd(),
+  env: process.env,
+  homeDir: os.homedir(),
+  platform: process.platform === "darwin" ? "darwin" : "linux",
+  readFile(filePath: string): string | undefined {
+    try {
+      return fs.readFileSync(filePath, "utf8");
+    } catch {
+      return undefined;
+    }
+  },
+  tempDir: os.tmpdir(),
+});
 
 const appBase = {
   ...createEmitterStub("app"),
@@ -321,7 +339,10 @@ const appBase = {
     return "Codex";
   },
   getVersion(): string {
-    return globalThis.__CODEX_SHIM_VALUES__.version;
+    return (
+      globalThis.__CODEX_SHIM_VALUES__?.version ??
+      compatibilityManifest.desktop.version
+    );
   },
   getLocale(): string {
     log("app.getLocale", []);
@@ -337,7 +358,7 @@ const appBase = {
   },
   getPath(name: string): string {
     log("app.getPath", [name]);
-    return process.cwd();
+    return electronPaths.getPath(name);
   },
   getAppMetrics(): unknown[] {
     log("app.getAppMetrics", []);
@@ -356,6 +377,7 @@ const appBase = {
   },
   setPath(name: string, value: string): void {
     log("app.setPath", [name, value]);
+    electronPaths.setPath(name, value);
   },
   setAppUserModelId(value: string): void {
     log("app.setAppUserModelId", [value]);

@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "files": [
     "README.md",
+    "compatibility.json",
     "scratch/asar/**/*",
     "src/server/**/*.js",
     "src/server/electron/index.js",
@@ -21,9 +22,10 @@
     "typecheck:browser": "tsc --noEmit -p tsconfig.browser.json",
     "typecheck": "npm run typecheck:server && npm run typecheck:browser",
     "test": "vitest run",
-    "format:check": "prettier --check README.md ARCHITECTURE.md UPGRADING.md package.json package-lock.json tsconfig.browser.json vitest.config.ts vite.browser.config.ts .github/workflows/ci.yml scripts/compress_webview_assets.mjs src/browser/files.ts src/browser/routes.ts src/browser/shim.ts src/browser/routes.test.ts src/browser/shim.test.ts src/shared/ipc-protocol.ts src/shared/ipc-protocol.test.ts src/server/main.ts src/server/main.test.ts src/server/static-assets.ts src/server/uploads.ts src/server/uploads.test.ts src/server/electron/index.ts",
+    "check:versions": "node scripts/check_versions.mjs",
+    "format:check": "prettier --check README.md ARCHITECTURE.md UPGRADING.md compatibility.json package.json package-lock.json tsconfig.browser.json vitest.config.ts vite.browser.config.ts .github/workflows/ci.yml scripts/check_versions.mjs scripts/compress_webview_assets.mjs scripts/manifest_value.mjs src/browser/files.ts src/browser/routes.ts src/browser/shim.ts src/browser/routes.test.ts src/browser/shim.test.ts src/shared/ipc-protocol.ts src/shared/ipc-protocol.test.ts src/server/main.ts src/server/main.test.ts src/server/static-assets.ts src/server/uploads.ts src/server/uploads.test.ts src/server/version-check.test.ts src/server/electron/index.ts src/server/electron/paths.ts src/server/electron/paths.test.ts",
     "test:remote-proxy": "bash scripts/codex_remote_proxy.test.sh",
-    "check": "npm run typecheck && npm test && npm run test:remote-proxy && npm run format:check",
+    "check": "npm run check:versions && npm run typecheck && npm test && npm run test:remote-proxy && npm run format:check",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
     "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"

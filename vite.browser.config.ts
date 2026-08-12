@@ -4,25 +4,38 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "vite";
 
 const configDir = path.dirname(fileURLToPath(import.meta.url));
-const asarPackagePath = path.resolve(configDir, "scratch/asar/package.json");
+const compatibilityManifestPath = path.resolve(configDir, "compatibility.json");
 const webviewRoot = path.resolve(configDir, "scratch/asar/webview");
 const preloadEntryPath = path.resolve(
   configDir,
   "scratch/asar/.vite/build/preload.js",
 );
 const browserNodeEnv = process.env.NODE_ENV ?? "production";
-const asarPackageJson = JSON.parse(readFileSync(asarPackagePath, "utf8")) as {
-  version?: unknown;
+const compatibility = JSON.parse(
+  readFileSync(compatibilityManifestPath, "utf8"),
+) as {
+  desktop?: { version?: unknown };
+  electronEmulation?: { version?: unknown };
 };
 
-if (typeof asarPackageJson.version !== "string" || !asarPackageJson.version) {
-  throw new Error(`Expected a version string in ${asarPackagePath}`);
+if (
+  typeof compatibility.desktop?.version !== "string" ||
+  !compatibility.desktop.version ||
+  typeof compatibility.electronEmulation?.version !== "string" ||
+  !compatibility.electronEmulation.version
+) {
+  throw new Error(
+    `Expected desktop and Electron versions in ${compatibilityManifestPath}`,
+  );
 }
 
 export default defineConfig({
   root: webviewRoot,
   define: {
-    __CODEX_APP_VERSION__: JSON.stringify(asarPackageJson.version),
+    __CODEX_APP_VERSION__: JSON.stringify(compatibility.desktop.version),
+    __ELECTRON_EMULATION_VERSION__: JSON.stringify(
+      compatibility.electronEmulation.version,
+    ),
     "process.env.NODE_ENV": JSON.stringify(browserNodeEnv),
   },
   server: {

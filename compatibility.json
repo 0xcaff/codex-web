@@ -1,0 +1,38 @@
+{
+  "project": {
+    "version": "0.0.1"
+  },
+  "desktop": {
+    "version": "26.707.30751",
+    "archive": {
+      "sha256": "sha256-+BAjhFrlbruYs0nkvIHXtJBTNWSJfOoOpPxKFxBPOJI="
+    }
+  },
+  "codexCli": {
+    "version": "0.144.0-alpha.4",
+    "platforms": {
+      "aarch64-darwin": {
+        "npm": "darwin-arm64",
+        "sha256": "sha256-y77uJWKhP/6hgziwjBiQXRpWuB8hfpi6rhcH6O6+/bs="
+      },
+      "x86_64-darwin": {
+        "npm": "darwin-x64",
+        "sha256": "sha256-nz/B9Gqnc/bWY+7NO4jHU/SGIIJtlFgwwaaofbyctcs="
+      },
+      "aarch64-linux": {
+        "npm": "linux-arm64",
+        "sha256": "sha256-nxFVEkzHTgUiON6N9jYa2FBfVcL76xjS6XZU+90wt60="
+      },
+      "x86_64-linux": {
+        "npm": "linux-x64",
+        "sha256": "sha256-Tas4KCEn+Qcc8TCVYV1Gjwob/02Ho9px0ezbWWMj7d8="
+      }
+    }
+  },
+  "electronEmulation": {
+    "version": "41.2.0"
+  },
+  "nativeAddon": {
+    "betterSqlite3Version": "12.9.0"
+  }
+}

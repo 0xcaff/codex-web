@@ -61,6 +61,7 @@ declare global {
 }
 
 declare const __CODEX_APP_VERSION__: string;
+declare const __ELECTRON_EMULATION_VERSION__: string;
 
 type PendingInvoke = {
   reject: (reason?: unknown) => void;
@@ -468,7 +469,7 @@ Object.assign(globalThis, {
     arch: "arm64",
     platform: "darwin",
     versions: {
-      electron: "41.2.0",
+      electron: __ELECTRON_EMULATION_VERSION__,
     },
   },
 });

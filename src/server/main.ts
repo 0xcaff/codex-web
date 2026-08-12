@@ -26,6 +26,7 @@ import {
 } from "./uploads";
 import { setStaticAssetHeaders } from "./static-assets";
 import { glob } from "glob";
+import compatibilityManifest from "../../compatibility.json";
 import {
   IPC_MAX_PAYLOAD_BYTES,
   parseRendererToMainMessage as parseWireRendererToMainMessage,
@@ -485,7 +486,7 @@ function ensureElectronLikeProcessContext(): void {
   };
   if (!versions.electron) {
     Object.defineProperty(versions, "electron", {
-      value: "41.2.0",
+      value: compatibilityManifest.electronEmulation.version,
       configurable: true,
       enumerable: true,
       writable: false,
@@ -507,15 +508,8 @@ export async function bootstrapMainApp(): Promise<void> {
   ensureElectronLikeProcessContext();
   installModuleAliasHook();
 
-  const packageJson = JSON.parse(
-    await fs.readFile(
-      path.resolve(__dirname, "../../scratch/asar/package.json"),
-      "utf8",
-    ),
-  );
-
   globalThis.__CODEX_SHIM_VALUES__ = {
-    version: packageJson.version,
+    version: compatibilityManifest.desktop.version,
   };
 
   const matches = await glob("../../scratch/asar/.vite/build/main-*.js", {

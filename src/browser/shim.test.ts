@@ -48,6 +48,7 @@ let IpcBridgeTransport: typeof import("./shim").IpcBridgeTransport;
 beforeAll(async () => {
   vi.stubGlobal("WebSocket", FakeWebSocket);
   vi.stubGlobal("matchMedia", () => ({ matches: false }));
+  vi.stubGlobal("__ELECTRON_EMULATION_VERSION__", "test-electron");
   const shim = await import("./shim");
   IpcBridgeCapacityError = shim.IpcBridgeCapacityError;
   IpcBridgeDisconnectedError = shim.IpcBridgeDisconnectedError;
