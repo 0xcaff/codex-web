@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   IPC_MAX_ARRAY_LENGTH,
+  IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES,
   IPC_MAX_PAYLOAD_BYTES,
   isMainToRendererMessage,
   isRendererToMainMessage,
@@ -124,12 +125,38 @@ describe("IPC wire protocol", () => {
     ).toBe(false);
   });
 
-  it("refuses oversized serialized payloads", () => {
+  it("keeps the one MiB browser-to-server payload limit", () => {
     expect(() =>
       serializeRendererToMainMessage({
         type: "ipc-renderer-send",
         channel: "test",
         args: ["x".repeat(IPC_MAX_PAYLOAD_BYTES)],
+      }),
+    ).toThrow("maximum payload size");
+  });
+
+  it("allows a bounded large upstream initialization payload to reach the renderer", () => {
+    const serialized = serializeMainToRendererMessage({
+      type: "ipc-main-event",
+      channel: "feature-flags",
+      args: ["x".repeat(Math.floor(2.5 * 1024 * 1024))],
+    });
+
+    expect(new TextEncoder().encode(serialized).byteLength).toBeGreaterThan(
+      IPC_MAX_PAYLOAD_BYTES,
+    );
+    expect(parseMainToRendererMessage(JSON.parse(serialized))).toMatchObject({
+      type: "ipc-main-event",
+      channel: "feature-flags",
+    });
+  });
+
+  it("rejects an oversized main-to-renderer payload", () => {
+    expect(() =>
+      serializeMainToRendererMessage({
+        type: "ipc-main-event",
+        channel: "feature-flags",
+        args: ["x".repeat(IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES)],
       }),
     ).toThrow("maximum payload size");
   });

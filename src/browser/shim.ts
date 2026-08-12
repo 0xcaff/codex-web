@@ -9,6 +9,7 @@ import {
 import { openSelectWorkspaceRootDialog } from "./workspace-root-dialog";
 import {
   IPC_MAX_PAYLOAD_BYTES,
+  IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES,
   parseMainToRendererMessage,
   serializeRendererToMainMessage,
   type MainToRendererMessage,
@@ -231,7 +232,7 @@ export class IpcBridgeTransport {
   receive(rawData: unknown): void {
     if (
       new TextEncoder().encode(String(rawData)).byteLength >
-      IPC_MAX_PAYLOAD_BYTES
+      IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES
     ) {
       console.error("[electron-stub] rejected oversized IPC bridge message");
       return;

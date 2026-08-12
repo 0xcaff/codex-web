@@ -2,7 +2,14 @@
  * Browser-safe schema for the websocket IPC bridge. Keep this module free of
  * Node imports: it is bundled into the renderer as well as used by the server.
  */
+/** Maximum untrusted browser-to-server WebSocket payload. */
 export const IPC_MAX_PAYLOAD_BYTES = 1024 * 1024;
+/**
+ * The upstream desktop client broadcasts its initial feature configuration to
+ * the renderer. Current pinned builds use roughly 2.5 MiB on the wire, so
+ * keep a finite directional allowance with ample but bounded headroom.
+ */
+export const IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES = 8 * 1024 * 1024;
 export const IPC_MAX_CHANNEL_LENGTH = 256;
 export const IPC_MAX_REQUEST_ID_LENGTH = 128;
 export const IPC_MAX_PORT_ID_LENGTH = 128;
@@ -326,7 +333,11 @@ export function serializeRendererToMainMessage(
   if (!isRendererToMainMessage(message)) {
     throw new IpcProtocolError("Invalid renderer-to-main IPC message");
   }
-  return serializeMessage(message, isRendererToMainMessage);
+  return serializeMessage(
+    message,
+    isRendererToMainMessage,
+    IPC_MAX_PAYLOAD_BYTES,
+  );
 }
 
 export function serializeMainToRendererMessage(
@@ -335,12 +346,17 @@ export function serializeMainToRendererMessage(
   if (!isMainToRendererMessage(message)) {
     throw new IpcProtocolError("Invalid main-to-renderer IPC message");
   }
-  return serializeMessage(message, isMainToRendererMessage);
+  return serializeMessage(
+    message,
+    isMainToRendererMessage,
+    IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES,
+  );
 }
 
 function serializeMessage(
   message: object,
   isValidSerializedMessage: (value: unknown) => boolean,
+  maximumPayloadBytes: number,
 ): string {
   let serialized: string;
   try {
@@ -348,7 +364,7 @@ function serializeMessage(
   } catch {
     throw new IpcProtocolError("IPC message cannot be serialized");
   }
-  if (jsonByteLength(serialized) > IPC_MAX_PAYLOAD_BYTES) {
+  if (jsonByteLength(serialized) > maximumPayloadBytes) {
     throw new IpcProtocolError("IPC message exceeds the maximum payload size");
   }
   const parsed = JSON.parse(serialized);

@@ -45,7 +45,10 @@ export {
 } from "./config";
 export { bootstrapMainApp } from "./bootstrap";
 
-export { IPC_MAX_PAYLOAD_BYTES } from "../shared/ipc-protocol";
+export {
+  IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES,
+  IPC_MAX_PAYLOAD_BYTES,
+} from "../shared/ipc-protocol";
 
 type MessagePortListener = (...args: unknown[]) => void;
 
