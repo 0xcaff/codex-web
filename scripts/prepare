@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
 TEMP_DIR="$(mktemp -d)"
+trap 'rm -rf "$TEMP_DIR"' EXIT
 
 APP_VERSION="$(node ./scripts/manifest_value.mjs desktop.version)"
-curl -o "$TEMP_DIR/file.zip" "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-$APP_VERSION.zip"
+echo "Downloading pinned Codex Desktop archive $APP_VERSION..."
+curl --fail --location --progress-bar -o "$TEMP_DIR/file.zip" "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-$APP_VERSION.zip"
 ARCHIVE_SHA256="$(node ./scripts/manifest_value.mjs desktop.archive.sha256)"
 node ./scripts/verify_archive.mjs "$TEMP_DIR/file.zip" "$ARCHIVE_SHA256"
 
 HOSTED_CODEX_APP_ZIP="$TEMP_DIR/file.zip" bash ./scripts/prepare_asar
-
-rm -rf "$TEMP_DIR"

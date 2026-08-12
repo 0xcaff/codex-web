@@ -67,8 +67,67 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
   return globals.__codexElectronIpcBridge;
 }
 
+const maximumDebugArguments = 4;
+const maximumDebugKeys = 6;
+const maximumDebugDepth = 2;
+
+/**
+ * The extracted Desktop application can pass account data, editor contents, and
+ * large state objects to Electron APIs. Keep debug tracing useful for shape
+ * diagnosis without turning the bridge log into a data leak.
+ */
+export function summarizeElectronStubValue(value: unknown, depth = 0): string {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+
+  switch (typeof value) {
+    case "string":
+      return `[string ${value.length} chars]`;
+    case "number":
+    case "boolean":
+    case "bigint":
+      return String(value);
+    case "symbol":
+      return "[symbol]";
+    case "function":
+      return "[function]";
+  }
+
+  if (Buffer.isBuffer(value)) return `[buffer ${value.length} bytes]`;
+  if (value instanceof Error) return `[${value.name || "Error"}]`;
+  if (depth >= maximumDebugDepth) return "[object]";
+  if (Array.isArray(value)) {
+    const entries = value
+      .slice(0, maximumDebugArguments)
+      .map((entry) => summarizeElectronStubValue(entry, depth + 1));
+    return `[array ${value.length}${entries.length ? `: ${entries.join(", ")}` : ""}]`;
+  }
+
+  try {
+    const keys = Object.keys(value as object).slice(0, maximumDebugKeys);
+    const suffix =
+      Object.keys(value as object).length > maximumDebugKeys ? ", …" : "";
+    return `{${keys.join(", ")}${suffix}}`;
+  } catch {
+    return "[object]";
+  }
+}
+
+export function formatElectronStubDebugCall(
+  method: string,
+  args: unknown[],
+): string {
+  const displayed = args
+    .slice(0, maximumDebugArguments)
+    .map((argument) => summarizeElectronStubValue(argument));
+  const suffix = args.length > maximumDebugArguments ? ", …" : "";
+  return `[electron-main-stub] ${method}(${displayed.join(", ")}${suffix})`;
+}
+
 function log(method: string, args: unknown[]): void {
-  console.log(`[electron-main-stub] ${method}`, args);
+  if (process.env.CODEX_WEB_DEBUG === "1") {
+    console.debug(formatElectronStubDebugCall(method, args));
+  }
 }
 
 function createDeepStub(pathLabel: string): StubFunction {
@@ -267,8 +326,8 @@ function createIpcMainStub(): {
       return;
     }
     if (channel !== bootstrapPostMessageChannel) {
-      console.error(
-        `[electron-main-stub] refusing unregistered postMessage channel ${channel}`,
+      console.warn(
+        "[electron-main-stub] refusing unregistered postMessage channel",
       );
       closePorts(ports);
       return;

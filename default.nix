@@ -104,6 +104,7 @@ flake-utils.lib.eachSystem systems (
           npmPruneFlags = [ "--ignore-scripts" ];
 
           nativeBuildInputs = [
+            pkgs.makeWrapper
             pkgs.unzip
             pkgs.patch
           ];
@@ -137,6 +138,13 @@ flake-utils.lib.eachSystem systems (
             addon="$out/lib/node_modules/codex-web/node_modules/better-sqlite3"
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
+          '';
+
+          # The packaged server launches Codex as a child. Make `nix run .`
+          # self-contained instead of depending on the caller's global PATH.
+          postFixup = ''
+            wrapProgram "$out/bin/codex-web" \
+              --prefix PATH : ${pkgs.lib.makeBinPath [ codex ]}
           '';
         };
 

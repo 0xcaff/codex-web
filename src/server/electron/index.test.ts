@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { ipcMain } from "./index";
+import { formatElectronStubDebugCall, ipcMain } from "./index";
 
 type StubPort = {
   close: ReturnType<typeof vi.fn>;
@@ -79,5 +79,41 @@ describe("ipcMain postMessage buffering", () => {
     expect(delivered).toHaveLength(4);
     expect(delivered.flat()).toContain(reclaimed);
     errors.mockRestore();
+  });
+});
+
+describe("Electron stub tracing", () => {
+  it("is silent by default", () => {
+    const debug = vi
+      .spyOn(console, "debug")
+      .mockImplementation(() => undefined);
+    const previous = process.env.CODEX_WEB_DEBUG;
+    delete process.env.CODEX_WEB_DEBUG;
+
+    ipcMain.handle("test:quiet-stub-trace", () => undefined);
+
+    expect(debug).not.toHaveBeenCalled();
+    if (previous === undefined) delete process.env.CODEX_WEB_DEBUG;
+    else process.env.CODEX_WEB_DEBUG = previous;
+    debug.mockRestore();
+  });
+
+  it("summarizes debug arguments without exposing values or unbounded payloads", () => {
+    const message = formatElectronStubDebugCall("test", [
+      "very-secret-token-value",
+      { account: "person@example.test", nested: { body: "long content" } },
+      Buffer.alloc(8_192),
+      ["another secret", "and another"],
+      "not included",
+    ]);
+
+    expect(message).toContain("[string 23 chars]");
+    expect(message).toContain("{account, nested}");
+    expect(message).toContain("[buffer 8192 bytes]");
+    expect(message).toContain(", …)");
+    expect(message).not.toContain("very-secret-token-value");
+    expect(message).not.toContain("person@example.test");
+    expect(message).not.toContain("long content");
+    expect(message).not.toContain("not included");
   });
 });

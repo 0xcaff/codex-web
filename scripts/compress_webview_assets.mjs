@@ -14,6 +14,9 @@ const webviewRoot = path.resolve(
     path.join(repositoryRoot, "scratch", "asar", "webview"),
 );
 const minimumBytes = 1024;
+// Quality 6 retains most transfer savings while avoiding the multi-minute CPU
+// spike quality 11 caused for the upstream bundle.
+const brotliQuality = 6;
 const compressibleExtensions = new Set([
   ".css",
   ".html",
@@ -52,15 +55,21 @@ async function writeIfWorthwhile(filename, extension, compressed) {
   }
 }
 
-for (const filename of await filesIn(webviewRoot)) {
+const candidates = (await filesIn(webviewRoot)).filter((filename) => {
   const extension = path.extname(filename).toLowerCase();
-  if (
-    filename.endsWith(".br") ||
-    filename.endsWith(".gz") ||
-    !compressibleExtensions.has(extension)
-  ) {
-    continue;
-  }
+  return (
+    !filename.endsWith(".br") &&
+    !filename.endsWith(".gz") &&
+    compressibleExtensions.has(extension)
+  );
+});
+
+console.log(
+  `Precompressing ${candidates.length} web assets (Brotli quality ${brotliQuality})...`,
+);
+
+let compressedFiles = 0;
+for (const filename of candidates) {
   const content = await readFile(filename);
   if (content.length < minimumBytes) {
     continue;
@@ -69,8 +78,11 @@ for (const filename of await filesIn(webviewRoot)) {
     filename,
     ".br",
     brotliCompressSync(content, {
-      params: { [constants.BROTLI_PARAM_QUALITY]: 11 },
+      params: { [constants.BROTLI_PARAM_QUALITY]: brotliQuality },
     }),
   );
   await writeIfWorthwhile(filename, ".gz", gzipSync(content, { mtime: 0 }));
+  compressedFiles += 1;
 }
+
+console.log(`Precompressed ${compressedFiles} web assets.`);
