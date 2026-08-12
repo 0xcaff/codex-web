@@ -24,6 +24,7 @@
 | `npm run test:archive-verifier`          | Tests the Desktop archive digest verifier.                                                                                                                  |
 | `npm run test:server-launcher`           | Verifies explicit proxy preservation and rebuild argument forwarding.                                                                                       |
 | `npm run test:server-signal`             | Verifies launcher termination reaches the active server child.                                                                                              |
+| `npm run test:server-real-signal`        | Verifies the real launcher shuts down the server, closes its port, and terminates the upstream Codex child.                                                 |
 | `npm run test:runtime-logging`           | Verifies upstream payload suppression and trusted operator output.                                                                                          |
 | `npm run check`                          | Normal pre-commit/CI suite: version check, types, tests, proxy/archive checks, and formatting.                                                              |
 
