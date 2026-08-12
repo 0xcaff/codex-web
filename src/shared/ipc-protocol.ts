@@ -13,7 +13,6 @@ export const IPC_MAX_MAIN_TO_RENDERER_PAYLOAD_BYTES = 8 * 1024 * 1024;
 export const IPC_MAX_CHANNEL_LENGTH = 256;
 export const IPC_MAX_REQUEST_ID_LENGTH = 128;
 export const IPC_MAX_PORT_ID_LENGTH = 128;
-export const IPC_MAX_CLIENT_ID_LENGTH = 128;
 export const IPC_MAX_ARRAY_LENGTH = 128;
 export const IPC_MAX_PORTS_PER_MESSAGE = 16;
 export const IPC_MAX_DIRECTORY_ENTRIES = 2_048;
@@ -31,13 +30,6 @@ export type WorkspaceDirectoryEntries = {
 };
 
 export type RendererToMainMessage =
-  | {
-      type:
-        | "controller-connect"
-        | "controller-heartbeat"
-        | "controller-take-control";
-      clientId: string;
-    }
   | {
       type: "ipc-renderer-invoke";
       requestId: string;
@@ -83,7 +75,6 @@ export type RendererToMainMessage =
     };
 
 export type MainToRendererMessage =
-  | { type: "controller-status"; status: "active" | "secondary" }
   | {
       type: "ipc-main-event";
       channel: string;
@@ -167,10 +158,6 @@ function isPortId(value: unknown): value is string {
   return isBoundedString(value, IPC_MAX_PORT_ID_LENGTH);
 }
 
-function isClientId(value: unknown): value is string {
-  return isBoundedString(value, IPC_MAX_CLIENT_ID_LENGTH) && value.length > 0;
-}
-
 function isOptionalSourceUrl(value: unknown): boolean {
   return value === undefined || isBoundedString(value, IPC_MAX_PAYLOAD_BYTES);
 }
@@ -208,12 +195,6 @@ export function isRendererToMainMessage(
   }
 
   switch (value.type) {
-    case "controller-connect":
-    case "controller-heartbeat":
-    case "controller-take-control":
-      return (
-        hasOnlyKeys(value, ["type", "clientId"]) && isClientId(value.clientId)
-      );
     case "ipc-renderer-invoke":
       return (
         hasOnlyKeys(value, [
@@ -283,11 +264,6 @@ export function isMainToRendererMessage(
   }
 
   switch (value.type) {
-    case "controller-status":
-      return (
-        hasOnlyKeys(value, ["type", "status"]) &&
-        (value.status === "active" || value.status === "secondary")
-      );
     case "ipc-main-event":
       return (
         hasOnlyKeys(value, ["type", "channel", "args"]) &&

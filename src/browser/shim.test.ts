@@ -44,7 +44,6 @@ class FakeWebSocket {
 let IpcBridgeCapacityError: typeof import("./shim").IpcBridgeCapacityError;
 let IpcBridgeDisconnectedError: typeof import("./shim").IpcBridgeDisconnectedError;
 let IpcBridgeTransport: typeof import("./shim").IpcBridgeTransport;
-let updateControllerStatus: typeof import("./shim").updateControllerStatus;
 
 beforeAll(async () => {
   vi.stubGlobal("WebSocket", FakeWebSocket);
@@ -54,7 +53,6 @@ beforeAll(async () => {
   IpcBridgeCapacityError = shim.IpcBridgeCapacityError;
   IpcBridgeDisconnectedError = shim.IpcBridgeDisconnectedError;
   IpcBridgeTransport = shim.IpcBridgeTransport;
-  updateControllerStatus = shim.updateControllerStatus;
 });
 
 afterAll(() => vi.unstubAllGlobals());
@@ -131,12 +129,12 @@ describe("IPC browser transport", () => {
     expect(transport.queuedByteCount).toBeGreaterThan(0);
   });
 
-  it("drops pre-disconnect work and sends only new work after reconnect", async () => {
+  it("sends ordinary IPC immediately on an initial connection and reconnect", async () => {
     const { reconnectCallbacks, sockets, transport } = createTransport();
     const pending = transport.invoke("already-sent", []);
     sockets[0]?.open();
-    expect(sockets[0]?.sent).toHaveLength(2);
-    expect(sockets[0]?.sent[0]).toContain("controller-connect");
+    expect(sockets[0]?.sent).toHaveLength(1);
+    expect(sockets[0]?.sent[0]).toContain("already-sent");
     sockets[0]?.close();
     await expect(pending).rejects.toBeInstanceOf(IpcBridgeDisconnectedError);
 
@@ -148,53 +146,7 @@ describe("IPC browser transport", () => {
     });
     sockets[1]?.open();
 
-    expect(sockets[1]?.sent).toHaveLength(2);
-    expect(sockets[1]?.sent[0]).toContain("controller-connect");
-    expect(sockets[1]?.sent[1]).toContain("new-work");
-  });
-
-  it("creates a different controller identity for each page-lifetime transport", () => {
-    const first = createTransport();
-    const second = createTransport();
-    first.transport.connect();
-    second.transport.connect();
-    first.sockets[0]?.open();
-    second.sockets[0]?.open();
-    const firstConnect = JSON.parse(first.sockets[0]?.sent[0] ?? "{}");
-    const secondConnect = JSON.parse(second.sockets[0]?.sent[0] ?? "{}");
-    expect(firstConnect.clientId).not.toBe(secondConnect.clientId);
-  });
-
-  it("preserves an injected controller identity for transport tests", () => {
-    const sockets: FakeWebSocket[] = [];
-    const transport = new IpcBridgeTransport(
-      "ws://test/__backend/ipc",
-      (url) => {
-        const socket = new FakeWebSocket(url);
-        sockets.push(socket);
-        return socket;
-      },
-      () => undefined,
-      () => undefined,
-      () => 1,
-      "test-controller",
-    );
-    transport.connect();
-    sockets[0]?.open();
-    expect(JSON.parse(sockets[0]?.sent[0] ?? "{}").clientId).toBe(
-      "test-controller",
-    );
-  });
-
-  it("defers controller status attachment until a document body exists", () => {
-    const body = document.body;
-    body.remove();
-    expect(() => updateControllerStatus("secondary")).not.toThrow();
-    expect(document.querySelector("[role=status]")).toBeNull();
-    document.documentElement.append(body);
-    document.dispatchEvent(new Event("DOMContentLoaded"));
-    expect(document.querySelector("[role=status]")?.textContent).toContain(
-      "View-only tab",
-    );
+    expect(sockets[1]?.sent).toHaveLength(1);
+    expect(sockets[1]?.sent[0]).toContain("new-work");
   });
 });

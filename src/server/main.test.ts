@@ -84,10 +84,7 @@ afterEach(() => {
   delete (globalThis as IpcBridgeGlobals).__codexElectronIpcBridge;
 });
 
-async function connectIpc(
-  port: number,
-  clientId: string = crypto.randomUUID(),
-): Promise<WebSocket> {
+async function connectIpc(port: number): Promise<WebSocket> {
   const socket = new WebSocket(`ws://127.0.0.1:${port}/__backend/ipc`, {
     origin: `http://127.0.0.1:${port}`,
   });
@@ -95,13 +92,6 @@ async function connectIpc(
     socket.once("open", resolve);
     socket.once("error", reject);
   });
-  socket.send(
-    JSON.stringify({
-      type: "controller-connect",
-      clientId,
-    }),
-  );
-  await nextIpcMessage(socket);
   return socket;
 }
 
@@ -339,66 +329,44 @@ describe("IPC bridge readiness", () => {
   });
 });
 
-describe("IPC controller lease enforcement", () => {
-  it("denies a secondary mutation and permits explicit takeover", async () => {
+describe("IPC connection and reload behavior", () => {
+  it("delivers opaque bootstrap postMessage traffic on initial and replacement sockets", async () => {
+    const deliveries: string[] = [];
     const bridge = await startIpcBridgeServer(
       { host: "127.0.0.1", port: 0, allowedOrigins: [] },
       {
         bootstrapMainApp: () => {
           const globals = globalThis as IpcBridgeGlobals;
           const bridgeState = (globals.__codexElectronIpcBridge ??= {});
-          bridgeState.handleRendererInvoke = async (channel) => channel;
+          bridgeState.handleRendererPostMessage = (channel) => {
+            deliveries.push(channel);
+          };
         },
       },
     );
-    const first = await connectIpc(bridge.port, "first");
-    const second = await connectIpc(bridge.port, "second");
-    second.send(
+    const first = await connectIpc(bridge.port);
+    first.send(
       JSON.stringify({
-        type: "ipc-renderer-invoke",
-        requestId: "denied",
-        channel: "mutating-channel",
-        args: [],
+        type: "ipc-renderer-post-message",
+        channel: "bootstrap-initial",
+        portIds: [],
       }),
     );
-    await expect(nextIpcMessage(second)).resolves.toMatchObject({
-      requestId: "denied",
-      ok: false,
-      errorMessage: "Controller lease required for this operation",
-    });
-    second.send(
-      JSON.stringify({
-        type: "ipc-renderer-invoke",
-        requestId: "read-only",
-        channel: "get-app-version",
-        args: [],
-      }),
-    );
-    await expect(nextIpcMessage(second)).resolves.toMatchObject({
-      requestId: "read-only",
-      ok: true,
-    });
-    second.send(
-      JSON.stringify({ type: "controller-take-control", clientId: "second" }),
-    );
-    await expect(nextIpcMessage(second)).resolves.toEqual({
-      type: "controller-status",
-      status: "active",
-    });
-    second.send(
-      JSON.stringify({
-        type: "ipc-renderer-invoke",
-        requestId: "taken",
-        channel: "mutating-channel",
-        args: [],
-      }),
-    );
-    await expect(nextIpcMessage(second)).resolves.toMatchObject({
-      requestId: "taken",
-      ok: true,
-    });
+    await vi.waitFor(() => expect(deliveries).toEqual(["bootstrap-initial"]));
     first.close();
-    second.close();
+
+    const replacement = await connectIpc(bridge.port);
+    replacement.send(
+      JSON.stringify({
+        type: "ipc-renderer-post-message",
+        channel: "bootstrap-reload",
+        portIds: [],
+      }),
+    );
+    await vi.waitFor(() =>
+      expect(deliveries).toEqual(["bootstrap-initial", "bootstrap-reload"]),
+    );
+    replacement.close();
     await bridge.close();
   });
 });

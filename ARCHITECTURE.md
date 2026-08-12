@@ -42,12 +42,11 @@ unavailable response instead of being silently dropped. A disconnected browser
 can open a new WebSocket, but this is not persistence or authentication for the
 old renderer session.
 
-Only one browser tab holds the controller lease at a time. The browser sends a
-page-lifetime identity before queued IPC; the first connected tab is active,
-while secondaries can observe events and use a narrow, reviewed read-only
-invoke allowlist. Every other invoke, send, postMessage, and message-port
-mutation is denied unless that tab explicitly takes control. This arbitrates
-tabs on one trusted host; it is not multi-user authentication or authorization.
+Controller leasing is intentionally not implemented. The upstream bootstrap
+uses opaque MessagePort traffic whose read-only or state-changing semantics
+cannot be safely classified: denying it breaks fresh reloads and allowing it
+would bypass the lease. The browser bridge therefore preserves upstream IPC
+semantics rather than claiming tab-level authorization.
 
 Foreground notification forwarding is intentionally not implemented. The
 pinned upstream Notification service uses actions, replies, callbacks, and
