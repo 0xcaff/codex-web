@@ -426,15 +426,17 @@ electronShim.onMemoryNavigationChanged = (navigation) => {
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
     if (channel === "codex_desktop:message-from-view" && args.length === 1) {
-      if (isOpenInBrowserMessage(args[0])) {
-        window.open(args[0].url, "_blank", "noopener,noreferrer");
+      const message = args[0];
+
+      if (isOpenInBrowserMessage(message)) {
+        window.open(message.url, "_blank", "noopener,noreferrer");
       }
 
-      if (isLocalFilePickerMessage(args[0])) {
-        return handleLocalFilePickerMessage(args[0]);
+      if (isLocalFilePickerMessage(message)) {
+        return handleLocalFilePickerMessage(message);
       }
 
-      if (isUnhandledAddWorkspaceRootOptionMessage(args[0])) {
+      if (isUnhandledAddWorkspaceRootOptionMessage(message)) {
         return openSelectWorkspaceRootDialog({
           listDirectory: requestWorkspaceDirectoryEntries,
         }).then((root) => {
@@ -442,7 +444,7 @@ export const ipcRenderer = {
             return undefined;
           }
 
-          return invokeMain(channel, [{ ...args[0], root }]);
+          return invokeMain(channel, [{ ...message, root }]);
         });
       }
     }

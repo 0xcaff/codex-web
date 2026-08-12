@@ -23,10 +23,10 @@ export function mapBrowserPathToInitialRoute(pathname: string, search: string) {
 }
 
 function mapBrowserPathToRoute(pathname: string): string {
-  const match = pathname.match(/^\/thread\/([^/]+)$/);
-  if (match) {
+  const threadId = pathname.match(/^\/thread\/([^/]+)$/)?.[1];
+  if (threadId) {
     try {
-      return `/local/${decodeURIComponent(match[1])}`;
+      return `/local/${decodeURIComponent(threadId)}`;
     } catch {
       return "/";
     }
@@ -40,12 +40,12 @@ export function mapMemoryPathToBrowserPath(pathname: string) {
     return { path: "/", titleChange: "Codex" };
   }
 
-  const match = pathname.match(/^\/local\/([^/?#]+)$/);
-  if (!match) {
+  const threadId = pathname.match(/^\/local\/([^/?#]+)$/)?.[1];
+  if (!threadId) {
     return null;
   }
 
-  return { path: `/thread/${encodeURIComponent(match[1])}` };
+  return { path: `/thread/${encodeURIComponent(threadId)}` };
 }
 
 export function dispatchNavigateToRoute(path: string): void {

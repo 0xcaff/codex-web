@@ -17,6 +17,12 @@
     "dev:browser": "vite --config vite.browser.config.ts",
     "build:browser": "vite build --config vite.browser.config.ts",
     "build:server": "cd src/server && tsc",
+    "typecheck:server": "tsc --noEmit -p src/server/tsconfig.json",
+    "typecheck:browser": "tsc --noEmit -p tsconfig.browser.json",
+    "typecheck": "npm run typecheck:server && npm run typecheck:browser",
+    "test": "vitest run",
+    "format:check": "prettier --check package.json package-lock.json tsconfig.browser.json vitest.config.ts vite.browser.config.ts .github/workflows/ci.yml src/browser/routes.ts src/browser/shim.ts src/browser/routes.test.ts",
+    "check": "npm run typecheck && npm test && npm run format:check",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
     "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
@@ -42,9 +48,12 @@
     "ws": "^8.20.0"
   },
   "devDependencies": {
+    "@types/node": "^24.12.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "electron": "41.2.0",
-    "http-server": "^14.1.1"
+    "happy-dom": "^20.11.2",
+    "http-server": "^14.1.1",
+    "vitest": "^4.1.10"
   }
 }
