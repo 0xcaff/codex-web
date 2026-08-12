@@ -23,6 +23,7 @@
 | `npm run test:remote-proxy`              | Ensures the Unix-socket proxy invokes `websocat` safely.                                                                                                    |
 | `npm run test:archive-verifier`          | Tests the Desktop archive digest verifier.                                                                                                                  |
 | `npm run test:server-launcher`           | Verifies explicit proxy preservation and rebuild argument forwarding.                                                                                       |
+| `npm run test:server-signal`             | Verifies launcher termination reaches the active server child.                                                                                              |
 | `npm run test:runtime-logging`           | Verifies upstream payload suppression and trusted operator output.                                                                                          |
 | `npm run check`                          | Normal pre-commit/CI suite: version check, types, tests, proxy/archive checks, and formatting.                                                              |
 
@@ -44,4 +45,6 @@ Normal server output is limited to readiness, warnings, and failures.
 diagnosis. The tracer reports method names and bounded argument shapes, never
 raw renderer payloads, credentials, settings, or account data. The upstream
 Desktop console remains suppressed in debug mode because its entries cannot be
-reliably sanitized after formatting.
+reliably sanitized after formatting. The runtime forces the upstream structured
+logger to error level and emits at most one static suppression marker per
+upstream console severity.

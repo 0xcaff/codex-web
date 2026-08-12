@@ -50,13 +50,32 @@ export function parseLauncherArgs(rawArgs) {
     : { rebuild: false, serverArgs: rawArgs };
 }
 
-function run(command, args, options) {
+export function runChild(command, args, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { ...options, stdio: "inherit" });
-    child.once("error", reject);
+    let forwardedSignal;
+    const forwardSignal = (signal) => {
+      if (forwardedSignal) return;
+      forwardedSignal = signal;
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill(signal);
+      }
+    };
+    const onSigint = () => forwardSignal("SIGINT");
+    const onSigterm = () => forwardSignal("SIGTERM");
+    const cleanup = () => {
+      process.removeListener("SIGINT", onSigint);
+      process.removeListener("SIGTERM", onSigterm);
+    };
+    process.on("SIGINT", onSigint);
+    process.on("SIGTERM", onSigterm);
+    child.once("error", (error) => {
+      cleanup();
+      reject(error);
+    });
     child.once("exit", (code, signal) => {
-      if (signal) process.kill(process.pid, signal);
-      else resolve(code ?? 1);
+      cleanup();
+      resolve(signal ? 1 : (code ?? 1));
     });
   });
 }
@@ -65,14 +84,14 @@ export async function main(rawArgs) {
   const { rebuild, serverArgs } = parseLauncherArgs(rawArgs);
   if (rebuild) {
     const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
-    const rebuildCode = await run(npmCommand, ["run", "rebuild"], {
+    const rebuildCode = await runChild(npmCommand, ["run", "rebuild"], {
       cwd: repositoryRoot,
       env: process.env,
     });
     if (rebuildCode !== 0) return rebuildCode;
   }
   const launch = await createServerLaunch(serverArgs);
-  return await run(launch.command, launch.args, {
+  return await runChild(launch.command, launch.args, {
     cwd: repositoryRoot,
     env: launch.env,
   });

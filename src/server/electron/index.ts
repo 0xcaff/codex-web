@@ -95,10 +95,19 @@ export function summarizeElectronStubValue(value: unknown): string {
       return "[function]";
   }
 
-  if (Array.isArray(value)) return "[array]";
-  if (utilTypes.isNativeError(value)) return "[error]";
-  if (utilTypes.isUint8Array(value)) return "[buffer]";
+  try {
+    if (Array.isArray(value)) return "[array]";
+    if (utilTypes.isNativeError(value)) return "[error]";
+    if (utilTypes.isUint8Array(value)) return "[buffer]";
+  } catch {
+    // Revoked and hostile proxies must fail closed without invoking any
+    // additional reflective operation.
+  }
   return "[object]";
+}
+
+function safeMethodLabel(method: string): string {
+  return method.replace(/[^A-Za-z0-9#_.() -]/g, "?").slice(0, 120);
 }
 
 export function formatElectronStubDebugCall(
@@ -109,7 +118,7 @@ export function formatElectronStubDebugCall(
     .slice(0, maximumDebugArguments)
     .map((argument) => summarizeElectronStubValue(argument));
   const suffix = args.length > maximumDebugArguments ? ", …" : "";
-  return `[electron-main-stub] ${method}(${displayed.join(", ")}${suffix})`;
+  return `[electron-main-stub] ${safeMethodLabel(method)}(${displayed.join(", ")}${suffix})`;
 }
 
 function log(method: string, args: unknown[]): void {
@@ -142,7 +151,7 @@ function createDeepStub(pathLabel: string): StubFunction {
         return () => pathLabel;
       }
 
-      return createDeepStub(`${pathLabel}.${String(prop)}`);
+      return createDeepStub(`${pathLabel}.[property]`);
     },
   });
 }
@@ -514,7 +523,7 @@ const app = new Proxy(appBase as Record<string, unknown>, {
       return target[prop as keyof typeof target];
     }
 
-    return createDeepStub(`app.${String(prop)}`);
+    return createDeepStub("app.[property]");
   },
 }) as typeof appBase;
 
@@ -584,7 +593,7 @@ class BrowserWindow {
             return target[prop as keyof typeof target];
           }
           return createDeepStub(
-            `BrowserWindow#${this.id}.webContents.${String(prop)}`,
+            `BrowserWindow#${this.id}.webContents.[property]`,
           );
         },
       },
@@ -597,7 +606,7 @@ class BrowserWindow {
         if (prop in target) {
           return target[prop as keyof typeof target];
         }
-        return createDeepStub(`BrowserWindow#${target.id}.${String(prop)}`);
+        return createDeepStub(`BrowserWindow#${target.id}.[property]`);
       },
     });
   }
@@ -1109,7 +1118,7 @@ const electronModule = new Proxy(
         return target[prop as keyof typeof target];
       }
 
-      return createDeepStub(`electron.${String(prop)}`);
+      return createDeepStub("electron.[property]");
     },
   },
 );

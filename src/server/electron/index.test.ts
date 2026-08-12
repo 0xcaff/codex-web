@@ -1,5 +1,9 @@
 import { describe, expect, it, vi } from "vitest";
-import { formatElectronStubDebugCall, ipcMain } from "./index";
+import {
+  formatElectronStubDebugCall,
+  ipcMain,
+  summarizeElectronStubValue,
+} from "./index";
 
 type StubPort = {
   close: ReturnType<typeof vi.fn>;
@@ -140,5 +144,20 @@ describe("Electron stub tracing", () => {
     );
     expect(message).not.toContain("secret");
     expect(message).not.toContain("123456789");
+  });
+
+  it("fails closed for revoked proxies and bounds method labels", () => {
+    const { proxy, revoke } = Proxy.revocable([], {});
+    revoke();
+
+    expect(() => summarizeElectronStubValue(proxy)).not.toThrow();
+    expect(summarizeElectronStubValue(proxy)).toBe("[object]");
+
+    const message = formatElectronStubDebugCall(
+      `method\nsecret-${"x".repeat(500)}`,
+      [],
+    );
+    expect(message).not.toContain("\n");
+    expect(message.length).toBeLessThan(180);
   });
 });

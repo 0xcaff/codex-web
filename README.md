@@ -233,7 +233,9 @@ has been pushed or tagged.
 - **Need bridge tracing:** use `CODEX_WEB_DEBUG=1 npm run server`. Trace output
   is shape-only: it omits argument values and bounds payload summaries. Raw
   upstream console output remains suppressed because it can contain request
-  bodies, settings, account data, credentials, and local paths.
+  bodies, settings, account data, credentials, and local paths. Upstream
+  warnings/errors are represented only by bounded, payload-free suppression
+  markers; the upstream structured logger is always forced to error level.
 
 ## Maintainer checks
 

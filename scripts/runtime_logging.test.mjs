@@ -18,10 +18,14 @@ const child = spawnSync(
     [
       "const logging = require(process.env.RUNTIME_LOGGING_MODULE);",
       "logging.installUpstreamConsolePolicy();",
+      "for (let i = 0; i < 1000; i += 1) {",
       "console.log('secret-log-body');",
       "console.info('secret-account-data');",
       "console.warn('secret-local-path');",
       "console.error('secret-token');",
+      "}",
+      "process.stdout.write(process.env.CODEX_MAX_LOG_LEVEL || '');",
+      "process.stdout.write('\\n');",
       "logging.operatorLog('codex-web listening at http://127.0.0.1:9999');",
       "logging.operatorError('[ipc-bridge] startup failed');",
     ].join(""),
@@ -33,8 +37,14 @@ const child = spawnSync(
 );
 
 assert.equal(child.status, 0, child.stderr);
-assert.equal(child.stdout, "codex-web listening at http://127.0.0.1:9999\n");
-assert.equal(child.stderr, "[ipc-bridge] startup failed\n");
+assert.equal(
+  child.stdout,
+  "error\ncodex-web listening at http://127.0.0.1:9999\n",
+);
+assert.equal(
+  child.stderr,
+  "[upstream] warning suppressed\n[upstream] error suppressed\n[ipc-bridge] startup failed\n",
+);
 
 console.log(
   "Runtime logging suppresses upstream payloads and keeps operator output.",
