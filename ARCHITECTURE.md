@@ -42,6 +42,18 @@ unavailable response instead of being silently dropped. A disconnected browser
 can open a new WebSocket, but this is not persistence or authentication for the
 old renderer session.
 
+Only one browser tab holds the controller lease at a time. The browser sends a
+stable per-tab identity before queued IPC; the first connected tab is active,
+while secondaries can observe events and use a narrow, reviewed read-only
+invoke allowlist. Every other invoke, send, postMessage, and message-port
+mutation is denied unless that tab explicitly takes control. This arbitrates
+tabs on one trusted host; it is not multi-user authentication or authorization.
+
+Foreground notification forwarding is intentionally not implemented. The
+pinned upstream Notification service uses actions, replies, callbacks, and
+navigation metadata, so reducing it to title/body/tag would require parsing
+undocumented private payloads and would silently lose behavior.
+
 The normal runtime starts Codex through the server’s child lifecycle. The
 optional `scripts/codex_remote_proxy` changes only that transport: it maps the
 expected noninteractive stdio app-server protocol to an already-running Unix
@@ -83,6 +95,10 @@ recognizably generated upload directories; it leaves unexpected paths alone.
 - `scripts/codex_remote_proxy.test.sh` uses a stub `websocat` to prove argument
   forwarding without making a network connection.
 - Browser and IPC protocol tests protect the renderer shim boundary.
+- `npm run check:compatibility` separately reverse-dry-runs every patch against
+  the pinned extracted tree. Its patch target/hunk list is machine readable
+  and the JSON report includes extracted-tree asset/startup budgets; this gate
+  never prepares, rewrites, or downloads the proprietary archive.
 
 When upstream changes, regenerate and review the smallest possible patches;
 then run the full update gates in [UPGRADING.md](UPGRADING.md).

@@ -84,6 +84,19 @@ npm run check
 # → both runs pass typecheck, Vitest, proxy argument-flow, and formatting
 ```
 
+Run the compatibility gate separately against the already-pinned extraction:
+
+```bash
+npm run test:compatibility
+npm run check:compatibility
+# → validates every patch target and hunk anchor without modifying scratch/
+```
+
+The compatibility report includes the extracted asset count and byte budget.
+It intentionally stays outside ordinary CI checks so CI does not need the
+proprietary archive. A failed target/anchor check means stop and port that
+patch intentionally; never regenerate or rewrite the extracted tree in place.
+
 Run the reproducible Nix gate as well:
 
 ```bash
