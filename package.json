@@ -17,34 +17,41 @@
     "dev:browser": "vite --config vite.browser.config.ts",
     "build:browser": "vite build --config vite.browser.config.ts",
     "build:server": "cd src/server && tsc",
+    "test": "npm run build:server && node --test test/*.test.mjs",
+    "check": "npm test && npm run build:browser && prettier --check AGENTS.md README.md package.json scripts/prepare_icon.mjs src/server/main.ts src/server/security.ts src/server/electron/index.ts src/server/electron/pending.ts test/security.test.mjs",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
-    "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
+    "server": "./scripts/run_server"
   },
   "repository": "git@github.com:0xcaff/codex-web.git",
   "author": "martin <martincharles07@gmail.com>",
   "license": "MIT",
   "dependencies": {
     "@electron/asar": "^4.2.0",
-    "@fastify/multipart": "^10.0.0",
-    "@fastify/static": "^9.1.1",
+    "@fastify/multipart": "^10.1.0",
+    "@fastify/static": "^10.1.3",
     "@tanstack/react-query": "^5.100.9",
     "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.9.0",
-    "fastify": "^5.8.5",
+    "fastify": "^5.11.3",
     "glob": "^13.0.6",
     "prettier": "^3.8.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "sharp-cli": "^5.2.0",
+    "sharp": "^0.35.3",
     "typescript": "^6.0.2",
-    "vite": "^8.0.8",
-    "ws": "^8.20.0"
+    "vite": "^8.2.1",
+    "ws": "^8.21.3"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "electron": "41.2.0",
+    "electron": "41.10.5",
     "http-server": "^14.1.1"
+  },
+  "overrides": {
+    "brace-expansion": "5.0.9",
+    "fast-uri": "3.1.5",
+    "qs": "6.15.2"
   }
 }

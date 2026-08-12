@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -ne 2 ]]; then
+  echo "usage: verify_sha256 <file> <expected-hex-sha256>" >&2
+  exit 64
+fi
+
+file="$1"
+expected_sha256="$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"
+
+if [[ ! "$expected_sha256" =~ ^[0-9a-f]{64}$ ]]; then
+  echo "expected SHA-256 must be 64 hexadecimal characters" >&2
+  exit 64
+fi
+
+actual_sha256="$(shasum -a 256 "$file" | awk '{print $1}')"
+if [[ "$actual_sha256" != "$expected_sha256" ]]; then
+  echo "SHA-256 mismatch for $file" >&2
+  echo "expected: $expected_sha256" >&2
+  echo "actual:   $actual_sha256" >&2
+  exit 1
+fi

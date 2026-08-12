@@ -23,8 +23,8 @@ to the codex desktop app can be integrated quickly.
 `codex-web` serves the browser client and hosts the desktop-side bridge. by
 default, it listens on `127.0.0.1:8214`.
 
-it will use `codex` from `PATH` if available, or `CODEX_CLI_PATH` if you set
-it.
+it will use `CODEX_CLI_PATH` if set. Otherwise it prefers the Codex binary in
+the signed ChatGPT app on macOS and falls back to `codex` from `PATH`.
 
 run it with `npx`:
 
@@ -39,6 +39,24 @@ nix run github:0xcaff/codex-web
 ```
 
 then open <http://127.0.0.1:8214> in a browser.
+
+### browser security configuration
+
+`codex-web` accepts browser IPC only from its local origin by default. Add a
+public HTTPS origin explicitly when using an authenticated tunnel:
+
+```bash
+export CODEX_WEB_ALLOWED_ORIGINS="https://codex.example.com"
+export CODEX_WEB_WORKSPACE_ROOTS="$HOME/CodexWorkspace"
+export CODEX_WEB_FILE_ROOTS="$HOME/CodexWorkspace"
+npm run server
+```
+
+`CODEX_WEB_WORKSPACE_ROOTS` controls which directories the browser project
+picker can traverse. `CODEX_WEB_FILE_ROOTS` controls which local files the
+browser may render. These restrictions do not reduce the filesystem permissions
+of the Codex backend itself. Separate multiple roots with the platform path
+delimiter (`:` on macOS and Linux).
 
 ### sign in
 
@@ -86,8 +104,13 @@ run `codex-web` only on trusted networks. treat anyone who can reach the
 same user running the server.
 
 if you need authn or authz, implement it outside of `codex-web`: proxy it through
-wireguard, tailscale, or an ssh tunnel and put an authentication gateway or
-reverse proxy in front.
+wireguard, tailscale, an ssh tunnel, or Cloudflare Tunnel and put an
+authentication gateway in front. Keep the server bound to `127.0.0.1`. For
+Cloudflare Access, create the Access application before publishing the tunnel
+route and enable Access token validation at the tunnel or origin.
+
+The install path verifies the pinned Codex desktop archive SHA-256 before
+extracting it. On macOS it also requires a valid OpenAI Developer ID signature.
 
 someone with access to the web ui may be able to:
 
@@ -133,14 +156,14 @@ talk.
 
 ## alternatives
 
-* [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels fell off. i needed subagents
+- [davej/pocodex](https://github.com/davej/pocodex) i used this until the wheels fell off. i needed subagents
   and an inline image viewer. this didn't have them and was having a hard time
   keeping up with upstream codex updates.
-* the native codex remote feature (behind a feature flag) is great for
+- the native codex remote feature (behind a feature flag) is great for
   connecting to remote codex hosts over ssh to manage long running tasks but
   this only works if you have codex desktop on your client device. this means it
   doesn't work on mobile.
-* upcoming first party mobile app from openai. `codex-web` exists and works
+- upcoming first party mobile app from openai. `codex-web` exists and works
   today. i can't wait for the mobile app but judging by the other openai mobile
   apps, i'm a little bit skeptical about the quality of the mobile experience.
   time will tell.

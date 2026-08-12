@@ -44,10 +44,7 @@ def download_enclosure(enclosure: etree._Element, dest: Path) -> None:
         resp.raise_for_status()
         data = resp.content
 
-    try:
-        verify_sparkle_signature(data, ed_signature)
-    except RuntimeError as e:
-        print(f"warning {e} for {url}")
+    verify_sparkle_signature(data, ed_signature)
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_bytes(data)

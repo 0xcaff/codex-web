@@ -1,3 +1,9 @@
 node_modules/
 scratch*/
 sentry
+.venv/
+__pycache__/
+src/server/**/*.d.ts
+src/server/**/*.d.ts.map
+src/server/**/*.js
+src/server/**/*.js.map

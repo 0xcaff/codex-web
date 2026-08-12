@@ -1,3 +1,5 @@
+import { PendingChannelQueue } from "./pending";
+
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
@@ -47,12 +49,14 @@ type IpcMainBridgeState = {
     message: unknown,
     ports: StubMessagePort[],
     sourceUrl?: string,
+    connectionId?: string,
   ) => void;
   handleRendererSend?: (
     channel: string,
     args: unknown[],
     sourceUrl?: string,
   ) => void;
+  removeRendererConnection?: (connectionId: string) => void;
 };
 
 function getIpcMainBridgeState(): IpcMainBridgeState {
@@ -66,6 +70,9 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
 }
 
 function log(method: string, args: unknown[]): void {
+  if (process.env.CODEX_WEB_DEBUG_STUBS !== "1") {
+    return;
+  }
   console.log(`[electron-main-stub] ${method}`, args);
 }
 
@@ -229,24 +236,44 @@ function createIpcMainStub(): {
   >();
   const bridgeState = getIpcMainBridgeState();
 
-  const pendingPostMessages = new Map<
-    string,
-    Array<{ message: unknown; ports: StubMessagePort[] }>
-  >();
+  const pendingPostMessages = new PendingChannelQueue<{
+    connectionId: string;
+    discard: () => void;
+    message: unknown;
+    ports: StubMessagePort[];
+  }>({ channels: 64, entries: 256, entriesPerChannel: 16 });
   const registeredPostMessageChannels = new Set<string>();
 
   bridgeState.handleRendererPostMessage = (
     channel: string,
     message: unknown,
     ports: StubMessagePort[],
+    _sourceUrl?: string,
+    connectionId = "legacy",
   ): void => {
     if (registeredPostMessageChannels.has(channel)) {
       emitter.emit(channel, createIpcMainEvent(ports), message);
       return;
     }
-    const pending = pendingPostMessages.get(channel) ?? [];
-    pending.push({ message, ports });
-    pendingPostMessages.set(channel, pending);
+    const accepted = pendingPostMessages.enqueue(channel, {
+      connectionId,
+      discard: () => {
+        for (const port of ports) {
+          port.close();
+        }
+      },
+      message,
+      ports,
+    });
+    if (!accepted) {
+      console.error(
+        `[electron-main-stub] pending postMessage limit reached for ${channel}`,
+      );
+    }
+  };
+
+  bridgeState.removeRendererConnection = (connectionId: string): void => {
+    pendingPostMessages.removeConnection(connectionId);
   };
 
   bridgeState.handleRendererInvoke = async (
@@ -274,12 +301,8 @@ function createIpcMainStub(): {
     on(channel: string, listener: StubListener): unknown {
       const result = emitter.on(channel, listener);
       registeredPostMessageChannels.add(channel);
-      const pending = pendingPostMessages.get(channel);
-      if (pending) {
-        pendingPostMessages.delete(channel);
-        for (const { message, ports } of pending) {
-          emitter.emit(channel, createIpcMainEvent(ports), message);
-        }
+      for (const { message, ports } of pendingPostMessages.drain(channel)) {
+        emitter.emit(channel, createIpcMainEvent(ports), message);
       }
       return result;
     },
@@ -440,8 +463,8 @@ class BrowserWindow {
         getURL: (): string => {
           log(`BrowserWindow#${this.id}.webContents.getURL`, []);
           return String(
-            (this.webContents.mainFrame as { url?: string } | undefined)
-              ?.url ?? "",
+            (this.webContents.mainFrame as { url?: string } | undefined)?.url ??
+              "",
           );
         },
         isDestroyed: (): boolean => this.destroyed,
@@ -502,10 +525,7 @@ class BrowserWindow {
 
   static getFocusedWindow(): BrowserWindow | null {
     log("BrowserWindow.getFocusedWindow", []);
-    if (
-      BrowserWindow.focusedWindow &&
-      !BrowserWindow.focusedWindow.destroyed
-    ) {
+    if (BrowserWindow.focusedWindow && !BrowserWindow.focusedWindow.destroyed) {
       return BrowserWindow.focusedWindow;
     }
     return BrowserWindow.getAllWindows()[0] ?? null;
@@ -933,14 +953,19 @@ function createSessionStub(label: string): {
     },
   };
 }
-const partitionSessions = new Map<string, ReturnType<typeof createSessionStub>>();
+const partitionSessions = new Map<
+  string,
+  ReturnType<typeof createSessionStub>
+>();
 const session = {
   defaultSession: createSessionStub("session.defaultSession"),
   fromPartition(partition: string): ReturnType<typeof createSessionStub> {
     log("session.fromPartition", [partition]);
     let partitionSession = partitionSessions.get(partition);
     if (!partitionSession) {
-      partitionSession = createSessionStub(`session.fromPartition(${partition})`);
+      partitionSession = createSessionStub(
+        `session.fromPartition(${partition})`,
+      );
       partitionSessions.set(partition, partitionSession);
     }
     return partitionSession;
