@@ -7,9 +7,11 @@ declare global {
 }
 
 import { randomUUID } from "node:crypto";
+import { createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { pipeline } from "node:stream/promises";
 import { parseArgs as parseCliArgs } from "node:util";
 import { WebSocket, WebSocketServer } from "ws";
 import Fastify from "fastify";
@@ -17,48 +19,29 @@ import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
 import { glob } from "glob";
+import {
+  MAX_MESSAGE_PORTS_PER_SOCKET,
+  MAX_WEBSOCKET_PAYLOAD_BYTES,
+  canonicalizeRoots,
+  configuredRoots,
+  createBrowserRequestPolicy,
+  isLoopbackHost,
+  parseRendererToMainMessage,
+  resolveAllowedDirectory,
+  resolveAllowedFile,
+  validateBrowserRequest,
+  validateRequestHost,
+} from "./security";
 
 type ServerOptions = {
   host: string;
   port: number;
 };
 
-type RendererToMainMessage =
-  | {
-      type: "ipc-renderer-invoke";
-      requestId: string;
-      channel: string;
-      args: unknown[];
-      sourceUrl: string;
-    }
-  | {
-      type: "ipc-renderer-send";
-      channel: string;
-      args: unknown[];
-      sourceUrl: string;
-    }
-  | {
-      type: "ipc-renderer-post-message";
-      channel: string;
-      message: unknown;
-      portIds: string[];
-      sourceUrl?: string;
-    }
-  | {
-      type: "message-port-message";
-      portId: string;
-      data: unknown;
-    }
-  | {
-      type: "message-port-close";
-      portId: string;
-    }
-  | {
-      type: "workspace-directory-entries-request";
-      requestId: string;
-      directoryPath: string | null;
-      directoriesOnly: boolean;
-    };
+const MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024;
+const MAX_UPLOAD_FILES = 10;
+const MAX_UPLOAD_STORAGE_BYTES = 512 * 1024 * 1024;
+const UPLOAD_LIFETIME_MS = 24 * 60 * 60 * 1_000;
 
 type MainToRendererMessage =
   | {
@@ -231,8 +214,14 @@ type IpcMainBridgeState = {
     message: unknown,
     ports: BridgedMessagePort[],
     sourceUrl?: string,
+    connectionId?: string,
   ) => void;
-  handleRendererSend?: (channel: string, args: unknown[]) => void;
+  handleRendererSend?: (
+    channel: string,
+    args: unknown[],
+    sourceUrl?: string,
+  ) => void;
+  removeRendererConnection?: (connectionId: string) => void;
 };
 
 function printUsage(): void {
@@ -284,8 +273,18 @@ function parseServerArgs(args: string[]): ServerOptions {
     process.exit(0);
   }
 
+  const host = parsed.values.host ?? "127.0.0.1";
+  if (
+    !isLoopbackHost(host) &&
+    process.env.CODEX_WEB_ALLOW_NON_LOOPBACK !== "1"
+  ) {
+    throw new Error(
+      "Refusing a non-loopback listener. Use a local tunnel or set CODEX_WEB_ALLOW_NON_LOOPBACK=1 to acknowledge the risk.",
+    );
+  }
+
   return {
-    host: parsed.values.host ?? "127.0.0.1",
+    host,
     port: parsed.values.port ? parsePort(parsed.values.port) : 8214,
   };
 }
@@ -302,7 +301,7 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
 
 function errorMessage(error: unknown): string {
   if (error instanceof Error) {
-    return error.stack ?? error.message;
+    return error.message;
   }
   return String(error);
 }
@@ -310,15 +309,22 @@ function errorMessage(error: unknown): string {
 async function getWorkspaceDirectoryEntries({
   directoryPath,
   directoriesOnly,
+  workspaceRoots,
 }: {
   directoryPath: string | null;
   directoriesOnly: boolean;
+  workspaceRoots: readonly string[];
 }): Promise<WorkspaceDirectoryEntries> {
-  const requestedPath = directoryPath?.trim() || os.homedir();
-  const resolvedPath = path.resolve(requestedPath);
-  const stat = await fs.stat(resolvedPath);
-  if (!stat.isDirectory()) {
-    throw new Error(`Directory not found: ${requestedPath}`);
+  const requestedPath = directoryPath?.trim() || workspaceRoots[0];
+  if (!requestedPath) {
+    throw new Error("No workspace roots are configured");
+  }
+  const resolvedPath = await resolveAllowedDirectory(
+    requestedPath,
+    workspaceRoots,
+  );
+  if (!resolvedPath) {
+    throw new Error(`Directory is outside the configured workspace roots`);
   }
 
   const entries = (await fs.readdir(resolvedPath, { withFileTypes: true }))
@@ -338,9 +344,9 @@ async function getWorkspaceDirectoryEntries({
     })
     .sort(compareWorkspaceDirectoryEntries);
 
-  const rootPath = path.parse(resolvedPath).root;
-  const parentPath =
-    resolvedPath === rootPath ? null : path.dirname(resolvedPath);
+  const parentPath = workspaceRoots.includes(resolvedPath)
+    ? null
+    : path.dirname(resolvedPath);
 
   return {
     directoryPath: resolvedPath,
@@ -376,54 +382,157 @@ function ensureElectronLikeProcessContext(): void {
 async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   const bridgeState = getIpcMainBridgeState();
   const app = Fastify({ logger: false });
-  const websocketServer = new WebSocketServer({ noServer: true });
-  const sockets = new Set<WebSocket>();
-
-  await app.register(fastifyMultipart, {
-    limits: {
-      fileSize: Infinity,
-    },
+  const websocketServer = new WebSocketServer({
+    noServer: true,
+    maxPayload: MAX_WEBSOCKET_PAYLOAD_BYTES,
   });
+  const sockets = new Set<WebSocket>();
+  const requestPolicy = createBrowserRequestPolicy({
+    configuredOrigins: process.env.CODEX_WEB_ALLOWED_ORIGINS,
+    port: options.port,
+  });
+  const workspaceRoots = await canonicalizeRoots(
+    configuredRoots(process.env.CODEX_WEB_WORKSPACE_ROOTS, [process.cwd()]),
+  );
+  const configuredFileRoots = await canonicalizeRoots(
+    configuredRoots(process.env.CODEX_WEB_FILE_ROOTS, workspaceRoots),
+  );
 
   const uploadRoot = await fs.mkdtemp(
     path.join(os.tmpdir(), "codex-web-uploads-"),
   );
+  const fileRoots = [...configuredFileRoots, await fs.realpath(uploadRoot)];
+  const storedUploads = new Map<string, { expiresAt: number; size: number }>();
+  let storedUploadBytes = 0;
+  let reservedUploadBytes = 0;
+
+  const removeUpload = async (uploadedPath: string): Promise<void> => {
+    const stored = storedUploads.get(uploadedPath);
+    storedUploads.delete(uploadedPath);
+    if (stored) {
+      storedUploadBytes -= stored.size;
+    }
+    await fs.rm(uploadedPath, { force: true });
+  };
+
+  const cleanupExpiredUploads = async (): Promise<void> => {
+    const now = Date.now();
+    await Promise.all(
+      [...storedUploads.entries()]
+        .filter(([, stored]) => stored.expiresAt <= now)
+        .map(([uploadedPath]) => removeUpload(uploadedPath)),
+    );
+  };
+  const uploadCleanupInterval = setInterval(
+    () => void cleanupExpiredUploads(),
+    60 * 60 * 1_000,
+  );
+  uploadCleanupInterval.unref();
+
+  app.addHook("onClose", async () => {
+    clearInterval(uploadCleanupInterval);
+    await fs.rm(uploadRoot, { recursive: true, force: true });
+  });
+
+  await app.register(fastifyMultipart, {
+    limits: {
+      fileSize: MAX_UPLOAD_FILE_BYTES,
+      files: MAX_UPLOAD_FILES,
+      parts: MAX_UPLOAD_FILES,
+    },
+  });
+
+  app.addHook("onRequest", async (request, reply) => {
+    if (!validateRequestHost(request.headers.host, requestPolicy)) {
+      return reply.code(403).send({ error: "Host is not allowed" });
+    }
+  });
 
   app.post("/__backend/upload", async (request, reply) => {
+    const requestValidation = validateBrowserRequest(
+      { host: request.headers.host, origin: request.headers.origin },
+      requestPolicy,
+    );
+    if (!requestValidation.ok) {
+      return reply.code(403).send({ error: requestValidation.error });
+    }
     if (!request.isMultipart()) {
       return reply.code(400).send({ error: "expected multipart upload body" });
     }
 
-    const files = await Array.fromAsync(
-      (async function* () {
-        for await (const part of request.files()) {
-          const label = part.filename?.trim() || "upload";
+    const uploadedThisRequest: string[] = [];
+    try {
+      const files = await Array.fromAsync(
+        (async function* () {
+          for await (const part of request.files()) {
+            if (
+              storedUploadBytes + reservedUploadBytes + MAX_UPLOAD_FILE_BYTES >
+              MAX_UPLOAD_STORAGE_BYTES
+            ) {
+              throw new Error("upload storage quota exceeded");
+            }
+            reservedUploadBytes += MAX_UPLOAD_FILE_BYTES;
+            const label = (part.filename?.trim() || "upload").slice(0, 255);
 
-          const uploadedPath = path.join(uploadRoot, randomUUID());
+            const uploadedPath = path.join(uploadRoot, randomUUID());
+            try {
+              await pipeline(
+                part.file,
+                createWriteStream(uploadedPath, { flags: "wx" }),
+              );
+              if (part.file.truncated) {
+                throw new Error("upload file size limit exceeded");
+              }
+              const stat = await fs.stat(uploadedPath);
+              storedUploadBytes += stat.size;
+              storedUploads.set(uploadedPath, {
+                expiresAt: Date.now() + UPLOAD_LIFETIME_MS,
+                size: stat.size,
+              });
+              uploadedThisRequest.push(uploadedPath);
+            } catch (error) {
+              await fs.rm(uploadedPath, { force: true });
+              throw error;
+            } finally {
+              reservedUploadBytes -= MAX_UPLOAD_FILE_BYTES;
+            }
 
-          await fs.writeFile(uploadedPath, await part.toBuffer());
+            yield {
+              label,
+              path: uploadedPath,
+              fsPath: uploadedPath,
+            };
+          }
+        })(),
+      );
 
-          yield {
-            label,
-            path: uploadedPath,
-            fsPath: uploadedPath,
-          };
-        }
-      })(),
-    );
-
-    return reply.send({ files });
-  });
-
-  await app.register(fastifyStatic, {
-    root: "/",
-    prefix: "/@fs/",
-    decorateReply: false,
+      return reply.send({ files });
+    } catch (error) {
+      await Promise.all(uploadedThisRequest.map(removeUpload));
+      const message = errorMessage(error);
+      const statusCode =
+        message.includes("limit") || message.includes("quota") ? 413 : 500;
+      return reply.code(statusCode).send({ error: message });
+    }
   });
 
   await app.register(fastifyStatic, {
     root: path.resolve(__dirname, "../../scratch/asar/webview"),
     prefix: "/",
+  });
+
+  app.get("/@fs/*", async (request, reply) => {
+    const requestedPath = (request.params as { "*": string })["*"];
+    const allowedFile = await resolveAllowedFile(requestedPath, fileRoots);
+    if (!allowedFile) {
+      return reply.code(404).send({ error: "Not Found" });
+    }
+    reply.header("Cache-Control", "private, no-store");
+    reply.header("X-Content-Type-Options", "nosniff");
+    return reply.sendFile(allowedFile.relativePath, allowedFile.root, {
+      cacheControl: false,
+      lastModified: false,
+    });
   });
 
   app.get("/", async (_request, reply) => {
@@ -443,9 +552,19 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 
   app.server.on("upgrade", (request, socket, head) => {
     const requestUrl = request.url ?? "/";
-    const host = request.headers.host ?? "localhost";
-    const url = new URL(requestUrl, `http://${host}`);
+    const url = new URL(requestUrl, "http://localhost");
     if (url.pathname !== "/__backend/ipc") {
+      socket.destroy();
+      return;
+    }
+    const requestValidation = validateBrowserRequest(
+      { host: request.headers.host, origin: request.headers.origin },
+      requestPolicy,
+    );
+    if (!requestValidation.ok) {
+      socket.write(
+        "HTTP/1.1 403 Forbidden\r\nConnection: close\r\nContent-Length: 0\r\n\r\n",
+      );
       socket.destroy();
       return;
     }
@@ -464,8 +583,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     }
   };
 
-  websocketServer.on("connection", (socket) => {
+  websocketServer.on("connection", (socket, request) => {
     sockets.add(socket);
+    const connectionId = randomUUID();
+    const verifiedOrigin = request.headers.origin!;
 
     const messagePorts = new Map<string, WebSocketMessagePort>();
     const dispatchPostMessage = (
@@ -476,7 +597,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     ): void => {
       const handler = bridgeState.handleRendererPostMessage;
       if (handler) {
-        handler(channel, message, ports, sourceUrl);
+        handler(channel, message, ports, sourceUrl, connectionId);
         return;
       }
 
@@ -490,6 +611,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 
     socket.on("close", () => {
       sockets.delete(socket);
+      bridgeState.removeRendererConnection?.(connectionId);
       for (const port of messagePorts.values()) {
         port.disconnect();
       }
@@ -497,128 +619,140 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     });
 
     socket.on("message", (rawData) => {
-      let message: RendererToMainMessage;
+      const parsedMessage = parseRendererToMainMessage(String(rawData));
+      if (!parsedMessage.ok) {
+        console.error(`[ipc-bridge] ${parsedMessage.error}`);
+        socket.close(1008, "Invalid IPC message");
+        return;
+      }
+      const message = parsedMessage.value;
+
       try {
-        message = JSON.parse(String(rawData)) as RendererToMainMessage;
-      } catch (error) {
-        console.error("[ipc-bridge] invalid JSON payload", error);
-        return;
-      }
-
-      if (message.type === "ipc-renderer-send") {
-        bridgeState.handleRendererSend?.(message.channel, message.args);
-        return;
-      }
-
-      if (message.type === "ipc-renderer-post-message") {
-        if (new Set(message.portIds).size !== message.portIds.length) {
-          console.error("[ipc-bridge] duplicate transferred MessagePort id");
+        if (message.type === "ipc-renderer-send") {
+          bridgeState.handleRendererSend?.(
+            message.channel,
+            message.args,
+            verifiedOrigin,
+          );
           return;
         }
 
-        const ports = message.portIds.map((portId) => {
-          const existingPort = messagePorts.get(portId);
-          if (existingPort) {
-            existingPort.disconnect();
+        if (message.type === "ipc-renderer-post-message") {
+          const newPortCount = message.portIds.filter(
+            (portId) => !messagePorts.has(portId),
+          ).length;
+          if (messagePorts.size + newPortCount > MAX_MESSAGE_PORTS_PER_SOCKET) {
+            socket.close(1008, "Too many message ports");
+            return;
           }
-          const port = new WebSocketMessagePort(
-            portId,
-            (message) => {
-              if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(message));
-              }
-            },
-            () => messagePorts.delete(portId),
+
+          const ports = message.portIds.map((portId) => {
+            const existingPort = messagePorts.get(portId);
+            if (existingPort) {
+              existingPort.disconnect();
+            }
+            const port = new WebSocketMessagePort(
+              portId,
+              (message) => {
+                if (socket.readyState === WebSocket.OPEN) {
+                  socket.send(JSON.stringify(message));
+                }
+              },
+              () => messagePorts.delete(portId),
+            );
+            messagePorts.set(portId, port);
+            return port;
+          });
+
+          dispatchPostMessage(
+            message.channel,
+            message.message,
+            ports,
+            verifiedOrigin,
           );
-          messagePorts.set(portId, port);
-          return port;
-        });
+          return;
+        }
 
-        dispatchPostMessage(
-          message.channel,
-          message.message,
-          ports,
-          message.sourceUrl,
-        );
-        return;
-      }
+        if (message.type === "message-port-message") {
+          messagePorts.get(message.portId)?.receiveMessage(message.data);
+          return;
+        }
 
-      if (message.type === "message-port-message") {
-        messagePorts.get(message.portId)?.receiveMessage(message.data);
-        return;
-      }
+        if (message.type === "message-port-close") {
+          messagePorts.get(message.portId)?.disconnect();
+          return;
+        }
 
-      if (message.type === "message-port-close") {
-        messagePorts.get(message.portId)?.disconnect();
-        return;
-      }
+        if (message.type === "workspace-directory-entries-request") {
+          const { requestId } = message;
+          getWorkspaceDirectoryEntries({ ...message, workspaceRoots })
+            .then((result) => {
+              const payload: MainToRendererMessage = {
+                type: "workspace-directory-entries-result",
+                requestId,
+                ok: true,
+                result,
+              };
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+              }
+            })
+            .catch((error) => {
+              const payload: MainToRendererMessage = {
+                type: "workspace-directory-entries-result",
+                requestId,
+                ok: false,
+                errorMessage: errorMessage(error),
+              };
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+              }
+            });
+          return;
+        }
 
-      if (message.type === "workspace-directory-entries-request") {
-        const { requestId } = message;
-        getWorkspaceDirectoryEntries(message)
-          .then((result) => {
-            const payload: MainToRendererMessage = {
-              type: "workspace-directory-entries-result",
-              requestId,
-              ok: true,
-              result,
-            };
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
-            }
-          })
-          .catch((error) => {
-            const payload: MainToRendererMessage = {
-              type: "workspace-directory-entries-result",
-              requestId,
-              ok: false,
-              errorMessage: errorMessage(error),
-            };
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
-            }
-          });
-        return;
-      }
-
-      if (message.type === "ipc-renderer-invoke") {
-        const { channel, requestId, args } = message;
-        Promise.resolve(
-          bridgeState.handleRendererInvoke?.(channel, args) ??
-            Promise.reject(
-              new Error(
-                `[ipc-bridge] no ipcMain.handle for channel ${channel}`,
+        if (message.type === "ipc-renderer-invoke") {
+          const { channel, requestId, args } = message;
+          Promise.resolve(
+            bridgeState.handleRendererInvoke?.(channel, args) ??
+              Promise.reject(
+                new Error(
+                  `[ipc-bridge] no ipcMain.handle for channel ${channel}`,
+                ),
               ),
-            ),
-        )
-          .then((result) => {
-            const payload: MainToRendererMessage = {
-              type: "ipc-renderer-invoke-result",
-              requestId,
-              ok: true,
-              result,
-            };
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
-            }
-          })
-          .catch((error) => {
-            const payload: MainToRendererMessage = {
-              type: "ipc-renderer-invoke-result",
-              requestId,
-              ok: false,
-              errorMessage: errorMessage(error),
-            };
-            if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
-            }
-          });
+          )
+            .then((result) => {
+              const payload: MainToRendererMessage = {
+                type: "ipc-renderer-invoke-result",
+                requestId,
+                ok: true,
+                result,
+              };
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+              }
+            })
+            .catch((error) => {
+              const payload: MainToRendererMessage = {
+                type: "ipc-renderer-invoke-result",
+                requestId,
+                ok: false,
+                errorMessage: errorMessage(error),
+              };
+              if (socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify(payload));
+              }
+            });
+        }
+      } catch (error) {
+        console.error("[ipc-bridge] message handler failed", error);
+        socket.close(1011, "IPC handler failed");
       }
     });
   });
 
   await app.listen({ host: options.host, port: options.port });
-  console.log(`IPC bridge listening at ws://${options.host}:${options.port}`);
+  console.log(`Codex Web listening at http://${options.host}:${options.port}`);
 
   ensureElectronLikeProcessContext();
   installModuleAliasHook();

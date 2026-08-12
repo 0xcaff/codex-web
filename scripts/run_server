@@ -1,0 +1,19 @@
+#!/bin/bash
+set -euo pipefail
+
+codex_cli_path="${CODEX_CLI_PATH:-}"
+if [[ -z "$codex_cli_path" ]]; then
+  bundled_codex="/Applications/ChatGPT.app/Contents/Resources/codex"
+  if [[ -x "$bundled_codex" ]]; then
+    codex_cli_path="$bundled_codex"
+  else
+    codex_cli_path="$(command -v codex || true)"
+  fi
+fi
+
+if [[ -z "$codex_cli_path" || ! -x "$codex_cli_path" ]]; then
+  echo "Codex CLI not found. Set CODEX_CLI_PATH to a signed-in Codex executable." >&2
+  exit 1
+fi
+
+CODEX_CLI_PATH="$codex_cli_path" exec node src/server/main.js "$@"
