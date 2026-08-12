@@ -26,9 +26,6 @@ function port(): StubPort {
 
 describe("ipcMain postMessage buffering", () => {
   it("buffers only a bounded bootstrap channel and closes rejected or disconnected ports", () => {
-    const errors = vi
-      .spyOn(console, "error")
-      .mockImplementation(() => undefined);
     const bridge = (globalThis as IpcBridgeGlobals).__codexElectronIpcBridge;
     expect(bridge?.handleRendererPostMessage).toBeTypeOf("function");
 
@@ -78,7 +75,6 @@ describe("ipcMain postMessage buffering", () => {
     });
     expect(delivered).toHaveLength(4);
     expect(delivered.flat()).toContain(reclaimed);
-    errors.mockRestore();
   });
 });
 
@@ -108,12 +104,41 @@ describe("Electron stub tracing", () => {
     ]);
 
     expect(message).toContain("[string 23 chars]");
-    expect(message).toContain("{account, nested}");
-    expect(message).toContain("[buffer 8192 bytes]");
+    expect(message).toContain("[object]");
+    expect(message).toContain("[buffer]");
     expect(message).toContain(", …)");
     expect(message).not.toContain("very-secret-token-value");
     expect(message).not.toContain("person@example.test");
     expect(message).not.toContain("long content");
     expect(message).not.toContain("not included");
+  });
+
+  it("does not inspect hostile objects or expose scalar and error values", () => {
+    let ownKeysCalled = false;
+    const hostile = new Proxy(
+      {},
+      {
+        ownKeys() {
+          ownKeysCalled = true;
+          throw new Error("secret-own-key");
+        },
+      },
+    );
+    const customError = new Error("secret-message");
+    customError.name = "secret-error-name";
+
+    const message = formatElectronStubDebugCall("test", [
+      hostile,
+      123456789,
+      999999999999999999999999999999999999n,
+      customError,
+    ]);
+
+    expect(ownKeysCalled).toBe(false);
+    expect(message).toBe(
+      "[electron-main-stub] test([object], [number], [bigint], [error])",
+    );
+    expect(message).not.toContain("secret");
+    expect(message).not.toContain("123456789");
   });
 });

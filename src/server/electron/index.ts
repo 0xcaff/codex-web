@@ -1,8 +1,10 @@
 import type { MainToRendererMessage } from "../../shared/ipc-protocol";
 import os from "node:os";
 import fs from "node:fs";
+import { types as utilTypes } from "node:util";
 import compatibilityManifest from "../../../compatibility.json";
 import { ElectronPathResolver } from "./paths";
+import { operatorDebug, operatorError, operatorWarn } from "../runtime-logging";
 
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
@@ -68,15 +70,13 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
 }
 
 const maximumDebugArguments = 4;
-const maximumDebugKeys = 6;
-const maximumDebugDepth = 2;
 
 /**
  * The extracted Desktop application can pass account data, editor contents, and
  * large state objects to Electron APIs. Keep debug tracing useful for shape
  * diagnosis without turning the bridge log into a data leak.
  */
-export function summarizeElectronStubValue(value: unknown, depth = 0): string {
+export function summarizeElectronStubValue(value: unknown): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
 
@@ -84,33 +84,21 @@ export function summarizeElectronStubValue(value: unknown, depth = 0): string {
     case "string":
       return `[string ${value.length} chars]`;
     case "number":
+      return "[number]";
     case "boolean":
+      return "[boolean]";
     case "bigint":
-      return String(value);
+      return "[bigint]";
     case "symbol":
       return "[symbol]";
     case "function":
       return "[function]";
   }
 
-  if (Buffer.isBuffer(value)) return `[buffer ${value.length} bytes]`;
-  if (value instanceof Error) return `[${value.name || "Error"}]`;
-  if (depth >= maximumDebugDepth) return "[object]";
-  if (Array.isArray(value)) {
-    const entries = value
-      .slice(0, maximumDebugArguments)
-      .map((entry) => summarizeElectronStubValue(entry, depth + 1));
-    return `[array ${value.length}${entries.length ? `: ${entries.join(", ")}` : ""}]`;
-  }
-
-  try {
-    const keys = Object.keys(value as object).slice(0, maximumDebugKeys);
-    const suffix =
-      Object.keys(value as object).length > maximumDebugKeys ? ", …" : "";
-    return `{${keys.join(", ")}${suffix}}`;
-  } catch {
-    return "[object]";
-  }
+  if (Array.isArray(value)) return "[array]";
+  if (utilTypes.isNativeError(value)) return "[error]";
+  if (utilTypes.isUint8Array(value)) return "[buffer]";
+  return "[object]";
 }
 
 export function formatElectronStubDebugCall(
@@ -126,7 +114,7 @@ export function formatElectronStubDebugCall(
 
 function log(method: string, args: unknown[]): void {
   if (process.env.CODEX_WEB_DEBUG === "1") {
-    console.debug(formatElectronStubDebugCall(method, args));
+    operatorDebug(formatElectronStubDebugCall(method, args));
   }
 }
 
@@ -326,14 +314,14 @@ function createIpcMainStub(): {
       return;
     }
     if (channel !== bootstrapPostMessageChannel) {
-      console.warn(
+      operatorWarn(
         "[electron-main-stub] refusing unregistered postMessage channel",
       );
       closePorts(ports);
       return;
     }
     if (pendingPostMessages.length >= maximumPendingBootstrapMessages) {
-      console.error(
+      operatorError(
         "[electron-main-stub] bootstrap postMessage buffer is full",
       );
       closePorts(ports);

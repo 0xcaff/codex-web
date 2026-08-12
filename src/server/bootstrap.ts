@@ -2,6 +2,7 @@ import path from "node:path";
 import { glob } from "glob";
 import compatibilityManifest from "../../compatibility.json";
 import { installModuleAliasHook } from "./module";
+import { installUpstreamConsolePolicy, operatorError } from "./runtime-logging";
 
 declare global {
   var __CODEX_SHIM_VALUES__: { version: string };
@@ -30,6 +31,7 @@ export function ensureElectronLikeProcessContext(): void {
 }
 
 export async function bootstrapMainApp(): Promise<void> {
+  installUpstreamConsolePolicy();
   ensureElectronLikeProcessContext();
   installModuleAliasHook();
   globalThis.__CODEX_SHIM_VALUES__ = {
@@ -48,10 +50,10 @@ export async function bootstrapMainApp(): Promise<void> {
   // Starting the bridge must not wait for it: IPC readiness is determined by
   // registered bridge handlers, not by lifecycle completion.
   try {
-    void Promise.resolve(mainModule.runMainAppStartup()).catch((error) => {
-      console.error("[ipc-bridge] upstream startup failed", error);
+    void Promise.resolve(mainModule.runMainAppStartup()).catch(() => {
+      operatorError("[ipc-bridge] upstream startup failed");
     });
-  } catch (error) {
-    console.error("[ipc-bridge] upstream startup failed", error);
+  } catch {
+    operatorError("[ipc-bridge] upstream startup failed");
   }
 }

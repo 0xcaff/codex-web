@@ -22,6 +22,8 @@
 | `npm run test:compatibility`             | Shell fixture for patch-series overlap/missing-anchor failures.                                                                                             |
 | `npm run test:remote-proxy`              | Ensures the Unix-socket proxy invokes `websocat` safely.                                                                                                    |
 | `npm run test:archive-verifier`          | Tests the Desktop archive digest verifier.                                                                                                                  |
+| `npm run test:server-launcher`           | Verifies explicit proxy preservation and rebuild argument forwarding.                                                                                       |
+| `npm run test:runtime-logging`           | Verifies upstream payload suppression and trusted operator output.                                                                                          |
 | `npm run check`                          | Normal pre-commit/CI suite: version check, types, tests, proxy/archive checks, and formatting.                                                              |
 
 ### Upstream Desktop development
@@ -40,4 +42,6 @@ not everyday codex-web operation:
 Normal server output is limited to readiness, warnings, and failures.
 `CODEX_WEB_DEBUG=1` enables Electron-stub call tracing for compatibility
 diagnosis. The tracer reports method names and bounded argument shapes, never
-raw renderer payloads, credentials, settings, or account data.
+raw renderer payloads, credentials, settings, or account data. The upstream
+Desktop console remains suppressed in debug mode because its entries cannot be
+reliably sanitized after formatting.

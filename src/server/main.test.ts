@@ -342,10 +342,7 @@ describe("IPC bridge readiness", () => {
     cyclic.self = cyclic;
     expect(() => ports[0]?.postMessage(cyclic)).not.toThrow();
     expect(() => ports[0]?.postMessage("ignored-after-cleanup")).not.toThrow();
-    expect(errors).toHaveBeenCalledWith(
-      "[ipc-bridge] refused invalid message port payload for port-1",
-      expect.any(Error),
-    );
+    expect(errors).not.toHaveBeenCalled();
 
     socket.send(
       JSON.stringify({
@@ -373,10 +370,7 @@ describe("IPC bridge readiness", () => {
     expect(() =>
       ports[2]?.postMessage("x".repeat(8 * 1024 * 1024)),
     ).not.toThrow();
-    expect(errors).toHaveBeenCalledWith(
-      "[ipc-bridge] refused invalid message port payload for port-oversized",
-      expect.any(Error),
-    );
+    expect(errors).not.toHaveBeenCalled();
 
     errors.mockRestore();
     socket.close();
@@ -396,10 +390,7 @@ describe("IPC bridge readiness", () => {
       },
     );
     await Promise.resolve();
-    expect(error).toHaveBeenCalledWith(
-      "[ipc-bridge] startup failed",
-      expect.any(Error),
-    );
+    expect(error).not.toHaveBeenCalled();
     error.mockRestore();
     await bridge.close();
   });

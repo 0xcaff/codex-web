@@ -22,6 +22,7 @@ import {
   type ServerOptions,
 } from "./config";
 import { bootstrapMainApp } from "./bootstrap";
+import { operatorError, operatorLog } from "./runtime-logging";
 import {
   IPC_MAX_PAYLOAD_BYTES,
   parseRendererToMainMessage as parseWireRendererToMainMessage,
@@ -395,8 +396,8 @@ export async function startIpcBridgeServer(
     let payload: string;
     try {
       payload = serializeMainToRendererMessage(message);
-    } catch (error) {
-      console.error("[ipc-bridge] refused invalid renderer message", error);
+    } catch {
+      operatorError("[ipc-bridge] refused invalid renderer message");
       return;
     }
     for (const socket of sockets) {
@@ -422,9 +423,7 @@ export async function startIpcBridgeServer(
         return;
       }
 
-      console.error(
-        `[ipc-bridge] no ipcMain postMessage handler for channel ${channel}`,
-      );
+      operatorError("[ipc-bridge] no ipcMain postMessage handler");
       for (const port of ports) {
         port.close();
       }
@@ -438,8 +437,8 @@ export async function startIpcBridgeServer(
       messagePorts.clear();
     });
 
-    socket.on("error", (error) => {
-      console.error("[ipc-bridge] websocket error", error);
+    socket.on("error", () => {
+      operatorError("[ipc-bridge] websocket error");
     });
 
     socket.on("message", (rawData, isBinary) => {
@@ -473,10 +472,9 @@ export async function startIpcBridgeServer(
                   if (socket.readyState === WebSocket.OPEN) {
                     socket.send(serializeMainToRendererMessage(message));
                   }
-                } catch (error) {
-                  console.error(
-                    `[ipc-bridge] refused invalid message port payload for ${portId}`,
-                    error,
+                } catch {
+                  operatorError(
+                    "[ipc-bridge] refused invalid message port payload",
                   );
                   messagePorts.get(portId)?.disconnect();
                 }
@@ -571,8 +569,8 @@ export async function startIpcBridgeServer(
               }
             });
         }
-      } catch (error) {
-        console.error("[ipc-bridge] failed to handle IPC message", error);
+      } catch {
+        operatorError("[ipc-bridge] failed to handle IPC message");
         closeWithProtocolError(socket, "IPC message handling failed");
       }
     });
@@ -583,11 +581,11 @@ export async function startIpcBridgeServer(
     // HTTP immediately and use handler presence below as the IPC readiness
     // signal instead of blocking on a promise that normally never resolves.
     try {
-      void Promise.resolve(bootstrap()).catch((error) => {
-        console.error("[ipc-bridge] startup failed", error);
+      void Promise.resolve(bootstrap()).catch(() => {
+        operatorError("[ipc-bridge] startup failed");
       });
-    } catch (error) {
-      console.error("[ipc-bridge] startup failed", error);
+    } catch {
+      operatorError("[ipc-bridge] startup failed");
     }
   }
 
@@ -599,7 +597,7 @@ export async function startIpcBridgeServer(
   }
 
   for (const line of getServerStartupReport(options, address.port)) {
-    console.log(line);
+    operatorLog(line);
   }
 
   return {
@@ -623,8 +621,8 @@ async function main(args: string[]) {
       return;
     }
     closing = true;
-    void bridge.close().catch((error: unknown) => {
-      console.error(`[ipc-bridge] failed graceful ${signal} shutdown`, error);
+    void bridge.close().catch(() => {
+      operatorError("[ipc-bridge] graceful shutdown failed");
     });
   };
   process.once("SIGINT", () => closeGracefully("SIGINT"));

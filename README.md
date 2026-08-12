@@ -231,7 +231,9 @@ has been pushed or tagged.
 - **Uploads are rejected:** reduce request size/count or raise the finite limits
   deliberately. Check temporary-disk capacity as well.
 - **Need bridge tracing:** use `CODEX_WEB_DEBUG=1 npm run server`. Trace output
-  is shape-only: it omits argument values and bounds payload summaries.
+  is shape-only: it omits argument values and bounds payload summaries. Raw
+  upstream console output remains suppressed because it can contain request
+  bodies, settings, account data, credentials, and local paths.
 
 ## Maintainer checks
 
