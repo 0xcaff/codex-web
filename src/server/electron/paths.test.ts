@@ -16,8 +16,14 @@ function resolver(
 }
 
 describe("ElectronPathResolver", () => {
-  it("returns macOS paths without creating directories", () => {
-    const paths = resolver({ platform: "darwin", homeDir: "/Users/codex" });
+  it("uses standard macOS paths even when XDG configuration is present", () => {
+    const paths = resolver({
+      platform: "darwin",
+      homeDir: "/Users/codex",
+      env: { XDG_CONFIG_HOME: "/state/config" },
+      readFile: () =>
+        'XDG_DESKTOP_DIR="/incorrect/desktop"\nXDG_DOCUMENTS_DIR="/incorrect/documents"\nXDG_DOWNLOAD_DIR="/incorrect/downloads"\n',
+    });
 
     expect(paths.getPath("home")).toBe("/Users/codex");
     expect(paths.getPath("temp")).toBe("/tmp");
@@ -25,6 +31,8 @@ describe("ElectronPathResolver", () => {
       "/Users/codex/Library/Application Support/codex-web",
     );
     expect(paths.getPath("desktop")).toBe("/Users/codex/Desktop");
+    expect(paths.getPath("documents")).toBe("/Users/codex/Documents");
+    expect(paths.getPath("downloads")).toBe("/Users/codex/Downloads");
   });
 
   it("uses Linux XDG locations and parses user-dirs.dirs", () => {
@@ -49,6 +57,13 @@ describe("ElectronPathResolver", () => {
     expect(paths.getPath("desktop")).toBe("/home/codex/Desktop");
     expect(paths.getPath("documents")).toBe("/home/codex/Documents");
     expect(paths.getPath("downloads")).toBe("/home/codex/Downloads");
+  });
+
+  it("ignores relative XDG_CONFIG_HOME values", () => {
+    const paths = resolver({ env: { XDG_CONFIG_HOME: "relative/config" } });
+
+    expect(paths.getPath("appData")).toBe("/home/codex/.config");
+    expect(paths.getPath("userData")).toBe("/home/codex/.config/codex-web");
   });
 
   it("honours absolute setPath overrides and rejects relative paths", () => {

@@ -27,9 +27,10 @@ const userDirectoryNames = {
 } as const;
 
 function xdgConfigHome(environment: ElectronPathEnvironment): string {
-  return (
-    environment.env.XDG_CONFIG_HOME || path.join(environment.homeDir, ".config")
-  );
+  const configuredPath = environment.env.XDG_CONFIG_HOME;
+  return configuredPath && path.isAbsolute(configuredPath)
+    ? configuredPath
+    : path.join(environment.homeDir, ".config");
 }
 
 function parseXdgUserDirectory(
@@ -96,6 +97,9 @@ export class ElectronPathResolver {
       case "desktop":
       case "documents":
       case "downloads": {
+        if (platform !== "linux") {
+          return path.join(homeDir, name[0]!.toUpperCase() + name.slice(1));
+        }
         const userDirectoryName =
           userDirectoryNames[name as keyof typeof userDirectoryNames];
         const xdgPath = parseXdgUserDirectory(
