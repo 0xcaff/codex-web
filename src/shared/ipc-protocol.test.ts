@@ -6,6 +6,7 @@ import {
   isRendererToMainMessage,
   parseMainToRendererMessage,
   parseRendererToMainMessage,
+  serializeMainToRendererMessage,
   serializeRendererToMainMessage,
 } from "./ipc-protocol";
 
@@ -146,5 +147,21 @@ describe("IPC wire protocol", () => {
         portIds: [],
       }),
     ).toThrow("changes shape");
+  });
+
+  it("round-trips an undefined invoke result as the compatible omitted wire field", () => {
+    const serialized = serializeMainToRendererMessage({
+      type: "ipc-renderer-invoke-result",
+      requestId: "undefined",
+      ok: true,
+      result: undefined,
+    });
+
+    expect(serialized).not.toContain('"result":');
+    expect(parseMainToRendererMessage(JSON.parse(serialized))).toEqual({
+      type: "ipc-renderer-invoke-result",
+      requestId: "undefined",
+      ok: true,
+    });
   });
 });

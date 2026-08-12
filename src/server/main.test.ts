@@ -181,6 +181,36 @@ describe("IPC bridge readiness", () => {
     await bridge.close();
   });
 
+  it("preserves an undefined handler result as a successful invoke response", async () => {
+    const bridge = await startIpcBridgeServer(
+      { host: "127.0.0.1", port: 0, allowedOrigins: [] },
+      {
+        bootstrapMainApp: () => {
+          const globals = globalThis as IpcBridgeGlobals;
+          const bridgeState = (globals.__codexElectronIpcBridge ??= {});
+          bridgeState.handleRendererInvoke = async () => undefined;
+        },
+      },
+    );
+    const socket = await connectIpc(bridge.port);
+    socket.send(
+      JSON.stringify({
+        type: "ipc-renderer-invoke",
+        requestId: "undefined-result",
+        channel: "no-result",
+        args: [],
+      }),
+    );
+
+    await expect(nextIpcMessage(socket)).resolves.toEqual({
+      type: "ipc-renderer-invoke-result",
+      requestId: "undefined-result",
+      ok: true,
+    });
+    socket.close();
+    await bridge.close();
+  });
+
   it("rejects startup failure without binding a usable bridge", async () => {
     await expect(
       startIpcBridgeServer(

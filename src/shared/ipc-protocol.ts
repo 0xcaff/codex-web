@@ -69,7 +69,8 @@ export type MainToRendererMessage =
       type: "ipc-renderer-invoke-result";
       requestId: string;
       ok: true;
-      result: unknown;
+      /** Omitted on the wire when an Electron invoke handler resolves undefined. */
+      result?: unknown;
     }
   | {
       type: "ipc-renderer-invoke-result";
@@ -259,8 +260,7 @@ export function isMainToRendererMessage(
     case "ipc-renderer-invoke-result":
       return value.ok === true
         ? hasOnlyKeys(value, ["type", "requestId", "ok", "result"]) &&
-            isRequestId(value.requestId) &&
-            hasOwnKey(value, "result")
+            isRequestId(value.requestId)
         : value.ok === false &&
             hasOnlyKeys(value, ["type", "requestId", "ok", "errorMessage"]) &&
             isRequestId(value.requestId) &&
