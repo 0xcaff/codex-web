@@ -170,6 +170,30 @@ describe("IPC wire protocol", () => {
     });
   });
 
+  it("round-trips an undefined MessagePort payload as the compatible omitted wire field", () => {
+    const rendererSerialized = serializeRendererToMainMessage({
+      type: "message-port-message",
+      portId: "port-undefined",
+      data: undefined,
+    });
+    const mainSerialized = serializeMainToRendererMessage({
+      type: "message-port-message",
+      portId: "port-undefined",
+      data: undefined,
+    });
+
+    expect(rendererSerialized).not.toContain('"data":');
+    expect(mainSerialized).not.toContain('"data":');
+    expect(parseRendererToMainMessage(JSON.parse(rendererSerialized))).toEqual({
+      type: "message-port-message",
+      portId: "port-undefined",
+    });
+    expect(parseMainToRendererMessage(JSON.parse(mainSerialized))).toEqual({
+      type: "message-port-message",
+      portId: "port-undefined",
+    });
+  });
+
   it("round-trips an undefined invoke result as the compatible omitted wire field", () => {
     const serialized = serializeMainToRendererMessage({
       type: "ipc-renderer-invoke-result",

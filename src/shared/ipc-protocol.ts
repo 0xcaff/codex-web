@@ -52,7 +52,11 @@ export type RendererToMainMessage =
   | {
       type: "message-port-message";
       portId: string;
-      data: unknown;
+      /**
+       * MessagePort accepts `undefined`; JSON represents that payload by
+       * omitting the field, matching the postMessage wire convention.
+       */
+      data?: unknown;
     }
   | {
       type: "message-port-close";
@@ -106,7 +110,8 @@ export type MainToRendererMessage =
   | {
       type: "message-port-message";
       portId: string;
-      data: unknown;
+      /** Omitted on the wire when a MessagePort payload is undefined. */
+      data?: unknown;
     }
   | {
       type: "message-port-close";
@@ -241,9 +246,7 @@ export function isRendererToMainMessage(
       );
     case "message-port-message":
       return (
-        hasOnlyKeys(value, ["type", "portId", "data"]) &&
-        hasOwnKey(value, "data") &&
-        isPortId(value.portId)
+        hasOnlyKeys(value, ["type", "portId", "data"]) && isPortId(value.portId)
       );
     case "message-port-close":
       return hasOnlyKeys(value, ["type", "portId"]) && isPortId(value.portId);
@@ -304,9 +307,7 @@ export function isMainToRendererMessage(
             isBoundedString(value.errorMessage, IPC_MAX_PAYLOAD_BYTES);
     case "message-port-message":
       return (
-        hasOnlyKeys(value, ["type", "portId", "data"]) &&
-        hasOwnKey(value, "data") &&
-        isPortId(value.portId)
+        hasOnlyKeys(value, ["type", "portId", "data"]) && isPortId(value.portId)
       );
     case "message-port-close":
       return hasOnlyKeys(value, ["type", "portId"]) && isPortId(value.portId);
@@ -350,8 +351,16 @@ function serializeMessage(
   if (jsonByteLength(serialized) > IPC_MAX_PAYLOAD_BYTES) {
     throw new IpcProtocolError("IPC message exceeds the maximum payload size");
   }
-  if (!isValidSerializedMessage(JSON.parse(serialized))) {
-    throw new IpcProtocolError("IPC message changes shape when serialized");
+  const parsed = JSON.parse(serialized);
+  if (!isValidSerializedMessage(parsed)) {
+    const describe = (value: unknown): string => {
+      if (!isRecord(value)) return "non-object";
+      const type = typeof value.type === "string" ? value.type : "unknown";
+      return `${type} keys=[${Object.keys(value).sort().join(",")}]`;
+    };
+    throw new IpcProtocolError(
+      `IPC message changes shape when serialized (${describe(message)} -> ${describe(parsed)})`,
+    );
   }
   return serialized;
 }
