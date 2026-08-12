@@ -32,13 +32,13 @@ type RendererToMainMessage =
       requestId: string;
       channel: string;
       args: unknown[];
-      sourceUrl: string;
+      sourceUrl?: string;
     }
   | {
       type: "ipc-renderer-send";
       channel: string;
       args: unknown[];
-      sourceUrl: string;
+      sourceUrl?: string;
     }
   | {
       type: "ipc-renderer-post-message";
@@ -261,13 +261,13 @@ export function isRendererToMainMessage(
         typeof value.requestId === "string" &&
         typeof value.channel === "string" &&
         Array.isArray(value.args) &&
-        typeof value.sourceUrl === "string"
+        (value.sourceUrl === undefined || typeof value.sourceUrl === "string")
       );
     case "ipc-renderer-send":
       return (
         typeof value.channel === "string" &&
         Array.isArray(value.args) &&
-        typeof value.sourceUrl === "string"
+        (value.sourceUrl === undefined || typeof value.sourceUrl === "string")
       );
     case "ipc-renderer-post-message":
       return (

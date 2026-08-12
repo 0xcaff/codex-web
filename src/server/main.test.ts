@@ -46,16 +46,33 @@ describe("IPC bridge origin policy", () => {
 });
 
 describe("IPC message envelope", () => {
-  it("rejects malformed and oversized data while accepting a valid envelope", () => {
-    expect(parseRendererToMainMessage(Buffer.from("{}"), false)).toBeNull();
+  it("accepts exact browser invoke/send envelopes without sourceUrl", () => {
     expect(
       parseRendererToMainMessage(
         Buffer.from(
-          '{"type":"ipc-renderer-send","channel":"test","args":[],"sourceUrl":"http://localhost"}',
+          '{"type":"ipc-renderer-invoke","requestId":"1","channel":"test","args":[]}',
         ),
         false,
       ),
     ).not.toBeNull();
+    expect(
+      parseRendererToMainMessage(
+        Buffer.from('{"type":"ipc-renderer-send","channel":"test","args":[]}'),
+        false,
+      ),
+    ).not.toBeNull();
+  });
+
+  it("rejects malformed, wrongly typed, and oversized data", () => {
+    expect(parseRendererToMainMessage(Buffer.from("{}"), false)).toBeNull();
+    expect(
+      parseRendererToMainMessage(
+        Buffer.from(
+          '{"type":"ipc-renderer-send","channel":"test","args":[],"sourceUrl":42}',
+        ),
+        false,
+      ),
+    ).toBeNull();
     expect(
       parseRendererToMainMessage(
         Buffer.alloc(IPC_MAX_PAYLOAD_BYTES + 1),
