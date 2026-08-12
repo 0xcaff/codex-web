@@ -23,7 +23,6 @@ const MAX_PENDING_REQUESTS = 128;
 const MAX_OUTBOUND_QUEUE_MESSAGES = 128;
 const MAX_OUTBOUND_QUEUE_BYTES = 256 * 1024;
 const CONTROLLER_HEARTBEAT_MS = 5_000;
-const CONTROLLER_STORAGE_KEY = "codex-web-controller-client-id";
 
 type MemoryNavigationChange = {
   action: "POP" | "PUSH" | "REPLACE";
@@ -386,12 +385,11 @@ export class IpcBridgeTransport {
 }
 
 function getStableControllerClientId(): string {
+  // This is deliberately in-memory. sessionStorage is cloned when browsers
+  // duplicate a tab, which would let two independent documents impersonate a
+  // single controller. The value remains stable for this page's reconnects.
   try {
-    const existing = sessionStorage.getItem(CONTROLLER_STORAGE_KEY);
-    if (existing) return existing;
-    const clientId = crypto.randomUUID();
-    sessionStorage.setItem(CONTROLLER_STORAGE_KEY, clientId);
-    return clientId;
+    return crypto.randomUUID();
   } catch {
     return `tab-${Math.random().toString(36).slice(2)}-${Date.now()}`;
   }
@@ -440,8 +438,26 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
 }
 
 let controllerStatusElement: HTMLDivElement | null = null;
+let pendingControllerStatus: "active" | "secondary" | null = null;
+let controllerStatusMountPending = false;
 
-function updateControllerStatus(status: "active" | "secondary"): void {
+export function updateControllerStatus(status: "active" | "secondary"): void {
+  pendingControllerStatus = status;
+  if (!document.body) {
+    if (!controllerStatusMountPending) {
+      controllerStatusMountPending = true;
+      document.addEventListener(
+        "DOMContentLoaded",
+        () => {
+          controllerStatusMountPending = false;
+          if (pendingControllerStatus)
+            updateControllerStatus(pendingControllerStatus);
+        },
+        { once: true },
+      );
+    }
+    return;
+  }
   const element = (controllerStatusElement ??= document.createElement("div"));
   element.setAttribute("role", "status");
   element.style.cssText =

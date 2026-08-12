@@ -43,7 +43,7 @@ can open a new WebSocket, but this is not persistence or authentication for the
 old renderer session.
 
 Only one browser tab holds the controller lease at a time. The browser sends a
-stable per-tab identity before queued IPC; the first connected tab is active,
+page-lifetime identity before queued IPC; the first connected tab is active,
 while secondaries can observe events and use a narrow, reviewed read-only
 invoke allowlist. Every other invoke, send, postMessage, and message-port
 mutation is denied unless that tab explicitly takes control. This arbitrates
