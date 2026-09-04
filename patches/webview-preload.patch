@@ -1,12 +1,12 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -2,7 +2,9 @@
- <html lang="en" data-build="<!-- PROD_BUILD_TAG_HERE -->">
+@@ -3,7 +3,9 @@
    <head>
+     <meta name="referrer" content="origin" />
      <!-- PROD_BASE_TAG_HERE -->
 +    <base href="/" />
      <!-- PROD_CSP_TAG_HERE -->
 +    <script type="module" src="./assets/preload.js"></script>
      <meta charset="UTF-8" />
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <title>Codex</title>
+     <title>ChatGPT</title>

@@ -412,11 +412,26 @@ const app = new Proxy(appBase as Record<string, unknown>, {
 }) as typeof appBase;
 
 class BrowserWindow {
+  static isInputShapeSupported(): boolean {
+    return false;
+  }
+
+  static isSystemBackdropSupported(): boolean {
+    return false;
+  }
+
+  static fromId(id: number): BrowserWindow | null {
+    return (
+      BrowserWindow.getAllWindows().find((window) => window.id === id) ?? null
+    );
+  }
+
   static nextId = 1;
   static allWindows: BrowserWindow[] = [];
   static focusedWindow: BrowserWindow | null = null;
   id: number;
   private destroyed = false;
+  private visible = true;
   private title = "Codex";
   private bounds = { x: 0, y: 0, width: 1280, height: 820 };
   webContents: Record<string, unknown>;
@@ -424,6 +439,7 @@ class BrowserWindow {
 
   constructor(...args: unknown[]) {
     log("new BrowserWindow", args);
+    this.visible = (args[0] as { show?: boolean } | undefined)?.show !== false;
     this.id = BrowserWindow.nextId++;
     this.emitter = createEmitterStub(`BrowserWindow#${this.id}`);
 
@@ -440,8 +456,8 @@ class BrowserWindow {
         getURL: (): string => {
           log(`BrowserWindow#${this.id}.webContents.getURL`, []);
           return String(
-            (this.webContents.mainFrame as { url?: string } | undefined)
-              ?.url ?? "",
+            (this.webContents.mainFrame as { url?: string } | undefined)?.url ??
+              "",
           );
         },
         isDestroyed: (): boolean => this.destroyed,
@@ -473,6 +489,10 @@ class BrowserWindow {
       } as Record<string, unknown>,
       {
         get: (target, prop) => {
+          // Async Electron APIs can return this proxy; it must not be thenable.
+          if (prop === "then") {
+            return undefined;
+          }
           if (prop in target) {
             return target[prop as keyof typeof target];
           }
@@ -483,16 +503,20 @@ class BrowserWindow {
       },
     );
 
-    BrowserWindow.allWindows.push(this);
-    BrowserWindow.focusedWindow = this;
-    return new Proxy(this, {
+    const window = new Proxy(this, {
       get: (target, prop) => {
+        if (prop === "then") {
+          return undefined;
+        }
         if (prop in target) {
           return target[prop as keyof typeof target];
         }
         return createDeepStub(`BrowserWindow#${target.id}.${String(prop)}`);
       },
     });
+    BrowserWindow.allWindows.push(window);
+    BrowserWindow.focusedWindow = window;
+    return window;
   }
 
   static getAllWindows(): BrowserWindow[] {
@@ -502,10 +526,7 @@ class BrowserWindow {
 
   static getFocusedWindow(): BrowserWindow | null {
     log("BrowserWindow.getFocusedWindow", []);
-    if (
-      BrowserWindow.focusedWindow &&
-      !BrowserWindow.focusedWindow.destroyed
-    ) {
+    if (BrowserWindow.focusedWindow && !BrowserWindow.focusedWindow.destroyed) {
       return BrowserWindow.focusedWindow;
     }
     return BrowserWindow.getAllWindows()[0] ?? null;
@@ -576,6 +597,10 @@ class BrowserWindow {
     return BrowserWindow.focusedWindow === this && !this.destroyed;
   }
 
+  isVisible(): boolean {
+    return this.visible && !this.destroyed;
+  }
+
   removeMenu(): void {
     log(`BrowserWindow#${this.id}.removeMenu`, []);
   }
@@ -612,10 +637,12 @@ class BrowserWindow {
 
   show(): void {
     log(`BrowserWindow#${this.id}.show`, []);
+    this.visible = true;
   }
 
   hide(): void {
     log(`BrowserWindow#${this.id}.hide`, []);
+    this.visible = false;
   }
 
   focus(): void {
@@ -817,7 +844,44 @@ const nativeImage = {
     };
   },
 };
-const powerMonitor = createEmitterStub("powerMonitor");
+const powerMonitor = {
+  ...createEmitterStub("powerMonitor"),
+  getSystemIdleState(_idleThreshold: number): string {
+    return "unknown";
+  },
+  getSystemIdleTime(): number {
+    return 0;
+  },
+  isOnBatteryPower(): boolean {
+    return false;
+  },
+};
+// Desktop shortcuts and sleep inhibitors have no native window in the web host.
+const globalShortcut = {
+  register(...args: unknown[]): boolean {
+    log("globalShortcut.register", args);
+    return false;
+  },
+  isRegistered(_accelerator: string): boolean {
+    return false;
+  },
+  unregister(...args: unknown[]): void {
+    log("globalShortcut.unregister", args);
+  },
+  unregisterAll(): void {},
+};
+const powerSaveBlocker = {
+  start(type: string): number {
+    log("powerSaveBlocker.start", [type]);
+    return 0;
+  },
+  stop(id: number): void {
+    log("powerSaveBlocker.stop", [id]);
+  },
+  isStarted(_id: number): boolean {
+    return false;
+  },
+};
 const screen = {
   ...createEmitterStub("screen"),
   getAllDisplays(): Array<{
@@ -873,7 +937,13 @@ const protocol = {
   },
 };
 function createSessionStub(label: string): {
+  cookies: ReturnType<typeof createEmitterStub> & {
+    get: (...args: unknown[]) => Promise<unknown[]>;
+    remove: (...args: unknown[]) => Promise<void>;
+    set: (...args: unknown[]) => Promise<void>;
+  };
   getUserAgent: () => string;
+  getDownloadHistory: () => Promise<unknown[]>;
   loadExtension: (extensionPath: string) => Promise<{
     id: string;
     name: string;
@@ -887,6 +957,7 @@ function createSessionStub(label: string): {
   removeListener: (event: string, listener: StubListener) => unknown;
   setPermissionCheckHandler: (...args: unknown[]) => void;
   setPermissionRequestHandler: (...args: unknown[]) => void;
+  setPreferredLanguages: (languages: string[]) => void;
   webRequest: {
     onBeforeRequest: (...args: unknown[]) => void;
     onBeforeSendHeaders: (...args: unknown[]) => void;
@@ -894,6 +965,22 @@ function createSessionStub(label: string): {
 } {
   const emitter = createEmitterStub(label);
   return {
+    cookies: {
+      ...createEmitterStub(`${label}.cookies`),
+      async get(...args: unknown[]): Promise<unknown[]> {
+        log(`${label}.cookies.get`, args);
+        return [];
+      },
+      async remove(...args: unknown[]): Promise<void> {
+        log(`${label}.cookies.remove`, args);
+      },
+      async set(...args: unknown[]): Promise<void> {
+        log(`${label}.cookies.set`, args);
+      },
+    },
+    async getDownloadHistory(): Promise<unknown[]> {
+      return [];
+    },
     async loadExtension(extensionPath: string): Promise<{
       id: string;
       name: string;
@@ -923,6 +1010,9 @@ function createSessionStub(label: string): {
     setPermissionRequestHandler(...args: unknown[]): void {
       log(`${label}.setPermissionRequestHandler`, args);
     },
+    setPreferredLanguages(languages: string[]): void {
+      log(`${label}.setPreferredLanguages`, [languages]);
+    },
     webRequest: {
       onBeforeRequest(...args: unknown[]): void {
         log(`${label}.webRequest.onBeforeRequest`, args);
@@ -933,14 +1023,19 @@ function createSessionStub(label: string): {
     },
   };
 }
-const partitionSessions = new Map<string, ReturnType<typeof createSessionStub>>();
+const partitionSessions = new Map<
+  string,
+  ReturnType<typeof createSessionStub>
+>();
 const session = {
   defaultSession: createSessionStub("session.defaultSession"),
   fromPartition(partition: string): ReturnType<typeof createSessionStub> {
     log("session.fromPartition", [partition]);
     let partitionSession = partitionSessions.get(partition);
     if (!partitionSession) {
-      partitionSession = createSessionStub(`session.fromPartition(${partition})`);
+      partitionSession = createSessionStub(
+        `session.fromPartition(${partition})`,
+      );
       partitionSessions.set(partition, partitionSession);
     }
     return partitionSession;
@@ -985,6 +1080,8 @@ const electronModule = new Proxy(
     nativeTheme,
     Notification,
     powerMonitor,
+    powerSaveBlocker,
+    globalShortcut,
     protocol,
     screen,
     session,
@@ -1018,6 +1115,8 @@ export {
   nativeTheme,
   Notification,
   powerMonitor,
+  powerSaveBlocker,
+  globalShortcut,
   protocol,
   screen,
   session,

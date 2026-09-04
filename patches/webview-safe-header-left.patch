@@ -1,0 +1,11 @@
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -371604,7 +371604,7 @@
+         Me?.isVisible && Me.mainToolbar != null && (!E || De)
+           ? `var(--height-toolbar-pane)`
+           : `0px`,
+-      "--spacing-token-safe-header-left": `${R.left / L + 6}px`,
++      "--spacing-token-safe-header-left": `0px`,
+       "--spacing-token-safe-header-right": `${R.right / L}px`,
+       width: `calc(100vw / var(--codex-window-zoom))`,
+       height: `calc(100vh / var(--codex-window-zoom))`,

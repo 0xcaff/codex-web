@@ -1,0 +1,22 @@
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -138637,7 +138637,7 @@
+         }
+       }),
+       (C$t = class {
+-        encodingLevel = `structuredClonable`;
++        encodingLevel = `jsonCompatible`;
+         constructor(e) {
+           ((this.#e = e),
+             e.start(),
+--- a/.vite/build/main-C5K7o1Hr.js
++++ b/.vite/build/main-C5K7o1Hr.js
+@@ -136344,7 +136344,7 @@
+   return new n.cu(new WPe(e), t, r).getRemoteMain();
+ }
+ var WPe = class {
+-    encodingLevel = `structuredClonable`;
++    encodingLevel = `jsonCompatible`;
+     constructor(e) {
+       ((this.#e = e),
+         e.start(),

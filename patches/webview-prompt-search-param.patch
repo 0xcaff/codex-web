@@ -1,147 +1,57 @@
---- a/webview/assets/app-initial~app-main~page-BF1QkwFT.js
-+++ b/webview/assets/app-initial~app-main~page-BF1QkwFT.js
-@@ -1022,6 +1022,7 @@
-   wf as dae,
-   wh as fae,
-   wn as pae,
-+  wl as useSearchParams,
-   wp as Uo,
-   xA as mae,
-   xC as Wo,
-@@ -64780,6 +64781,8 @@
-     _ = pl(),
-     v = is(),
-     y = v.state,
-+    [searchParams] = useSearchParams(),
-+    searchParamsPrompt = searchParams.get(`prompt`),
-     { data: b } = Tn(`account-info`, {
-       queryConfig: { enabled: l === `chatgpt` },
-     }),
-@@ -65154,6 +65157,10 @@
-                                             homeRunLocationRemoteProject: U,
-                                             hideRunLocationDropdownOverride:
-                                               !ee,
-+                                            defaultText:
-+                                              searchParamsPrompt ?? void 0,
-+                                            initialPrompt:
-+                                              searchParamsPrompt ?? void 0,
-                                             onLocalConversationCreated: ie,
-                                             placeholderText: G,
-                                           }),
-@@ -65178,6 +65185,8 @@
-                           (0, F6.jsx)(mm, {
-                             browserConversationId: W,
-                             composerLayoutMode: `auto-single-line`,
-+                            defaultText: searchParamsPrompt ?? void 0,
-+                            initialPrompt: searchParamsPrompt ?? void 0,
-                             homeRunLocationRemoteProject: U,
-                             onLocalConversationCreated: ie,
-                             showWorkspaceDropdownInUtilityBar: !1,
---- a/webview/assets/app-initial~app-main~new-thread-panel-page~appgen-library-page~hotkey-window-thread-page~ho~iufn7mg3-DN861ZdI.js
-+++ b/webview/assets/app-initial~app-main~new-thread-panel-page~appgen-library-page~hotkey-window-thread-page~ho~iufn7mg3-DN861ZdI.js
-@@ -54648,6 +54648,7 @@
-   showUtilityBar: d,
-   composerModeAvailability: f,
-   placeholderText: p,
-+  initialPrompt,
-   composerLayoutMode: m,
-   hotkeyWindowHomeFooterControls: h,
-   homeRunLocationRemoteProject: g,
-@@ -55176,13 +55177,20 @@
-     pa = (0, F9.useEffectEvent)(() => {
-       (cn && ua(cn),
-         da != null && ca(da),
--        sn && sn !== Cn.getText() && Cn.setPromptText(sn),
-+        sn && sn !== Cn.getText()
-+          ? Cn.setPromptText(sn)
-+          : !sn &&
-+              initialPrompt != null &&
-+              initialPrompt !== `` &&
-+              Cn.getText() === ``
-+            ? Cn.setPromptText(initialPrompt)
-+            : null,
-         ln != null && ln.length > 0 && $i(ln),
-         un != null && un.length > 0 && li(un));
-     });
-   (0, F9.useEffect)(() => {
-     pa();
--  }, [sn, cn, ln, un, da]);
-+  }, [sn, cn, ln, un, da, initialPrompt]);
-   let [ma, ha] = Ut(`composer_prefill`),
-     ga = (0, F9.useEffectEvent)(() => {
-       let e = ma?.commentAttachments,
-@@ -57685,7 +57693,7 @@
-     ((J9 = Y()), Gt(), (Y9 = t(G(), 1)), Za(), Cg(), mu(), (X9 = Z()));
-   });
- function uee(e) {
--  let t = (0, Z9.c)(107),
-+  let t = (0, Z9.c)(109),
-     {
-       browserConversationId: n,
-       className: r,
-@@ -57705,6 +57713,8 @@
-       hideRunLocationDropdownOverride: _,
-       composerModeAvailability: v,
-       placeholderText: y,
-+      defaultText,
-+      initialPrompt,
-       composerLayoutMode: b,
-       hotkeyWindowHomeFooterControls: x,
-       homeRunLocationRemoteProject: S,
-@@ -57957,7 +57967,7 @@
-       (t[57] = ze),
-       (t[58] = Be));
-   let Ve = cee,
--    He = Kd(W) ? `prompt` : `plain`,
-+    He = Kd(defaultText ?? W) ? `prompt` : `plain`,
-     Ue;
-   t[59] !== i || t[60] !== O || t[61] !== x
-     ? ((Ue =
-@@ -58008,7 +58018,8 @@
-   t[90] !== We ||
-   t[91] !== Ge ||
-   t[92] !== N ||
--  t[93] !== null
-+  t[93] !== null ||
-+  t[107] !== initialPrompt
-     ? ((Ke = (0, $9.jsx)(M9, {
-         aboveComposerHeaderContent: We,
-         clientThreadId: te,
-@@ -58030,6 +58041,7 @@
-         hideRunLocationDropdownOverride: F,
-         composerModeAvailability: v,
-         placeholderText: y,
-+        initialPrompt,
-         composerLayoutMode: I,
-         hotkeyWindowHomeFooterControls: x,
-         homeRunLocationRemoteProject: S,
-@@ -58073,6 +58085,7 @@
-       (t[91] = Ge),
-       (t[92] = N),
-       (t[93] = null),
-+      (t[107] = initialPrompt),
-       (t[94] = Ke))
-     : (Ke = t[94]);
-   let qe;
-@@ -58081,10 +58094,11 @@
-   t[97] !== W ||
-   t[98] !== He ||
-   t[99] !== Ue ||
--  t[100] !== Ke
-+  t[100] !== Ke ||
-+  t[108] !== defaultText
-     ? ((qe = (0, $9.jsxs)(
-         Ve,
--        { defaultText: W, defaultTextKind: He, children: [Ue, Ke] },
-+        { defaultText: defaultText ?? W, defaultTextKind: He, children: [Ue, Ke] },
-         ie,
-       )),
-       (t[95] = Ve),
-@@ -58093,6 +58107,7 @@
-       (t[98] = He),
-       (t[99] = Ue),
-       (t[100] = Ke),
-+      (t[108] = defaultText),
-       (t[101] = qe))
-     : (qe = t[101]);
-   let Je;
+--- a/webview/assets/app-primary-6b28e06666ff.js
++++ b/webview/assets/app-primary-6b28e06666ff.js
+@@ -402326,7 +402326,8 @@
+       locationState: a,
+       setComments: o,
+     } = e,
+-    s = a?.prefillPrompt,
++    locationSearch = Mc().search,
++    s = a?.prefillPrompt ?? new URLSearchParams(locationSearch).get(`prompt`),
+     c = a?.prefillPriorConversation ?? null,
+     l = a?.prefillAddedFiles ?? null,
+     u = a?.prefillCommentAttachments ?? null,
+@@ -408489,7 +408490,7 @@
+   let A = qw(Wln, k),
+     j = kx(bg);
+   (a.get(pT, j), qw(Vwe, j));
+-  let M = f?.prefillPrompt,
++  let M = f?.prefillPrompt ?? new URLSearchParams(d).get(`prompt`),
+     N = f?.prefillAddedFiles,
+     P = qw(sm, j),
+     F = i === `work` && A.effectiveLocation === `cloud`,
+@@ -412029,7 +412030,9 @@
+     d = kx(tke),
+     f = kx(fde),
+     p = Cg(gb.composerPlainTextMode),
+-    { pathname: m, state: h } = Mc(),
++    { pathname: m, search: searchParamsSearch, state: h } = Mc(),
++    searchParamsPrompt =
++      h?.prefillPrompt ?? new URLSearchParams(searchParamsSearch).get(`prompt`),
+     g;
+   t[1] === m ? (g = t[2]) : ((g = b(m)), (t[1] = m), (t[2] = g));
+   let _ = g,
+@@ -412104,18 +412107,18 @@
+     );
+   }
+   let z;
+-  t[13] !== i || t[14] !== h?.prefillPrompt
+-    ? ((z = h?.prefillPrompt ?? i.get(tw)),
++  t[13] !== i || t[14] !== searchParamsPrompt
++    ? ((z = searchParamsPrompt ?? i.get(tw)),
+       (t[13] = i),
+-      (t[14] = h?.prefillPrompt),
++      (t[14] = searchParamsPrompt),
+       (t[15] = z))
+     : (z = t[15]);
+   let B = z,
+     V;
+-  t[16] !== i || t[17] !== h?.prefillPrompt
+-    ? ((V = h?.prefillPrompt == null ? TLe(i) : void 0),
++  t[16] !== i || t[17] !== searchParamsPrompt
++    ? ((V = searchParamsPrompt == null ? TLe(i) : void 0),
+       (t[16] = i),
+-      (t[17] = h?.prefillPrompt),
++      (t[17] = searchParamsPrompt),
+       (t[18] = V))
+     : (V = t[18]);
+   let H = V,
