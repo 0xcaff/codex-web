@@ -1,0 +1,12 @@
+--- a/.vite/build/preload.js
++++ b/.vite/build/preload.js
+@@ -159,8 +159,7 @@
+     getDesktopUserAgent: () => v({ appVersion: C.appVersion }),
+     getAppSessionId: () => C.codexAppSessionId,
+     getBuildFlavor: () => w,
+-    isDeviceCheckSupported: () =>
+-      process.platform === `darwin` && process.arch === `arm64`,
++    isDeviceCheckSupported: () => false,
+     isIntelMacBuild: () =>
+       process.platform === `darwin` && process.arch === `x64`,
+   };

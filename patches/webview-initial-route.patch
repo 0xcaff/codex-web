@@ -1,40 +1,29 @@
---- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
-+++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~header~remote-conver~h59fr3q5-Cm3GYhJA.js
-@@ -90247,11 +90247,16 @@
-   unstable_useTransitions: i,
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -172745,11 +172745,16 @@
+   useTransitions: i,
  }) {
-   let a = z4.useRef();
--  a.current ??= Ctt({ initialEntries: n, initialIndex: r, v5Compat: !0 });
-+  a.current ??= Ctt({
+   let a = dT.useRef();
+-  a.current ??= F_n({ initialEntries: n, initialIndex: r, v5Compat: !0 });
++  a.current ??= F_n({
 +    initialEntries: n ?? [window.__ELECTRON_SHIM__.initialRoute],
 +    initialIndex: r,
 +    v5Compat: !0,
 +  });
    let o = a.current,
-     [s, c] = z4.useState({ action: o.action, location: o.location }),
-     l = z4.useCallback(
+     [s, c] = dT.useState({ action: o.action, location: o.location }),
+     l = dT.useCallback(
        (e) => {
 +        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-         i === !1 ? c(e) : z4.startTransition(() => c(e));
+         i === !1 ? c(e) : dT.startTransition(() => c(e));
        },
        [i],
---- a/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~remote-conversation-~gjotggjg--gGzOgo3.js
-+++ b/webview/assets/app-initial~app-main~hotkey-window-thread-page~thread-app-shell-chrome~remote-conversation-~gjotggjg--gGzOgo3.js
-@@ -467,7 +467,7 @@
-       Wt(),
-       (rn = `app-shell-bottom-panel-launcher-visible`),
-       (an = 100),
--      (on = g(H, !0)),
-+      (on = g(H, window.__ELECTRON_SHIM__.initialSidebarState)),
-       (sn = g(H, !0)),
-       (cn = g(H, !1)),
-       (ln = g(H, !1, {
-@@ -510,7 +510,7 @@
-           };
-         },
-       })),
--      (dn = g(H, () => new R(1))),
-+      (dn = g(H, () => new R(window.__ELECTRON_SHIM__.initialSidebarState))),
-       (fn = g(H, zt)),
-       (pn = v(rn, !0)),
-       (mn = g(G, !1)),
+@@ -200768,7 +200773,7 @@
+   return RT(f0n, void 0) !== void 0;
+ }
+ function s0n() {
+-  return !0;
++  return window.__ELECTRON_SHIM__.initialSidebarState;
+ }
+ function c0n() {
+   return RT(f0n, !1);

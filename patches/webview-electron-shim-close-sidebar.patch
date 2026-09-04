@@ -1,12 +1,12 @@
---- a/webview/assets/app-initial~app-main~appgen-settings-page~settings-page~skills-settings~plugins-settings~re~n7kg4zj6-CoJ-ih-g.js
-+++ b/webview/assets/app-initial~app-main~appgen-settings-page~settings-page~skills-settings~plugins-settings~re~n7kg4zj6-CoJ-ih-g.js
-@@ -9208,6 +9208,9 @@
-       (n[2] = r))
-     : (r = n[2]);
-   let i = r;
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -366243,6 +366243,9 @@
+       (r[3] = a))
+     : (a = r[3]);
+   let o = a;
 +  window.__ELECTRON_SHIM__.closeSidebar = () => {
-+    Qt(e, !1, { animate: t });
++    X1n(e, !1, { animate: t });
 +  };
-   Al(`toggleSidebar`, i);
-   let a;
-   (n[3] !== e || n[4] !== t
+   oU(`toggleSidebar`, o);
+   let s;
+   (r[4] !== i || r[5] !== e || r[6] !== t

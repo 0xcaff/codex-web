@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial~app-main~page-BF1QkwFT.js
-+++ b/webview/assets/app-initial~app-main~page-BF1QkwFT.js
-@@ -72952,6 +72952,7 @@
-       (pQe = 5),
-       (mQe = 500),
-       (s5 = {
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -426742,6 +426742,7 @@
+       (fWo = 5),
+       (pWo = 500),
+       (mWo = {
 +        overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
+         enableLiveValuesAutoRefresh: !0,
          networkConfig: {
-           api: uQe,
-           logEventUrl: I8,
+           api: lWo,

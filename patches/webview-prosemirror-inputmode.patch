@@ -1,30 +1,38 @@
---- a/webview/assets/app-initial~app-main~onboarding-page~hotkey-window-thread-page~quick-chat-window-page~chatg~k0ede4gb-BfuFOm2j.js
-+++ b/webview/assets/app-initial~app-main~onboarding-page~hotkey-window-thread-page~quick-chat-window-page~chatg~k0ede4gb-BfuFOm2j.js
-@@ -189260,8 +189260,18 @@
-     f = new EventTarget(),
-     p = new m1t(),
-     m = s,
-+    inputModeDisabled = !1,
-+    getAttributes = () =>
-+      inputModeDisabled
-+        ? { spellcheck: `true` }
-+        : { spellcheck: `true`, inputmode: `none` },
+--- a/webview/assets/app-primary-6b28e06666ff.js
++++ b/webview/assets/app-primary-6b28e06666ff.js
+@@ -85235,13 +85235,21 @@
+               restoreRichLinks: !C,
+             })
+           : Jl({ schema: y, text: e }));
+-  let j = new tDe(null, {
+-      attributes: {
+-        "aria-multiline": `true`,
+-        dir: `auto`,
+-        role: `textbox`,
+-        spellcheck: `true`,
+-      },
++  let inputModeDisabled = !1,
++    getAttributes = () => ({
++      "aria-multiline": `true`,
++      dir: `auto`,
++      role: `textbox`,
++      spellcheck: `true`,
++      ...(inputModeDisabled ? {} : { inputmode: `none` }),
++    }),
 +    setPointerInputMode = (e) => {
 +      inputModeDisabled !== e &&
 +        ((inputModeDisabled = e),
-+        h.isDestroyed || h.setProps({ attributes: getAttributes }));
++        j.isDestroyed || j.setProps({ attributes: getAttributes }));
 +    },
-     h = new kL(null, {
--      attributes: { spellcheck: `true` },
++    j = new tDe(null, {
 +      attributes: getAttributes,
-       state: Hre.create({
-         schema: tJ,
-         doc:
-@@ -189392,6 +189402,17 @@
-         (h.updateState(t),
-           f.dispatchEvent(new CustomEvent(hq, { detail: e.docChanged })));
+       transformPastedHTML(e) {
+         return e.length > IH ? ` ` : jde(nfe(e).body.innerHTML) || ` `;
        },
-+      handleDOMEvents: {
+@@ -85368,6 +85376,15 @@
+           b.dispatchEvent(new CustomEvent(dH, { detail: e.docChanged })));
+       },
+       handleDOMEvents: {
 +        mousedown(e, t) {
 +          return (setPointerInputMode(!0), !1);
 +        },
@@ -34,7 +42,6 @@
 +        blur(e, t) {
 +          return (setPointerInputMode(!1), !1);
 +        },
-+      },
-       handlePaste(e, t) {
-         if (t.defaultPrevented) return !0;
-         let n = t.clipboardData,
+         keyup(e, t) {
+           let { $from: n, empty: r } = e.state.selection;
+           return (

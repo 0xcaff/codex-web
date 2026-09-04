@@ -1,20 +1,20 @@
 --- a/.vite/build/worker.js
 +++ b/.vite/build/worker.js
-@@ -76002,6 +76002,7 @@
-   let n = $V(e.appVersion),
+@@ -96340,6 +96340,7 @@
+   let n = zR(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (FD({
+   (Lse({
 +    enabled: !1,
-     dsn: sW,
+     dsn: e.dsn,
      environment: e.buildFlavor,
-     release: cW(n.version),
---- a/.vite/build/sqlite-Bd1pmlws.js
-+++ b/.vite/build/sqlite-Bd1pmlws.js
-@@ -42675,6 +42675,7 @@
-     i = t.Yi(e.version);
+     release: NH(n.version),
+--- a/.vite/build/window-all-closed-KNH8jchn.js
++++ b/.vite/build/window-all-closed-KNH8jchn.js
+@@ -22081,6 +22081,7 @@
+   let c = he(e.version);
    return (
-     GB({
+     dS({
 +      enabled: !1,
-       dsn: t.Ji,
-       environment: dV.buildFlavor,
-       release: i,
+       dsn: DC.dsn,
+       environment: DC.buildFlavor,
+       release: c,

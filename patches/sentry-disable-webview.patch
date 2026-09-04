@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial~artifact-tab-content.electron~notebook-preview-panel~app-main~appgen-settings-p~k7s99xf2-CDccaBxU.js
-+++ b/webview/assets/app-initial~artifact-tab-content.electron~notebook-preview-panel~app-main~appgen-settings-p~k7s99xf2-CDccaBxU.js
-@@ -8627,6 +8627,7 @@
-     n = re(e.appVersion),
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -357239,6 +357239,7 @@
+     n = JSt(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (eg({
+   (FBa({
 +    enabled: !1,
-     beforeSend: m,
-     dsn: oe,
-     environment: cg,
+     beforeBreadcrumb: fIt,
+     beforeSend: $Sn,
+     dsn: e.dsn,

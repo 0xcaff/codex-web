@@ -1,8 +1,8 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -9,6 +9,7 @@
+@@ -10,6 +10,7 @@
      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-     <title>Codex</title>
+     <title>ChatGPT</title>
      <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
 +    <link rel="manifest" href="/manifest.json" />
      <style>
