@@ -130,6 +130,7 @@ declare const __CODEX_APP_VERSION__: string;
 
 let requestCounter = 0;
 let socket: WebSocket | null = null;
+let hasConnected = false;
 let reconnectTimeoutId: number | null = null;
 const outboundQueue: RendererToMainMessage[] = [];
 const pendingInvokes = new Map<
@@ -243,6 +244,13 @@ function ensureSocket(): void {
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
   socket.addEventListener("open", () => {
+    // App-host RPC transfers MessagePorts once at startup. A new connection needs
+    // a fresh app view; replaying requests against the closed ports cannot recover it.
+    if (hasConnected) {
+      window.location.reload();
+      return;
+    }
+    hasConnected = true;
     flushOutboundQueue();
   });
   socket.addEventListener("message", (event) => {
@@ -257,6 +265,13 @@ function ensureSocket(): void {
     }
   });
   socket.addEventListener("close", () => {
+    const error = new Error("Connection to Codex was lost");
+    for (const pending of pendingInvokes.values()) pending.reject(error);
+    pendingInvokes.clear();
+    for (const pending of pendingDirectoryEntries.values())
+      pending.reject(error);
+    pendingDirectoryEntries.clear();
+    outboundQueue.length = 0;
     for (const port of messagePorts.values()) {
       port.close();
     }

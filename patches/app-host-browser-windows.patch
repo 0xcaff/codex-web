@@ -1,0 +1,48 @@
+--- a/.vite/build/main-C5K7o1Hr.js
++++ b/.vite/build/main-C5K7o1Hr.js
+@@ -130136,28 +130136,22 @@
+         }));
+     }
+     async whenReady() {
++      // Browser tabs are independent renderers. Opening another tab must not
++      // cancel startup for an existing tab when the primary window changes.
+       if (this.startupReady != null) {
+         let e = Promise.withResolvers(),
+           t = () => {
+-            e.reject(
+-              new DOMException(`Primary renderer was replaced`, `AbortError`),
+-            );
+-          },
+-          n = this.windowManager.subscribePrimaryWindowChanges((e) => {
+-            e?.webContents.id !== this.origin.id && t();
+-          });
++            e.reject(new DOMException(`Renderer was destroyed`, `AbortError`));
++          };
+         this.origin.once(`destroyed`, t);
+         try {
+           await Promise.race([this.startupReady, e.promise]);
+         } finally {
+-          (n(), this.origin.off(`destroyed`, t));
++          this.origin.off(`destroyed`, t);
+         }
+       }
+-      if (
+-        this.isDisposed ||
+-        this.windowManager.getPrimaryWindow()?.webContents.id !== this.origin.id
+-      )
+-        throw new DOMException(`Primary renderer was replaced`, `AbortError`);
++      if (this.origin.isDestroyed())
++        throw new DOMException(`Renderer was destroyed`, `AbortError`);
+     }
+     reach(e) {
+       if (
+@@ -151649,6 +151643,9 @@
+     updateDockIcon: ee,
+     setWindowContext: (e) => {
+       L = e;
++      globalThis.__codexElectronIpcBridge?.setRendererWindowFactory(() =>
++        R.createPrimaryWindow({ show: !1 }),
++      );
+       for (let t of l.BrowserWindow.getAllWindows())
+         t.isDestroyed() || !R.isAppServiceWindow(t) || e.registerWindow(t);
+     },
