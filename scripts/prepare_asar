@@ -41,4 +41,5 @@ patch --batch --forward --strip 1 --directory scratch/asar < patches/sentry-disa
 patch --batch --forward --strip 1 --directory scratch/asar < patches/preload-disable-device-check.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-safe-header-left.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/app-host-json-rpc.patch
+patch --batch --forward --strip 1 --directory scratch/asar < patches/app-host-browser-windows.patch
 rm -rf scratch/asar/node_modules/better-sqlite3

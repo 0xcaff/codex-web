@@ -32,26 +32,29 @@ type IpcMainEvent = {
 };
 
 type IpcMainBridgeState = {
-  broadcastToRenderer?: (message: {
-    type: "ipc-main-event";
-    channel: string;
-    args: unknown[];
-  }) => void;
+  sendToRenderer?: (
+    webContentsId: number,
+    message: {
+      type: "ipc-main-event";
+      channel: string;
+      args: unknown[];
+    },
+  ) => void;
   handleRendererInvoke?: (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
+    windowId: number,
   ) => Promise<unknown>;
   handleRendererPostMessage?: (
     channel: string,
     message: unknown,
     ports: StubMessagePort[],
-    sourceUrl?: string,
+    windowId: number,
   ) => void;
   handleRendererSend?: (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
+    windowId: number,
   ) => void;
 };
 
@@ -166,51 +169,28 @@ function createMessagePortStub(label: string): {
   };
 }
 
-const rendererUrl = "http://localhost:5175/";
-const rendererMainFrame = {
-  url: rendererUrl,
-};
-const rendererWebContentsEmitter = createEmitterStub("ipcMainEvent.sender");
-const rendererWebContents: StubWebContents = {
-  id: 1001,
-  mainFrame: rendererMainFrame,
-  getURL: () => rendererMainFrame.url,
-  isDestroyed: () => false,
-  off: rendererWebContentsEmitter.off,
-  on: rendererWebContentsEmitter.on,
-  once: rendererWebContentsEmitter.once,
-  removeListener: rendererWebContentsEmitter.removeListener,
-  send: (channel: string, ...args: unknown[]): void => {
-    getIpcMainBridgeState().broadcastToRenderer?.({
-      type: "ipc-main-event",
-      channel,
-      args,
-    });
-  },
-};
-
-function createIpcMainEvent(ports: StubMessagePort[] = []): IpcMainEvent {
-  const sender =
-    (BrowserWindow.fromWebContents(rendererWebContents)
-      ?.webContents as unknown as StubWebContents | undefined) ??
-    rendererWebContents;
-  const event: IpcMainEvent = {
+function createIpcMainEvent(
+  windowId: number,
+  ports: StubMessagePort[] = [],
+): IpcMainEvent {
+  const window = BrowserWindow.fromId(windowId);
+  if (!window || window.isDestroyed()) {
+    throw new Error(
+      `[electron-main-stub] Renderer window ${windowId} is closed`,
+    );
+  }
+  const sender = window.webContents as unknown as StubWebContents;
+  return {
     returnValue: undefined,
-    processId: 1,
+    processId: windowId,
     frameId: 1,
     sender,
     senderFrame: sender.mainFrame,
     ports,
     reply: (channel: string, ...args: unknown[]): void => {
-      getIpcMainBridgeState().broadcastToRenderer?.({
-        type: "ipc-main-event",
-        channel,
-        args,
-      });
+      sender.send(channel, ...args);
     },
   };
-
-  return event;
 }
 
 function createIpcMainStub(): {
@@ -231,7 +211,7 @@ function createIpcMainStub(): {
 
   const pendingPostMessages = new Map<
     string,
-    Array<{ message: unknown; ports: StubMessagePort[] }>
+    Array<{ message: unknown; ports: StubMessagePort[]; windowId: number }>
   >();
   const registeredPostMessageChannels = new Set<string>();
 
@@ -239,34 +219,36 @@ function createIpcMainStub(): {
     channel: string,
     message: unknown,
     ports: StubMessagePort[],
+    windowId: number,
   ): void => {
     if (registeredPostMessageChannels.has(channel)) {
-      emitter.emit(channel, createIpcMainEvent(ports), message);
+      emitter.emit(channel, createIpcMainEvent(windowId, ports), message);
       return;
     }
     const pending = pendingPostMessages.get(channel) ?? [];
-    pending.push({ message, ports });
+    pending.push({ message, ports, windowId });
     pendingPostMessages.set(channel, pending);
   };
 
   bridgeState.handleRendererInvoke = async (
     channel: string,
     args: unknown[],
+    windowId: number,
   ): Promise<unknown> => {
     const handler = handlers.get(channel);
     if (!handler) {
       throw new Error(`[electron-main-stub] No ipcMain.handle for ${channel}`);
     }
-    const event = createIpcMainEvent();
+    const event = createIpcMainEvent(windowId);
     return await Promise.resolve(handler(event, ...args));
   };
 
   bridgeState.handleRendererSend = (
     channel: string,
     args: unknown[],
-    sourceUrl?: string,
+    windowId: number,
   ): void => {
-    const event = createIpcMainEvent();
+    const event = createIpcMainEvent(windowId);
     emitter.emit(channel, event, ...args);
   };
 
@@ -277,8 +259,9 @@ function createIpcMainStub(): {
       const pending = pendingPostMessages.get(channel);
       if (pending) {
         pendingPostMessages.delete(channel);
-        for (const { message, ports } of pending) {
-          emitter.emit(channel, createIpcMainEvent(ports), message);
+        for (const { message, ports, windowId } of pending) {
+          if (!BrowserWindow.fromId(windowId)) continue;
+          emitter.emit(channel, createIpcMainEvent(windowId, ports), message);
         }
       }
       return result;
@@ -480,11 +463,14 @@ class BrowserWindow {
             return;
           }
           const [channel, ...args] = sendArgs as [string, ...unknown[]];
-          getIpcMainBridgeState().broadcastToRenderer?.({
-            type: "ipc-main-event",
-            channel,
-            args,
-          });
+          getIpcMainBridgeState().sendToRenderer?.(
+            this.webContents.id as number,
+            {
+              type: "ipc-main-event",
+              channel,
+              args,
+            },
+          );
         },
       } as Record<string, unknown>,
       {
@@ -580,7 +566,12 @@ class BrowserWindow {
 
   destroy(): void {
     log(`BrowserWindow#${this.id}.destroy`, []);
+    if (this.destroyed) return;
     this.destroyed = true;
+    (this.webContents.emit as StubFunction)("destroyed");
+    BrowserWindow.allWindows = BrowserWindow.allWindows.filter(
+      (window) => window !== this,
+    );
     if (BrowserWindow.focusedWindow === this) {
       BrowserWindow.focusedWindow = null;
     }
