@@ -12,6 +12,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { parseArgs as parseCliArgs } from "node:util";
+import { DatabaseSync } from "node:sqlite";
 import { WebSocket, WebSocketServer } from "ws";
 import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
@@ -709,8 +710,178 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     throw new Error("multiple main bundles found");
   }
 
+  await reconcileSidebarCatalogWithThreadDatabases();
+
   const module = require(matches[0]!);
   module.runMainAppStartup();
+}
+
+async function reconcileSidebarCatalogWithThreadDatabases(): Promise<void> {
+  // The shell keeps a discovery cache of threads in
+  // <CODEX_HOME>/sqlite/codex.db (`local_thread_catalog`) and only mutates it
+  // from events of the app-server it is connected to: entries appear when the
+  // shell observes a thread start, and disappear on `thread/archived`.
+  // Threads created by another app-server -- `codex` or `codex exec` from a
+  // terminal -- never show up in the sidebar at all, and sessions archived
+  // that way stay listed under Recents forever. Neither is reconciled, not
+  // even across restarts.
+  //
+  // Before the shell opens the database, reconcile the catalog against the
+  // app-server's own thread databases: drop rows whose thread is archived
+  // there, and insert rows for threads the catalog has never seen. Bump the
+  // catalog revision afterwards so the shell refreshes its in-memory
+  // snapshot.
+  const codexHome = process.env.CODEX_HOME ?? path.join(os.homedir(), ".codex");
+  const catalogPath = path.join(codexHome, "sqlite", "codex.db");
+
+  let catalog: DatabaseSync;
+  try {
+    catalog = new DatabaseSync(catalogPath);
+  } catch {
+    return;
+  }
+
+  try {
+    const catalogRows = catalog
+      .prepare("select host_id, thread_id, source_kind from local_thread_catalog")
+      .all() as { host_id: string; thread_id: string; source_kind: string }[];
+
+    type ThreadRow = {
+      id: string;
+      source: string | null;
+      thread_source: string | null;
+      name: string | null;
+      title: string | null;
+      cwd: string | null;
+      model_provider: string | null;
+      git_branch: string | null;
+      created_at_ms: number | null;
+      updated_at_ms: number | null;
+      recency_at_ms: number | null;
+      archived: number;
+    };
+    const threads: ThreadRow[] = [];
+    const stateNames = (await fs.readdir(codexHome)).filter((name) =>
+      /^state_\d+\.sqlite$/.test(name),
+    );
+    for (const name of stateNames) {
+      let state: DatabaseSync | null = null;
+      try {
+        // Not readOnly: these databases run in WAL mode, which needs write
+        // access to the -shm sidecar even for pure readers.
+        state = new DatabaseSync(path.join(codexHome, name));
+        const hasThreads = state
+          .prepare(
+            "select 1 from sqlite_master where type = 'table' and name = 'threads'",
+          )
+          .get();
+        if (hasThreads) {
+          threads.push(
+            ...(state
+              .prepare(
+                `select id, source, thread_source, name, title, cwd,
+                        model_provider, git_branch, created_at_ms,
+                        updated_at_ms, recency_at_ms, archived
+                   from threads`,
+              )
+              .all() as ThreadRow[]),
+          );
+        }
+      } catch {
+        // Unreadable state database: skip it rather than guess.
+      } finally {
+        state?.close();
+      }
+    }
+
+    const sourceKinds = new Set([
+      "cli",
+      "vscode",
+      "exec",
+      "appServer",
+      "chatgpt",
+      "custom",
+      "unknown",
+    ]);
+    const archived = new Set(
+      threads.filter((row) => row.archived === 1).map((row) => row.id),
+    );
+    const allIds = new Set(threads.map((row) => row.id));
+    const known = new Set(catalogRows.map((row) => row.thread_id));
+    const seconds = (ms: number | null): number =>
+      ms == null ? 0 : ms / 1000;
+
+    // Threads archived elsewhere, and threads that no longer exist at all
+    // (`codex delete` from a terminal), both leave ghost rows behind. Cloud
+    // ("chatgpt") threads live outside the local state databases, so the
+    // existence check must not apply to them.
+    const stale = catalogRows.filter(
+      (row) =>
+        archived.has(row.thread_id) ||
+        (row.source_kind !== "chatgpt" && !allIds.has(row.thread_id)),
+    );
+    const missing = threads.filter(
+      (row) => row.archived === 0 && !known.has(row.id),
+    );
+    if (stale.length === 0 && missing.length === 0) {
+      return;
+    }
+
+    const remove = catalog.prepare(
+      "delete from local_thread_catalog where host_id = ? and thread_id = ?",
+    );
+    const insert = catalog.prepare(
+      `insert into local_thread_catalog (
+         host_id, thread_id, display_title, source_created_at,
+         source_updated_at, source_recency_at, cwd, source_kind,
+         source_detail, thread_source, model_provider, git_branch,
+         observation_sequence, missing_candidate, pending_observed_title,
+         project_id, conversation_origin
+       ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, null, null)
+       on conflict (host_id, thread_id) do nothing`,
+    );
+    const bumpRevision = catalog.prepare(
+      "update local_thread_catalog_metadata set catalog_revision = catalog_revision + 1",
+    );
+
+    catalog.exec("begin");
+    try {
+      for (const row of stale) {
+        remove.run(row.host_id, row.thread_id);
+      }
+      for (const row of missing) {
+        const title =
+          row.name?.trim() || row.title?.trim() || row.id;
+        insert.run(
+          "local",
+          row.id,
+          title,
+          seconds(row.created_at_ms),
+          seconds(row.updated_at_ms),
+          seconds(row.recency_at_ms ?? row.updated_at_ms),
+          row.cwd,
+          row.source != null && sourceKinds.has(row.source) ? row.source : "cli",
+          null,
+          row.thread_source,
+          row.model_provider,
+          row.git_branch,
+          1,
+        );
+      }
+      bumpRevision.run();
+      catalog.exec("commit");
+    } catch (error) {
+      catalog.exec("rollback");
+      throw error;
+    }
+    console.log(
+      `[codex-web] sidebar catalog reconciled: dropped ${stale.length} stale, added ${missing.length} missing thread(s)`,
+    );
+  } catch (error) {
+    console.warn("[codex-web] sidebar catalog reconcile skipped:", error);
+  } finally {
+    catalog.close();
+  }
 }
 
 async function main(args: string[]) {
