@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+while [[ "${1:-}" == "-c" ]]; do
+  (( $# >= 2 )) || { echo 'Missing -c value' >&2; exit 64; }
+  shift 2
+done
+[[ "${1:-}" == app-server ]] || { echo 'Only app-server proxy mode is supported' >&2; exit 64; }
+: "${CODEX_UNIX_SOCKET:?CODEX_UNIX_SOCKET must be set}"
+base_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+websocat_path="$base_dir/websocat"
+if [[ ! -x "$websocat_path" ]]; then websocat_path="$(command -v websocat)"; fi
+exec "$websocat_path" -E -t -B "${CODEX_BUFFER_SIZE:-104857600}" - "ws-c:unix:${CODEX_UNIX_SOCKET}"

@@ -69,7 +69,9 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
 }
 
 function log(method: string, args: unknown[]): void {
-  console.log(`[electron-main-stub] ${method}`, args);
+  if (process.env.CODEX_WEB_SHIM_DEBUG === "1") {
+    console.log(`[electron-main-stub] ${method}`, args);
+  }
 }
 
 function createDeepStub(pathLabel: string): StubFunction {

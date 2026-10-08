@@ -47,7 +47,11 @@ export default defineConfig({
   },
   build: {
     commonjsOptions: {
-      include: [/scratch\/asar\/\.vite\/build\/preload\.js/, /node_modules/],
+      include: [
+        /scratch\/asar\/\.vite\/build\/preload\.js/,
+        /node_modules/,
+        /src\/server\/ipc-cache-(?:schema|client)\.js$/,
+      ],
       requireReturnsDefault: "auto",
       transformMixedEsModules: true,
     },

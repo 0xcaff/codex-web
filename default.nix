@@ -44,7 +44,7 @@ flake-utils.lib.eachSystem systems (
 
         betterSqlite3Native = pkgs.stdenv.mkDerivation {
           pname = "better-sqlite3-native";
-          version = "12.9.0";
+          version = "12.11.1";
           src = pkgs.lib.fileset.toSource {
             root = ./.;
             fileset = pkgs.lib.fileset.unions [

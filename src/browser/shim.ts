@@ -2,6 +2,7 @@ import {
   mapBrowserPathToInitialRoute,
   mapMemoryPathToBrowserPath,
 } from "./routes";
+import { browserIpcCache } from "./ipc-cache";
 import {
   handleLocalFilePickerMessage,
   isLocalFilePickerMessage,
@@ -130,6 +131,7 @@ declare const __CODEX_APP_VERSION__: string;
 
 let requestCounter = 0;
 let socket: WebSocket | null = null;
+let transportReady = false;
 let needsReload = false;
 let reconnectTimeoutId: number | null = null;
 const outboundQueue: RendererToMainMessage[] = [];
@@ -213,7 +215,7 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
 }
 
 function flushOutboundQueue(): void {
-  if (!socket || socket.readyState !== WebSocket.OPEN) {
+  if (!socket || socket.readyState !== WebSocket.OPEN || !transportReady) {
     return;
   }
   for (const message of outboundQueue.splice(0)) {
@@ -243,6 +245,22 @@ function ensureSocket(): void {
   socket = new WebSocket(
     `${window.location.protocol === "https:" ? "wss:" : "ws:"}//${window.location.host}/__backend/ipc`,
   );
+  transportReady = false;
+  const connectedSocket = socket;
+  const receiver = browserIpcCache(
+    socket,
+    (message) => handleIncomingMessage(message as MainToRendererMessage),
+    () => {
+      if (socket === connectedSocket) {
+        transportReady = true;
+        flushOutboundQueue();
+      }
+    },
+    (error) => {
+      console.error("[electron-stub] IPC cache recovery failed", error);
+      connectedSocket.close(1011, "IPC cache recovery");
+    },
+  );
   socket.addEventListener("open", () => {
     // App-host RPC transfers MessagePorts once at startup. A new connection needs
     // a fresh app view; replaying requests against the closed ports cannot recover it.
@@ -250,12 +268,12 @@ function ensureSocket(): void {
       window.location.reload();
       return;
     }
-    flushOutboundQueue();
+    receiver.opened();
   });
   socket.addEventListener("message", (event) => {
     try {
       const message = JSON.parse(String(event.data)) as MainToRendererMessage;
-      handleIncomingMessage(message);
+      receiver.receive(message);
     } catch (error) {
       console.error(
         "[electron-stub] failed to parse IPC bridge message",
@@ -264,6 +282,8 @@ function ensureSocket(): void {
     }
   });
   socket.addEventListener("close", () => {
+    receiver.close();
+    transportReady = false;
     needsReload = true;
     const error = new Error("Connection to Codex was lost");
     for (const pending of pendingInvokes.values()) pending.reject(error);
@@ -389,10 +409,11 @@ electronShim.overrideAdapter = {
     }
 
     if (evaluation.name === "1042620455") {
-      // Remote control (Slingshot).
+      // Shared local sessions use the local app view instead of Slingshot.
       return {
         ...evaluation,
-        value: true,
+        value: !(window as Window & { __CODEX_SHARED_RUNTIME__?: boolean })
+          .__CODEX_SHARED_RUNTIME__,
       };
     }
 

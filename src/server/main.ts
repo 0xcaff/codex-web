@@ -17,11 +17,16 @@ import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
+import { prepareDesktopTools } from "./desktop-tools";
+import { BROWSER_SOCKET_OPTIONS, WEBVIEW_STATIC_OPTIONS } from "./transport";
+import { ServerIpcCache } from "./ipc-cache";
 import { glob } from "glob";
 
 type ServerOptions = {
   host: string;
   port: number;
+  sharedSocket?: string;
+  appTools?: string;
 };
 
 type RendererToMainMessage =
@@ -239,6 +244,7 @@ type RendererWindow = {
 };
 
 type IpcMainBridgeState = {
+  isRendererConnected?: (webContentsId: number) => boolean;
   setRendererWindowFactory?: (factory: () => Promise<RendererWindow>) => void;
   sendToRenderer?: (
     webContentsId: number,
@@ -266,7 +272,7 @@ function printUsage(): void {
   console.log(
     [
       "Usage:",
-      "  server [--host <host>] [--port <port>]",
+      "  server [--host <host>] [--port <port>] [--shared-socket <path>] [--app-tools <server.mjs>]",
       "",
       "Defaults:",
       "  --host 127.0.0.1",
@@ -302,6 +308,8 @@ function parseServerArgs(args: string[]): ServerOptions {
       port: {
         type: "string",
       },
+      "shared-socket": { type: "string" },
+      "app-tools": { type: "string" },
     },
     strict: true,
   });
@@ -314,6 +322,8 @@ function parseServerArgs(args: string[]): ServerOptions {
   return {
     host: parsed.values.host ?? "127.0.0.1",
     port: parsed.values.port ? parsePort(parsed.values.port) : 8214,
+    sharedSocket: parsed.values["shared-socket"],
+    appTools: parsed.values["app-tools"],
   };
 }
 
@@ -411,9 +421,29 @@ function ensureElectronLikeProcessContext(): void {
 }
 
 async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
+  if (options.sharedSocket) {
+    process.env.CODEX_UNIX_SOCKET = path.resolve(options.sharedSocket);
+    process.env.CODEX_CLI_PATH = path.resolve(
+      __dirname,
+      "../../runtime/codex-web-proxy",
+    );
+  }
+  if (process.env.CODEX_UNIX_SOCKET) {
+    process.env.CODEX_CLI_PATH ??= path.resolve(
+      __dirname,
+      "../../runtime/codex-web-proxy",
+    );
+    process.env.CODEX_SHARED_TOOLS_PIPE_PATH ??= path.join(
+      path.dirname(process.env.CODEX_UNIX_SOCKET),
+      "tools.sock",
+    );
+    const tools = prepareDesktopTools(options.appTools);
+    if (tools) process.env.CODEX_SHARED_TOOLS_MCP = tools;
+    else delete process.env.CODEX_SHARED_TOOLS_MCP;
+  }
   const bridgeState = getIpcMainBridgeState();
   const app = Fastify({ logger: false });
-  const websocketServer = new WebSocketServer({ noServer: true });
+  const websocketServer = new WebSocketServer(BROWSER_SOCKET_OPTIONS);
 
   await app.register(fastifyMultipart, {
     limits: {
@@ -460,11 +490,23 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   await app.register(fastifyStatic, {
     root: path.resolve(__dirname, "../../scratch/asar/webview"),
     prefix: "/",
+    ...WEBVIEW_STATIC_OPTIONS,
   });
 
-  app.get("/", async (_request, reply) => {
-    return reply.sendFile("index.html");
-  });
+  const html = await fs.readFile(
+    path.resolve(__dirname, "../../scratch/asar/webview/index.html"),
+    "utf8",
+  );
+  const pageHtml = html.replace(
+    "<!-- CODEX_WEB_RUNTIME -->",
+    `<script>window.__CODEX_SHARED_RUNTIME__=${Boolean(process.env.CODEX_UNIX_SOCKET)};</script>`,
+  );
+  app.get("/", async (_request, reply) =>
+    reply.type("text/html").send(pageHtml),
+  );
+  app.get("/index.html", async (_request, reply) =>
+    reply.type("text/html").send(pageHtml),
+  );
 
   app.setNotFoundHandler((request, reply) => {
     if (request.url.startsWith("/@fs/")) {
@@ -472,7 +514,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     }
 
     if (request.method === "GET") {
-      return reply.sendFile("index.html");
+      return reply.type("text/html").send(pageHtml);
     }
     return reply.code(404).send({ error: "Not Found" });
   });
@@ -492,6 +534,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   });
 
   const rendererSockets = new Map<number, WebSocket>();
+  const rendererCaches = new Map<number, ServerIpcCache>();
+  const cacheNamespace = randomUUID();
+  bridgeState.isRendererConnected = (id) =>
+    rendererSockets.get(id)?.readyState === WebSocket.OPEN;
   const rendererWindowFactory = new Promise<() => Promise<RendererWindow>>(
     (resolve) => {
       bridgeState.setRendererWindowFactory = resolve;
@@ -500,11 +546,20 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   bridgeState.sendToRenderer = (webContentsId, message): void => {
     const socket = rendererSockets.get(webContentsId);
     if (socket?.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
+      rendererCaches.get(webContentsId)?.send(message);
     }
   };
 
   websocketServer.on("connection", (socket) => {
+    const ipcCache = new ServerIpcCache(
+      (message) => {
+        if (socket.readyState === WebSocket.OPEN)
+          socket.send(JSON.stringify(message));
+      },
+      cacheNamespace,
+      process.env.CODEX_WEB_IPC_CACHE !== "0",
+    );
+    ipcCache.hello();
     let rendererWindow: RendererWindow | undefined;
     // Each tab is a real registered app view, with its own IPC client and ownership.
     const rendererReady = rendererWindowFactory
@@ -517,6 +572,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
         }
         rendererWindow = window;
         rendererSockets.set(window.webContents.id, socket);
+        rendererCaches.set(window.webContents.id, ipcCache);
         return window;
       })
       .catch((error) => {
@@ -547,19 +603,19 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     };
 
     socket.on("close", () => {
+      ipcCache.dispose();
       for (const port of messagePorts.values()) {
         port.disconnect();
       }
       messagePorts.clear();
       if (rendererWindow) {
         rendererSockets.delete(rendererWindow.webContents.id);
+        rendererCaches.delete(rendererWindow.webContents.id);
         rendererWindow.destroy();
       }
     });
 
     socket.on("message", async (rawData) => {
-      const window = await rendererReady;
-      if (!window || socket.readyState !== WebSocket.OPEN) return;
       let message: RendererToMainMessage;
       try {
         message = JSON.parse(String(rawData)) as RendererToMainMessage;
@@ -567,6 +623,9 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
         console.error("[ipc-bridge] invalid JSON payload", error);
         return;
       }
+      if (ipcCache.handle(message)) return;
+      const window = await rendererReady;
+      if (!window || socket.readyState !== WebSocket.OPEN) return;
 
       if (message.type === "ipc-renderer-send") {
         bridgeState.handleRendererSend?.(
@@ -592,7 +651,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
             portId,
             (message) => {
               if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(message));
+                ipcCache.send(message);
               }
             },
             () => messagePorts.delete(portId),
@@ -626,7 +685,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
               result,
             };
             if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
+              ipcCache.send(payload);
             }
           })
           .catch((error) => {
@@ -637,7 +696,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
               errorMessage: errorMessage(error),
             };
             if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
+              ipcCache.send(payload);
             }
           });
         return;
@@ -661,7 +720,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
               result,
             };
             if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
+              ipcCache.send(payload);
             }
           })
           .catch((error) => {
@@ -672,7 +731,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
               errorMessage: errorMessage(error),
             };
             if (socket.readyState === WebSocket.OPEN) {
-              socket.send(JSON.stringify(payload));
+              ipcCache.send(payload);
             }
           });
       }

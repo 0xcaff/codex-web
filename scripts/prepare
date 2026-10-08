@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-TEMP_DIR="$(mktemp -d)"
-
-APP_VERSION="26.901.41123"
-curl -o "$TEMP_DIR/file.zip" "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-$APP_VERSION.zip"
-
-HOSTED_CODEX_APP_ZIP="$TEMP_DIR/file.zip" bash ./scripts/prepare_asar
-
-rm -rf "$TEMP_DIR"
+if [[ -n "${HOSTED_CODEX_APP_ZIP:-}" ]]; then
+  bash ./scripts/prepare_asar
+else
+  task_archive_dir="$(mktemp -d)"
+  trap 'rm -rf -- "$task_archive_dir"' EXIT
+  APP_VERSION="26.901.41123"
+  curl --fail --location --retry 2 -o "$task_archive_dir/file.zip" "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-$APP_VERSION.zip"
+  HOSTED_CODEX_APP_ZIP="$task_archive_dir/file.zip" bash ./scripts/prepare_asar
+fi

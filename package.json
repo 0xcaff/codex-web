@@ -6,7 +6,12 @@
     "scratch/asar/**/*",
     "src/server/**/*.js",
     "src/server/electron/index.js",
-    "!**/*.ts"
+    "!**/*.ts",
+    "src/server/**/*.cjs",
+    "runtime/",
+    "scripts/install-services.py",
+    "scripts/check-connection.cjs",
+    "docs/"
   ],
   "bin": "src/server/main.js",
   "scripts": {
@@ -15,11 +20,16 @@
     "launch:unpacked:server": "http-server ./scratch/asar/webview -a localhost -p 5175 -c-1",
     "launch:unpacked": "NODE_ENV=development electron ./scratch/asar --remote-debugging-port=9222",
     "dev:browser": "vite --config vite.browser.config.ts",
-    "build:browser": "vite build --config vite.browser.config.ts",
+    "build:browser": "vite build --config vite.browser.config.ts && node scripts/compress-assets.cjs",
     "build:server": "cd src/server && tsc",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
-    "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
+    "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js",
+    "test": "node --test tests/*.test.cjs && python3 -m unittest discover -s tests -p \"test_*.py\"",
+    "patch:shared": "node scripts/patch-shared.mjs",
+    "test:integration": "node tests/integration/shared-smoke.cjs",
+    "test:install": "python3 tests/integration/install-smoke.py",
+    "compress:assets": "node scripts/compress-assets.cjs"
   },
   "repository": "git@github.com:0xcaff/codex-web.git",
   "author": "martin <martincharles07@gmail.com>",
@@ -28,9 +38,11 @@
     "@electron/asar": "^4.2.0",
     "@fastify/multipart": "^10.0.0",
     "@fastify/static": "^9.1.1",
+    "@noble/hashes": "2.4.0",
+    "@parcel/watcher": "2.6.0",
     "@tanstack/react-query": "^5.100.9",
     "@types/ws": "^8.18.1",
-    "better-sqlite3": "^12.9.0",
+    "better-sqlite3": "12.11.1",
     "fastify": "^5.8.5",
     "glob": "^13.0.6",
     "prettier": "^3.8.2",
@@ -39,12 +51,13 @@
     "sharp-cli": "^5.2.0",
     "typescript": "^6.0.2",
     "vite": "^8.0.8",
-    "ws": "^8.20.0"
+    "ws": "8.22.0"
   },
   "devDependencies": {
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "electron": "41.2.0",
-    "http-server": "^14.1.1"
+    "http-server": "^14.1.1",
+    "playwright-core": "1.61.1"
   }
 }

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+base_dir="$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")"
+socket_path="${CODEX_UNIX_SOCKET:-${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/codex-shared/app.sock}"
+case "${1:-}" in
+  -h|--help|-V|--version) exec "$base_dir/codex" "$@" ;;
+  resume|fork)
+    command_name="$1"; shift
+    systemctl --user start codex-shared.service
+    /usr/bin/python3 "$base_dir/wait-for-shared.py" "$socket_path"
+    exec "$base_dir/codex" "$command_name" --remote "unix://$socket_path" "$@"
+    ;;
+  exec|review|login|logout|mcp|plugin|app-server|remote-control|completion|update|doctor|sandbox|debug|apply|queue|archive|delete|migrate-rollouts|unarchive|cloud|exec-server|features|help|agents)
+    echo 'codex-shared supports interactive sessions, resume, and fork. Use the original codex for other commands.' >&2
+    exit 64
+    ;;
+esac
+systemctl --user start codex-shared.service
+/usr/bin/python3 "$base_dir/wait-for-shared.py" "$socket_path"
+exec "$base_dir/codex" --remote "unix://$socket_path" "$@"

@@ -1,3 +1,11 @@
 node_modules/
 scratch*/
 sentry
+
+*.tsbuildinfo
+src/server/**/*.js
+src/server/**/*.js.map
+src/server/**/*.d.ts
+src/server/**/*.d.ts.map
+__pycache__/
+diagnostics/
