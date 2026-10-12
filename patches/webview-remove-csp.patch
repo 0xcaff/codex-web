@@ -1,13 +1,13 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -152,10 +152,6 @@
-       crossorigin
-       href="./assets/app-initial-5b0a474bff5e.css"
-     />
+@@ -3,10 +3,6 @@
+   <head>
+     <meta name="referrer" content="origin" />
+     <!-- PROD_BASE_TAG_HERE -->
 -    <meta
 -      http-equiv="Content-Security-Policy"
--      content="default-src &#39;none&#39;; img-src &#39;self&#39; app: blob: data: https:; child-src &#39;self&#39; blob: codex-sandbox://*.web-sandbox.oaiusercontent.com codex-sandbox://web-sandbox.oaiusercontent.com https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; frame-src &#39;self&#39; blob: codex-sandbox://*.web-sandbox.oaiusercontent.com codex-sandbox://web-sandbox.oaiusercontent.com https://*.web-sandbox.oaiusercontent.com https://cdn.plaid.com https://web-sandbox.oaiusercontent.com; worker-src &#39;self&#39; blob:; script-src &#39;self&#39; &#39;sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk=&#39; &#39;wasm-unsafe-eval&#39; https://cdn.plaid.com/link/v2/stable/link-initialize.js; style-src &#39;self&#39; &#39;unsafe-inline&#39;; font-src &#39;self&#39; data:; media-src &#39;self&#39; app: blob: data:; connect-src &#39;self&#39; https://ab.chatgpt.com https://api.mapbox.com https://cdn.openai.com https://events.mapbox.com https://learn.chatgpt.com https://production.plaid.com https://sandbox.plaid.com wss://chatgpt.com wss://ws.chatgpt-staging.com wss://ws.chatgpt.com;"
+-      content="default-src &#39;none&#39;; img-src &#39;self&#39; app: blob: data: https:; child-src &#39;self&#39; blob: codex-sandbox://*.web-sandbox.oaiusercontent.com codex-sandbox://web-sandbox.oaiusercontent.com https://*.web-sandbox.oaiusercontent.com https://web-sandbox.oaiusercontent.com; frame-src &#39;self&#39; blob: codex-sandbox://*.web-sandbox.oaiusercontent.com codex-sandbox://web-sandbox.oaiusercontent.com https://*.web-sandbox.oaiusercontent.com https://cdn.plaid.com https://cdn.platform.openai.com https://codepen.io https://docs.google.com/document/d/ https://docs.google.com/presentation/d/ https://docs.google.com/spreadsheets/d/ https://drive.google.com/file/d/ https://embed.apple-mapkit.com/v1/embed https://mfe.prod.us-exp-api.experiancs.com https://mfe.uat.us-exp-api.experiancs.com https://player.vimeo.com/video/ https://web-sandbox.oaiusercontent.com https://www.google.com/maps https://www.google.com/maps/embed https://www.youtube.com; worker-src &#39;self&#39; blob:; script-src &#39;self&#39; &#39;sha256-Z2/iFzh9VMlVkEOar1f/oSHWwQk3ve1qk/C2WdsC4Xk=&#39; &#39;wasm-unsafe-eval&#39; https://cdn.plaid.com/link/v2/stable/link-initialize.js https://persistent.oaistatic.com/voice/silero-vad-v6/ort-wasm-simd-threaded.30dd851d9c00622940500f71ddd2ff8820c5cb65270816080175b958705385a8.module.js; style-src &#39;self&#39; &#39;unsafe-inline&#39;; font-src &#39;self&#39; data:; media-src &#39;self&#39; app: blob: data: https:; connect-src &#39;self&#39; blob: https://ab.chatgpt.com https://api.mapbox.com https://cdn.openai.com https://events.mapbox.com https://learn.chatgpt.com https://persistent.oaistatic.com https://production.plaid.com https://sandbox.plaid.com wss://*.api.openai.com/ws wss://*.api.openai.org/ws wss://chatgpt-staging.com/backend-api/pages/realtime-broker/ wss://chatgpt.com wss://ws.chatgpt-staging.com wss://ws.chatgpt.com;"
 -    />
-   </head>
-   <body tabindex="0" style="outline: none">
-     <div id="root">
+     <meta charset="UTF-8" />
+     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+     <title>ChatGPT</title>

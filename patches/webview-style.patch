@@ -1,6 +1,6 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -132,6 +132,11 @@
+@@ -131,6 +131,11 @@
          }
        }
      </style>

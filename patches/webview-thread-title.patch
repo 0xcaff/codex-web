@@ -1,14 +1,14 @@
---- a/webview/assets/local-conversation-thread-9a0a61c5e076.js
-+++ b/webview/assets/local-conversation-thread-9a0a61c5e076.js
-@@ -21525,6 +21525,11 @@
-       startedAtMs: y?.submittedAtMs ?? null,
-     }));
-   b.conversationId === e && b.startedAtMs;
-+  let codexHostedWindowTitle = Z(Lt, { hostId: n, threadId: e });
-+  (0, YO.useEffect)(() => {
+--- a/webview/assets/local-conversation-thread-c8c5e92ea89e.js
++++ b/webview/assets/local-conversation-thread-c8c5e92ea89e.js
+@@ -18850,6 +18850,11 @@
+   isScrollToTopEnabled: x,
+   usesUnifiedTimeline: C,
+ }) {
++  let codexHostedWindowTitle = X(Un, { hostId: i, threadId: t });
++  (0, $A.useEffect)(() => {
 +    let title = codexHostedWindowTitle?.trim();
 +    title && (document.title = `${title} | Codex`);
 +  }, [codexHostedWindowTitle]);
-   let x = no(pd),
-     S = Z(vr, e),
-     C = Ml(us).value,
+   let w = he(nn),
+     T = (0, $A.useContext)(hh) === `activity`;
+   X(Ua, s ? { hostId: i, threadId: t } : null);

@@ -1,12 +1,12 @@
---- a/webview/assets/app-initial-236e1501144c.js
-+++ b/webview/assets/app-initial-236e1501144c.js
-@@ -366243,6 +366243,9 @@
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -220313,6 +220313,9 @@
        (r[3] = a))
      : (a = r[3]);
    let o = a;
 +  window.__ELECTRON_SHIM__.closeSidebar = () => {
-+    X1n(e, !1, { animate: t });
++    $Rt(e, !1, { animate: t });
 +  };
-   oU(`toggleSidebar`, o);
+   Pw(`toggleSidebar`, o);
    let s;
    (r[4] !== i || r[5] !== e || r[6] !== t

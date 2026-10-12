@@ -611,6 +611,10 @@ class BrowserWindow {
     return { ...this.bounds };
   }
 
+  getNormalBounds(): { height: number; width: number; x: number; y: number } {
+    return this.getBounds();
+  }
+
   setBounds(nextBounds: {
     height?: number;
     width?: number;
@@ -875,6 +879,9 @@ const powerSaveBlocker = {
 };
 const screen = {
   ...createEmitterStub("screen"),
+  isCursorScreenPointSupported(): boolean {
+    return false;
+  },
   getAllDisplays(): Array<{
     id: number;
     scaleFactor: number;
@@ -948,7 +955,9 @@ function createSessionStub(label: string): {
   removeListener: (event: string, listener: StubListener) => unknown;
   setPermissionCheckHandler: (...args: unknown[]) => void;
   setPermissionRequestHandler: (...args: unknown[]) => void;
+  setPermissionPromptHandler: (...args: unknown[]) => void;
   setPreferredLanguages: (languages: string[]) => void;
+  setWebsiteReportingEnabled: (enabled: boolean) => void;
   webRequest: {
     onBeforeRequest: (...args: unknown[]) => void;
     onBeforeSendHeaders: (...args: unknown[]) => void;
@@ -1001,8 +1010,14 @@ function createSessionStub(label: string): {
     setPermissionRequestHandler(...args: unknown[]): void {
       log(`${label}.setPermissionRequestHandler`, args);
     },
+    setPermissionPromptHandler(...args: unknown[]): void {
+      log(`${label}.setPermissionPromptHandler`, args);
+    },
     setPreferredLanguages(languages: string[]): void {
       log(`${label}.setPreferredLanguages`, [languages]);
+    },
+    setWebsiteReportingEnabled(enabled: boolean): void {
+      log(`${label}.setWebsiteReportingEnabled`, [enabled]);
     },
     webRequest: {
       onBeforeRequest(...args: unknown[]): void {

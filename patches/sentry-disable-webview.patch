@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial-236e1501144c.js
-+++ b/webview/assets/app-initial-236e1501144c.js
-@@ -357239,6 +357239,7 @@
-     n = JSt(e.appVersion),
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -144501,6 +144501,7 @@
+     n = rpe(e.appVersion),
      r = e.buildFlavor !== `prod`;
-   (FBa({
+   (E1n({
 +    enabled: !1,
-     beforeBreadcrumb: fIt,
-     beforeSend: $Sn,
+     beforeBreadcrumb: CLe,
+     beforeSend: pNe,
      dsn: e.dsn,

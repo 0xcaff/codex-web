@@ -1,29 +1,34 @@
---- a/webview/assets/app-initial-236e1501144c.js
-+++ b/webview/assets/app-initial-236e1501144c.js
-@@ -172745,11 +172745,16 @@
-   useTransitions: i,
- }) {
-   let a = dT.useRef();
--  a.current ??= F_n({ initialEntries: n, initialIndex: r, v5Compat: !0 });
-+  a.current ??= F_n({
-+    initialEntries: n ?? [window.__ELECTRON_SHIM__.initialRoute],
-+    initialIndex: r,
-+    v5Compat: !0,
-+  });
-   let o = a.current,
-     [s, c] = dT.useState({ action: o.action, location: o.location }),
-     l = dT.useCallback(
-       (e) => {
-+        window.__ELECTRON_SHIM__.onMemoryNavigationChanged(e);
-         i === !1 ? c(e) : dT.startTransition(() => c(e));
-       },
-       [i],
-@@ -200768,7 +200773,7 @@
-   return RT(f0n, void 0) !== void 0;
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -75630,7 +75630,7 @@
+   return Ch(hzt, void 0) !== void 0;
  }
- function s0n() {
+ function czt() {
 -  return !0;
 +  return window.__ELECTRON_SHIM__.initialSidebarState;
  }
- function c0n() {
-   return RT(f0n, !1);
+ function lzt(e) {
+   return e === `/settings` || !!e?.startsWith(`/settings/`);
+@@ -324142,12 +324142,19 @@
+     ? (i = t[1])
+     : ((i = () =>
+         RNe([{ path: `*`, Component: qHa, ErrorBoundary: JHa }], {
+-          initialEntries: r,
++          initialEntries: r ?? [window.__ELECTRON_SHIM__.initialRoute],
+         })),
+       (t[0] = r),
+       (t[1] = i));
+-  let [a] = (0, XHa.useState)(i),
+-    o;
++  let [a] = (0, XHa.useState)(i);
++  (0, XHa.useEffect)(() =>
++    a.subscribe((state) => {
++      window.__ELECTRON_SHIM__.onMemoryNavigationChanged({
++        action: state.historyAction,
++        location: state.location,
++      });
++    }), [a]);
++  let o;
+   t[2] === a
+     ? (o = t[3])
+     : ((o = (0, ZHa.jsx)(sHa, { router: a, useTransitions: !1 })),

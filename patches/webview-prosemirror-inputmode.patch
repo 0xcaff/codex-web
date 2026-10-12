@@ -1,41 +1,41 @@
---- a/webview/assets/app-primary-6b28e06666ff.js
-+++ b/webview/assets/app-primary-6b28e06666ff.js
-@@ -85235,13 +85235,21 @@
-               restoreRichLinks: !C,
-             })
-           : Jl({ schema: y, text: e }));
--  let j = new tDe(null, {
--      attributes: {
--        "aria-multiline": `true`,
--        dir: `auto`,
--        role: `textbox`,
--        spellcheck: `true`,
--      },
-+  let inputModeDisabled = !1,
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -560590,14 +560590,22 @@
+             : XB({ schema: C, text: e })),
+     z != null && d != null && !p && (z = VHr(z, d, e ?? void 0)));
+   let B = d == null ? null : Ozc(p ? d : null, (e) => vzc(x, e)),
++    inputModeDisabled = !1,
 +    getAttributes = () => ({
 +      "aria-multiline": `true`,
 +      dir: `auto`,
 +      role: `textbox`,
 +      spellcheck: `true`,
++      tabindex: `0`,
 +      ...(inputModeDisabled ? {} : { inputmode: `none` }),
 +    }),
 +    setPointerInputMode = (e) => {
 +      inputModeDisabled !== e &&
 +        ((inputModeDisabled = e),
-+        j.isDestroyed || j.setProps({ attributes: getAttributes }));
++        V.isDestroyed || V.setProps({ attributes: getAttributes }));
 +    },
-+    j = new tDe(null, {
+     V = new RAe(null, {
+-      attributes: {
+-        "aria-multiline": `true`,
+-        dir: `auto`,
+-        role: `textbox`,
+-        spellcheck: `true`,
+-        tabindex: `0`,
+-      },
 +      attributes: getAttributes,
+       transformPastedText: M.transformPastedText,
        transformPastedHTML(e) {
-         return e.length > IH ? ` ` : jde(nfe(e).body.innerHTML) || ` `;
-       },
-@@ -85368,6 +85376,15 @@
-           b.dispatchEvent(new CustomEvent(dH, { detail: e.docChanged })));
+         if ((M.transformPastedHTML(e), e.length > 1e5)) return ` `;
+@@ -560773,7 +560781,13 @@
        },
        handleDOMEvents: {
-+        mousedown(e, t) {
-+          return (setPointerInputMode(!0), !1);
-+        },
+         keydown: (e, t) => M.handleKeyEvent(t),
+-        mousedown: (e, t) => M.handleMouseDown(t),
++        mousedown: (e, t) => (setPointerInputMode(!0), M.handleMouseDown(t)),
 +        touchstart(e, t) {
 +          return (setPointerInputMode(!0), !1);
 +        },
@@ -43,5 +43,5 @@
 +          return (setPointerInputMode(!1), !1);
 +        },
          keyup(e, t) {
+           M.handleKeyEvent(t);
            let { $from: n, empty: r } = e.state.selection;
-           return (

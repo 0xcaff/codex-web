@@ -1,57 +1,22 @@
---- a/webview/assets/app-primary-6b28e06666ff.js
-+++ b/webview/assets/app-primary-6b28e06666ff.js
-@@ -402326,7 +402326,8 @@
-       locationState: a,
-       setComments: o,
-     } = e,
--    s = a?.prefillPrompt,
-+    locationSearch = Mc().search,
-+    s = a?.prefillPrompt ?? new URLSearchParams(locationSearch).get(`prompt`),
-     c = a?.prefillPriorConversation ?? null,
-     l = a?.prefillAddedFiles ?? null,
-     u = a?.prefillCommentAttachments ?? null,
-@@ -408489,7 +408490,7 @@
-   let A = qw(Wln, k),
-     j = kx(bg);
-   (a.get(pT, j), qw(Vwe, j));
--  let M = f?.prefillPrompt,
-+  let M = f?.prefillPrompt ?? new URLSearchParams(d).get(`prompt`),
-     N = f?.prefillAddedFiles,
-     P = qw(sm, j),
-     F = i === `work` && A.effectiveLocation === `cloud`,
-@@ -412029,7 +412030,9 @@
-     d = kx(tke),
-     f = kx(fde),
-     p = Cg(gb.composerPlainTextMode),
--    { pathname: m, state: h } = Mc(),
-+    { pathname: m, search: searchParamsSearch, state: h } = Mc(),
-+    searchParamsPrompt =
-+      h?.prefillPrompt ?? new URLSearchParams(searchParamsSearch).get(`prompt`),
-     g;
-   t[1] === m ? (g = t[2]) : ((g = b(m)), (t[1] = m), (t[2] = g));
-   let _ = g,
-@@ -412104,18 +412107,18 @@
-     );
-   }
-   let z;
--  t[13] !== i || t[14] !== h?.prefillPrompt
--    ? ((z = h?.prefillPrompt ?? i.get(tw)),
-+  t[13] !== i || t[14] !== searchParamsPrompt
-+    ? ((z = searchParamsPrompt ?? i.get(tw)),
-       (t[13] = i),
--      (t[14] = h?.prefillPrompt),
-+      (t[14] = searchParamsPrompt),
-       (t[15] = z))
-     : (z = t[15]);
-   let B = z,
-     V;
--  t[16] !== i || t[17] !== h?.prefillPrompt
--    ? ((V = h?.prefillPrompt == null ? TLe(i) : void 0),
-+  t[16] !== i || t[17] !== searchParamsPrompt
-+    ? ((V = searchParamsPrompt == null ? TLe(i) : void 0),
-       (t[16] = i),
--      (t[17] = h?.prefillPrompt),
-+      (t[17] = searchParamsPrompt),
-       (t[18] = V))
-     : (V = t[18]);
-   let H = V,
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -615740,7 +615740,7 @@
+     c = Pr(),
+     l = Cc(),
+     u = n != null,
+-    d = o?.prefillPrompt,
++    d = o?.prefillPrompt ?? new URLSearchParams(c.search).get(`prompt`),
+     f = o?.prefillPromptFormat,
+     p = o?.prefillPromptOnlyIfEmpty,
+     m = o?.prefillLibraryFolders,
+--- a/webview/assets/app-primary-6f60e9ac4103.js
++++ b/webview/assets/app-primary-6f60e9ac4103.js
+@@ -140846,7 +140846,7 @@
+   let ie =
+       g?.prefillPromptOnlyIfEmpty && g.prefillPrompt != null
+         ? void 0
+-        : (g?.prefillPrompt ?? void 0),
++        : (g?.prefillPrompt ?? new URLSearchParams(m).get(`prompt`) ?? void 0),
+     ae;
+   t[41] === m ? (ae = t[42]) : ((ae = Wg(m)), (t[41] = m), (t[42] = ae));
+   let oe = ae,

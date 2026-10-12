@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial-236e1501144c.js
-+++ b/webview/assets/app-initial-236e1501144c.js
-@@ -426742,6 +426742,7 @@
-       (fWo = 5),
-       (pWo = 500),
-       (mWo = {
-+        overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
-         enableLiveValuesAutoRefresh: !0,
-         networkConfig: {
-           api: lWo,
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -506602,6 +506602,7 @@
+ function DQs(e) {
+   let t = {
+     ...zQs,
++    overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
+     enableLiveValuesAutoRefresh: !0,
+     ...(e === !0 ? {} : { disableStorage: !0, loggingEnabled: `disabled` }),
+   };
