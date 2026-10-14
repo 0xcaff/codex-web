@@ -1,0 +1,10 @@
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -346223,6 +346223,7 @@
+ async function DCa() {
+   ((OCa = TCa(CCa)),
+     (iX = await OCa.services),
++    (iX = window.__ELECTRON_SHIM__?.wrapServices?.(iX) ?? iX),
+     iX.statsig != null && (await aQt(iX.statsig)),
+     iX.clientCoordination != null && g_r(iX.clientCoordination),
+     iX.terminal != null && yQt(iX.terminal),

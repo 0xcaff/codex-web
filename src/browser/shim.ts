@@ -10,6 +10,7 @@ import {
   openSelectWorkspaceRootDialog,
   type WorkspaceDirectoryEntries,
 } from "./workspace-root-dialog";
+import { wrapWorkspaceFileServices } from "./workspace-file-download";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
@@ -108,6 +109,7 @@ type StatsigGateEvaluation = {
 };
 
 type ElectronShimState = {
+  wrapServices?: typeof wrapWorkspaceFileServices;
   initialRoute?: string;
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
@@ -367,6 +369,7 @@ const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
 const mobileMediaQuery = matchMedia("(max-width: 768px)");
 const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
+electronShim.wrapServices = wrapWorkspaceFileServices;
 const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 Object.assign(globalThis, {
