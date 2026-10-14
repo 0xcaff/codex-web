@@ -1,0 +1,19 @@
+--- a/webview/assets/app-initial-236e1501144c.js
++++ b/webview/assets/app-initial-236e1501144c.js
+@@ -156987,6 +156987,8 @@
+       )),
+     t.readDynamicTools != null)
+   ) {
++    // Resolve against this task's app-server and cwd, not the browser platform.
++    e = { ...e, usesDesktopMcp: await window.__ELECTRON_SHIM__.resolveDesktopMcp(t.requestClient, e.cwd) };
+     let n = await t.readDynamicTools();
+     ((a.dynamicTools = void 0),
+       e.registerDynamicTools !== !1 &&
+@@ -156994,6 +156996,7 @@
+       e.usesDesktopMcp &&
+         (a.config = {
+           ...a.config,
++          "mcp_servers.codex_app.required": true,
+           [LOt]: n.flatMap((e) =>
+             e.type === `namespace` ? e.tools.map(({ name: e }) => e) : [e.name],
+           ),

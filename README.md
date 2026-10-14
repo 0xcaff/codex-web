@@ -79,6 +79,14 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
 program to use; when run directly in a terminal it will wait for protocol input
 rather than opening an interactive prompt.
 
+Before starting or resuming a task, codex-web reads the connected app-server's
+effective configuration for that task's working directory. If `codex_app` is
+configured and enabled with a `command` or `url`, it uses desktop MCP and marks
+it required for the task so initialization failures are reported. If the server
+is absent or explicitly disabled, it uses `dynamicTools`. Configuration errors
+are reported instead of silently switching transports. This choice does not
+depend on the browser's operating system.
+
 ## security
 
 run `codex-web` only on trusted networks. treat anyone who can reach the
