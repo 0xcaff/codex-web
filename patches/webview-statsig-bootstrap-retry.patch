@@ -1,0 +1,11 @@
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -506670,7 +506670,7 @@
+       (PQs = `https://ab.chatgpt.com/v1`),
+       (FQs = `https://ab.chatgpt.com/v1/sdk_exception`),
+       (IQs = 5),
+-      (LQs = 5),
++      (LQs = 0),
+       (RQs = 500),
+       (zQs = {
+         networkConfig: { api: PQs, logEventUrl: NGs, sdkExceptionUrl: FQs },
