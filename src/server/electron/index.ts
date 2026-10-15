@@ -784,6 +784,11 @@ const crashReporter = {
 };
 
 const net = {
+  isOnline(): boolean {
+    // There is no Chromium network monitor in the headless host. Let transports
+    // attempt reconnects and determine connectivity from their own results.
+    return true;
+  },
   async fetch(input: string | URL, init?: RequestInit): Promise<Response> {
     // log("net.fetch", [input, init]);
     if (typeof globalThis.fetch === "function") {
