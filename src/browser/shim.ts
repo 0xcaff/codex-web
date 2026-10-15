@@ -348,6 +348,15 @@ function isOpenInBrowserMessage(value: unknown): value is {
   );
 }
 
+function isPickWorkspaceRootMessage(value: unknown): value is {
+  allowMultiple?: boolean;
+  type: "electron-pick-workspace-root-option";
+} {
+  return (
+    isRecord(value) && value.type === "electron-pick-workspace-root-option"
+  );
+}
+
 function requestWorkspaceDirectoryEntries(
   directoryPath: string | null,
 ): Promise<WorkspaceDirectoryEntries> {
@@ -458,6 +467,28 @@ export const ipcRenderer = {
           }
 
           return invokeMain(channel, [{ ...args[0], root }]);
+        });
+      }
+
+      // The "Add folders" button of the create/edit project dialog asks the
+      // host to pick directories. On desktop the host runs a native open
+      // dialog and replies with `workspace-root-option-picked` messages, but
+      // replaying those here makes the renderer's global handler close the
+      // open dialog (and, with zero projects, create one behind the user's
+      // back). Route the pick through the add-with-root message instead, so
+      // the chosen folder becomes a project root deterministically.
+      // (One root per invocation; the dialog can be opened again for more.)
+      if (isPickWorkspaceRootMessage(args[0])) {
+        return openSelectWorkspaceRootDialog({
+          listDirectory: requestWorkspaceDirectoryEntries,
+        }).then((root) => {
+          if (!root) {
+            return undefined;
+          }
+
+          return invokeMain(channel, [
+            { type: "electron-add-new-workspace-root-option", root },
+          ]);
         });
       }
     }
