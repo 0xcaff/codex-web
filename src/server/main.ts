@@ -699,9 +699,24 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   require(path.resolve(__dirname, "../../scratch/asar", packageJson.main));
 }
 
+async function resolveCodexCliPath(): Promise<void> {
+  if (process.env.CODEX_CLI_PATH?.trim()) return;
+
+  for (const directory of (process.env.PATH ?? "").split(path.delimiter)) {
+    const candidate = path.resolve(directory, "codex");
+    try {
+      if (!(await fs.stat(candidate)).isFile()) continue;
+      await fs.access(candidate, fs.constants.X_OK);
+      process.env.CODEX_CLI_PATH = candidate;
+      return;
+    } catch {}
+  }
+}
+
 async function main(args: string[]) {
   const options = parseServerArgs(args);
 
+  await resolveCodexCliPath();
   await startIpcBridgeServer(options);
 }
 
