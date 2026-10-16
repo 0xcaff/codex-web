@@ -121,7 +121,7 @@ function WorkspaceRootDialog({
           "-translate-y-1/2",
           "outline-none",
           "fixed",
-          "bg-token-dropdown-background/90",
+          "bg-token-dropdown-background",
           "text-token-foreground",
           "ring-token-border",
           "max-w-[92vw]",
@@ -516,15 +516,47 @@ function WorkspaceRootDialog({
   );
 }
 
-function ensureHost(): HTMLElement {
+function ensureHost(activeElement: Element | null): {
+  element: HTMLElement;
+  restore: () => void;
+} {
   const DIALOG_ID = "codex-web-workspace-root-dialog";
   let element = document.getElementById(DIALOG_ID);
   if (!element) {
     element = document.createElement("div");
     element.id = DIALOG_ID;
-    document.body.append(element);
+    // Keep pointer and focus events inside this browser dialog so the
+    // application's underlying modal does not dismiss itself.
+    for (const type of ["pointerdown", "mousedown", "click", "focusin"]) {
+      element.addEventListener(type, (event) => event.stopPropagation());
+    }
   }
-  return element;
+  const outerDialog = activeElement?.closest<HTMLElement>('[role="dialog"]');
+  if (!outerDialog) {
+    document.body.append(element);
+    return { element, restore: () => element.remove() };
+  }
+
+  const rect = outerDialog.getBoundingClientRect();
+  const { left, top, translate, backdropFilter, overflow } = outerDialog.style;
+  outerDialog.style.left = `${rect.left}px`;
+  outerDialog.style.top = `${rect.top}px`;
+  outerDialog.style.translate = "none";
+  outerDialog.style.backdropFilter = "none";
+  outerDialog.style.overflow = "visible";
+  outerDialog.append(element);
+
+  return {
+    element,
+    restore: () => {
+      element.remove();
+      outerDialog.style.left = left;
+      outerDialog.style.top = top;
+      outerDialog.style.translate = translate;
+      outerDialog.style.backdropFilter = backdropFilter;
+      outerDialog.style.overflow = overflow;
+    },
+  };
 }
 
 type WorkspaceRootDialogOptions = {
@@ -561,7 +593,8 @@ export async function openSelectWorkspaceRootDialog({
     };
   })();
 
-  const reactRoot = createRoot(ensureHost());
+  const { element, restore } = ensureHost(activeElement);
+  const reactRoot = createRoot(element);
   reactRoot.render(
     <QueryClientProvider client={queryClient}>
       <WorkspaceRootDialog listDirectory={listDirectory} onClose={resolveFn} />
@@ -570,11 +603,12 @@ export async function openSelectWorkspaceRootDialog({
 
   const result = await promise;
 
-  reactRoot.unmount();
-
   if (activeElement instanceof HTMLElement) {
     activeElement.focus();
   }
+
+  reactRoot.unmount();
+  restore();
 
   return result;
 }

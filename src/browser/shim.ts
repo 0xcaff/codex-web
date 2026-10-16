@@ -10,6 +10,7 @@ import {
   openSelectWorkspaceRootDialog,
   type WorkspaceDirectoryEntries,
 } from "./workspace-root-dialog";
+import { chooseOneDirectory } from "./directory-dialog-bridge";
 
 type IpcListener = (event: unknown, ...args: unknown[]) => void;
 
@@ -585,6 +586,24 @@ export const ipcRenderer = {
     return unimplemented("ipcRenderer.sendSync");
   },
 };
+
+addIpcListener("codex-web:open-directory-dialog", async (_event, requestId) => {
+  if (typeof requestId !== "string") {
+    return;
+  }
+
+  try {
+    const paths = await chooseOneDirectory(() =>
+      openSelectWorkspaceRootDialog({
+        listDirectory: requestWorkspaceDirectoryEntries,
+      }),
+    );
+    ipcRenderer.send("codex-web:directory-dialog-result", requestId, paths);
+  } catch (error) {
+    console.error("[electron-stub] directory dialog failed", error);
+    ipcRenderer.send("codex-web:directory-dialog-result", requestId, []);
+  }
+});
 
 ensureSocket();
 

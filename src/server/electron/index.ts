@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
@@ -771,6 +773,63 @@ class Notification {
 }
 
 const dialog = {
+  showOpenDialog(
+    windowOrOptions: BrowserWindow | { properties?: string[]; title?: string },
+    dialogOptions?: { properties?: string[]; title?: string },
+  ): Promise<{ canceled: boolean; filePaths: string[] }> {
+    const window =
+      windowOrOptions instanceof BrowserWindow
+        ? windowOrOptions
+        : BrowserWindow.getFocusedWindow();
+    const options =
+      windowOrOptions instanceof BrowserWindow
+        ? dialogOptions
+        : windowOrOptions;
+
+    if (!window || window.isDestroyed()) {
+      return Promise.resolve({ canceled: true, filePaths: [] });
+    }
+
+    const requestId = randomUUID();
+    return new Promise((resolve) => {
+      const finish = (paths: string[]): void => {
+        ipcMain.off("codex-web:directory-dialog-result", onResult);
+        window.off("closed", onClosed);
+        resolve({ canceled: paths.length === 0, filePaths: paths });
+      };
+      const onClosed = (): void => finish([]);
+      const onResult = (
+        event: unknown,
+        resultRequestId: unknown,
+        paths: unknown,
+      ): void => {
+        if (
+          (event as IpcMainEvent | null)?.sender?.id !==
+            window.webContents.id ||
+          resultRequestId !== requestId
+        ) {
+          return;
+        }
+        finish(
+          Array.isArray(paths) &&
+            paths.every((path) => typeof path === "string")
+            ? paths
+            : [],
+        );
+      };
+
+      ipcMain.on("codex-web:directory-dialog-result", onResult);
+      window.on("closed", onClosed);
+      (window.webContents as StubWebContents).send(
+        "codex-web:open-directory-dialog",
+        requestId,
+        {
+          allowMultiple:
+            options?.properties?.includes("multiSelections") ?? false,
+        },
+      );
+    });
+  },
   async showMessageBox(...args: unknown[]): Promise<{ response: number }> {
     log("dialog.showMessageBox", args);
     return { response: 0 };
