@@ -708,6 +708,14 @@ class Menu {
 
   popup(...args: unknown[]): void {
     log("Menu.popup", args);
+    // There is no native menu to render here. Electron calls this callback
+    // when the menu is dismissed and callers await it to learn the selection,
+    // so without it they would hang forever. Report "nothing selected".
+    const [options] = args as [Record<string, unknown>?];
+    const callback = options?.callback;
+    if (typeof callback === "function") {
+      setTimeout(callback as () => void, 0);
+    }
   }
 }
 

@@ -369,6 +369,316 @@ const initialSidebarState = !mobileMediaQuery.matches;
 const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
+type BrowserMenuEntry = {
+  id?: string;
+  type?: string;
+  checked?: boolean;
+  label?: string;
+  accelerator?: string;
+  enabled?: boolean;
+  toolTip?: string;
+  submenu?: BrowserMenuEntry[];
+  run?: () => void | Promise<void>;
+};
+
+let menuRoot: HTMLDivElement | null = null;
+let menuDismiss: (() => void) | null = null;
+let lastPointerX = 0;
+let lastPointerY = 0;
+
+// The shell invokes showContextMenu synchronously from the event handler, so
+// the most recent pointer position is the trigger position.
+document.addEventListener(
+  "pointerdown",
+  (event) => {
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+  },
+  true,
+);
+document.addEventListener(
+  "contextmenu",
+  (event) => {
+    lastPointerX = event.clientX;
+    lastPointerY = event.clientY;
+  },
+  true,
+);
+
+const MENU_PANEL_CSS = [
+  "position:fixed",
+  "z-index:10000",
+  "min-width:190px",
+  "padding:4px",
+  "border-radius:10px",
+  "border:1px solid rgba(128,128,128,.35)",
+  "background:var(--color-bg-primary, #ffffff)",
+  "color:var(--color-text-primary, #111111)",
+  "box-shadow:0 8px 24px rgba(0,0,0,.28)",
+  "font:13px/1.45 system-ui, sans-serif",
+].join(";");
+
+const MENU_ITEM_CSS = [
+  "display:flex",
+  "align-items:center",
+  "width:100%",
+  "text-align:left",
+  "padding:6px 10px",
+  "border:0",
+  "border-radius:6px",
+  "background:transparent",
+  "color:inherit",
+].join(";");
+
+function closeAllMenus(): void {
+  menuRoot?.remove();
+  menuRoot = null;
+  menuDismiss = null;
+}
+
+function positionPanel(panel: HTMLDivElement, x: number, y: number): void {
+  panel.style.left = `${x}px`;
+  panel.style.top = `${y}px`;
+  const rect = panel.getBoundingClientRect();
+  if (rect.right > window.innerWidth) {
+    panel.style.left = `${Math.max(4, x - rect.width)}px`;
+  }
+  if (rect.bottom > window.innerHeight) {
+    panel.style.top = `${Math.max(4, y - rect.height)}px`;
+  }
+}
+
+function openMenuPanel(
+  x: number,
+  y: number,
+  items: BrowserMenuEntry[],
+  onPick: (entry: BrowserMenuEntry | null) => void,
+  depth: number,
+): void {
+  if (!menuRoot) {
+    return;
+  }
+  for (const existing of Array.from(
+    menuRoot.querySelectorAll<HTMLElement>("[data-menu-depth]"),
+  )) {
+    if (Number(existing.dataset.menuDepth) >= depth) {
+      existing.remove();
+    }
+  }
+
+  const panel = document.createElement("div");
+  panel.setAttribute("role", "menu");
+  panel.dataset.menuDepth = String(depth);
+  panel.style.cssText = MENU_PANEL_CSS;
+
+  for (const item of items) {
+    if (item.type === "separator") {
+      const separator = document.createElement("div");
+      separator.style.cssText =
+        "height:1px;margin:4px 8px;background:rgba(128,128,128,.35)";
+      panel.appendChild(separator);
+      continue;
+    }
+
+    const enabled = item.enabled !== false;
+    const row = document.createElement("button");
+    row.type = "button";
+    row.setAttribute(
+      "role",
+      item.checked === undefined ? "menuitem" : "menuitemcheckbox",
+    );
+    if (item.checked) {
+      row.setAttribute("aria-checked", "true");
+    }
+    row.disabled = !enabled;
+    row.title = item.toolTip ?? "";
+    row.style.cssText = `${MENU_ITEM_CSS};cursor:${
+      enabled ? "pointer" : "default"
+    };opacity:${enabled ? 1 : 0.45}`;
+
+    const label = document.createElement("span");
+    label.textContent = item.label ?? "";
+    label.style.cssText = "flex:1;text-align:left";
+    row.appendChild(label);
+
+    if (item.accelerator) {
+      const accelerator = document.createElement("span");
+      accelerator.textContent = item.accelerator;
+      accelerator.style.cssText = "opacity:.55;font-size:11px;margin-left:18px";
+      row.appendChild(accelerator);
+    }
+
+    if (item.submenu && item.submenu.length > 0) {
+      const caret = document.createElement("span");
+      caret.textContent = "\u25B8";
+      caret.style.cssText = "opacity:.6;margin-left:12px";
+      row.appendChild(caret);
+      row.addEventListener("mouseenter", () => {
+        const rect = row.getBoundingClientRect();
+        openMenuPanel(rect.right - 6, rect.top - 6, item.submenu ?? [], onPick, depth + 1);
+      });
+    } else {
+      row.addEventListener("click", () => {
+        if (enabled) {
+          onPick(item);
+        }
+      });
+    }
+    panel.appendChild(row);
+  }
+
+  menuRoot.appendChild(panel);
+  positionPanel(panel, x, y);
+}
+
+function openBrowserMenu(
+  x: number,
+  y: number,
+  items: BrowserMenuEntry[],
+  onPick: (entry: BrowserMenuEntry | null) => void,
+): void {
+  closeAllMenus();
+  const root = document.createElement("div");
+  root.style.cssText = "position:fixed;inset:0;z-index:9999";
+  root.addEventListener("contextmenu", (event) => event.preventDefault());
+  root.addEventListener("mousedown", (event) => {
+    if (event.target === root) {
+      onPick(null);
+    }
+  });
+  document.body.appendChild(root);
+  menuRoot = root;
+  menuDismiss = () => onPick(null);
+  openMenuPanel(x, y, items, onPick, 0);
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && menuRoot) {
+    menuDismiss?.();
+  }
+});
+window.addEventListener("blur", closeAllMenus);
+window.addEventListener("resize", closeAllMenus);
+
+function conversationSurfaceFor(target: EventTarget | null): HTMLElement | null {
+  if (!(target instanceof Element)) {
+    return null;
+  }
+  if (target.closest("input, textarea, select, [contenteditable='true']")) {
+    return null;
+  }
+  return target.closest("main");
+}
+
+// The desktop shell shows a native text-editing context menu inside the
+// conversation (it comes from the webContents `context-menu` event, which a
+// browser renderer never produces), and installed-PWA windows suppress the
+// browser's own menu too. Provide an equivalent, but only where the app did
+// not already handle the event.
+// Click-triggered menus (the thread "..." overflow, exposed as
+// button[aria-label="Chat actions"]) lose their trigger once the shell falls
+// back to its React context menu: that fallback only wires onContextMenu, so
+// clicking the button does nothing. Translate the click into the contextmenu
+// event the fallback listens for, at the button's position.
+document.addEventListener(
+  "click",
+  (event) => {
+    // The click usually lands on the button's SVG icon, which is an
+    // SVGElement rather than an HTMLElement, so test for Element.
+    const target = event.target instanceof Element ? event.target : null;
+    const trigger = target?.closest(
+      "button[aria-haspopup='menu'][aria-label='Chat actions']",
+    );
+    if (!trigger) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = trigger.getBoundingClientRect();
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    // The overflow button lives in an overlay outside the row element, while
+    // the context menu trigger wraps the row itself, so re-target the
+    // synthesized event at the row the button visually belongs to.
+    const row = Array.from(
+      document.querySelectorAll("[data-app-action-sidebar-thread-row]"),
+    ).find((candidate) => {
+      const bounds = candidate.getBoundingClientRect();
+      return (
+        x >= bounds.left &&
+        x <= bounds.right &&
+        y >= bounds.top &&
+        y <= bounds.bottom
+      );
+    });
+    const scope = row ?? trigger;
+    const triggerElement =
+      scope.querySelector?.("[data-thread-title-trigger]") ?? scope;
+    // Defer so the synthetic gesture is decoupled from the real click's
+    // pointer sequence; otherwise the menu library consumes the next real
+    // click as the release of the opening gesture and item clicks die.
+    setTimeout(() => {
+      triggerElement.dispatchEvent(
+        new MouseEvent("contextmenu", {
+          bubbles: true,
+          cancelable: true,
+          button: 2,
+          buttons: 2,
+          clientX: x,
+          clientY: y,
+        }),
+      );
+    }, 0);
+  },
+  true,
+);
+
+document.addEventListener("contextmenu", (event) => {
+  if (event.defaultPrevented) {
+    return;
+  }
+  const surface = conversationSurfaceFor(event.target);
+  if (!surface) {
+    return;
+  }
+  event.preventDefault();
+
+  const selection = window.getSelection()?.toString() ?? "";
+  const message =
+    (event.target instanceof Element &&
+      event.target.closest("pre, code, p, [class*='markdown']")) ||
+    surface;
+  const threadId =
+    window.location.pathname.match(/^\/thread\/([^/]+)/)?.[1] ?? null;
+
+  openBrowserMenu(event.clientX, event.clientY, [
+    {
+      id: "copy",
+      label: "Copy",
+      enabled: selection.length > 0,
+      run: () => navigator.clipboard.writeText(selection),
+    },
+    {
+      id: "select-message",
+      label: "Select message",
+      run: () => {
+        const range = document.createRange();
+        range.selectNodeContents(message);
+        const current = window.getSelection();
+        current?.removeAllRanges();
+        current?.addRange(range);
+      },
+    },
+    {
+      id: "copy-thread-link",
+      label: "Copy thread link",
+      enabled: threadId != null,
+      run: () => navigator.clipboard.writeText(window.location.href),
+    },
+  ], () => undefined);
+});
+
+
 Object.assign(globalThis, {
   process: {
     arch: "arm64",
@@ -590,6 +900,19 @@ ensureSocket();
 
 export const contextBridge = {
   exposeInMainWorld(_key: string, _api: unknown): void {
+    // The shell hands context menus to the native Electron menu whenever
+    // `showContextMenu` is present on the bridge. There is no native menu in a
+    // browser, so that invoke never settles and every menu routed through it
+    // hangs. Dropping the method makes the shell fall back to its own React
+    // context menu, which renders and works here. Click-triggered menus (the
+    // thread "..." overflow) are re-attached below by synthesizing the
+    // contextmenu event the fallback listens for.
+    if (isRecord(_api) && "showContextMenu" in _api) {
+      const { showContextMenu: _showContextMenu, ...rest } = _api;
+      Reflect.set(window, _key, rest);
+      return;
+    }
+
     Reflect.set(window, _key, _api);
   },
 };
