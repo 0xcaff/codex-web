@@ -1,3 +1,6 @@
+import { inspect } from "node:util";
+import { NetRequest } from "./net-request";
+
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
@@ -68,8 +71,18 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
   return globals.__codexElectronIpcBridge;
 }
 
+const debugShim = process.env.CODEX_WEB_DEBUG_SHIM === "1";
+
 function log(method: string, args: unknown[]): void {
-  console.log(`[electron-main-stub] ${method}`, args);
+  if (!debugShim) return;
+  const details = inspect(args, {
+    depth: 2,
+    maxArrayLength: 10,
+    maxStringLength: 200,
+    breakLength: Infinity,
+    compact: true,
+  }).replaceAll("\n", " ");
+  console.log(`[electron-main-stub] ${method} ${details}`.slice(0, 2000));
 }
 
 function createDeepStub(pathLabel: string): StubFunction {
@@ -796,28 +809,8 @@ const net = {
     }
     return new Response("", { status: 204 });
   },
-  request(...args: unknown[]): {
-    getHeader: (name: string) => string | undefined;
-    once: (event: string, listener: StubListener) => unknown;
-    setHeader: (name: string, value: string) => void;
-  } {
-    // log("net.request", args);
-    const headers = new Map<string, string>();
-    const request = {
-      setHeader(name: string, value: string): void {
-        // log("net.request.setHeader", [name, value]);
-        headers.set(name.toLowerCase(), value);
-      },
-      getHeader(name: string): string | undefined {
-        // log("net.request.getHeader", [name]);
-        return headers.get(name.toLowerCase());
-      },
-      once(event: string, listener: StubListener): unknown {
-        // log("net.request.once", [event, listener]);
-        return request;
-      },
-    };
-    return request;
+  request(options: ConstructorParameters<typeof NetRequest>[0]): NetRequest {
+    return new NetRequest(options);
   },
 };
 
