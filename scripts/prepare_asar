@@ -6,15 +6,20 @@ if ((build_cores <= 0)); then
   build_cores="$(node -p 'require("node:os").availableParallelism()')"
 fi
 
-if command -v ripunzip >/dev/null 2>&1; then
-  RAYON_NUM_THREADS="$build_cores" ripunzip unzip-file -d scratch/ "$HOSTED_CODEX_APP_ZIP" \
-    'ChatGPT.app/Contents/Resources/app.asar' \
-    'ChatGPT.app/Contents/Resources/app.asar.unpacked/*'
-else
-  unzip -o "$HOSTED_CODEX_APP_ZIP" \
-    'ChatGPT.app/Contents/Resources/app.asar' \
-    'ChatGPT.app/Contents/Resources/app.asar.unpacked/*' -d scratch/
-fi
+extract_zip() {
+  local archive="$1" destination="$2"
+  shift 2
+
+  if command -v ripunzip >/dev/null 2>&1; then
+    RAYON_NUM_THREADS="$build_cores" ripunzip unzip-file -d "$destination" "$archive" "$@"
+  else
+    unzip -o "$archive" "$@" -d "$destination"
+  fi
+}
+
+extract_zip "$HOSTED_CODEX_APP_ZIP" scratch/ \
+  'ChatGPT.app/Contents/Resources/app.asar' \
+  'ChatGPT.app/Contents/Resources/app.asar.unpacked/*'
 asar extract "scratch/ChatGPT.app/Contents/Resources/app.asar" "scratch/asar"
 cp assets/* scratch/asar/webview/
 PWA_SOURCE_ICON="scratch/asar/webview/assets/app-f483cb0295ed.png"
