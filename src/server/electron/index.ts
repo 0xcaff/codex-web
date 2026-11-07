@@ -840,7 +840,8 @@ const nativeImage = {
   createFromPath(imagePath: string): { isEmpty: () => boolean } {
     log("nativeImage.createFromPath", [imagePath]);
     return {
-      isEmpty: () => !imagePath,
+      // Image decoding is unsupported in the headless host.
+      isEmpty: () => true,
     };
   },
 };
