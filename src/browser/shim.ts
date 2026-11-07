@@ -449,7 +449,24 @@ export const ipcRenderer = {
         return handleLocalFilePickerMessage(args[0]);
       }
 
+      if (
+        isRecord(args[0]) &&
+        args[0].type === "electron-pick-workspace-root-option"
+      ) {
+        return openSelectWorkspaceRootDialog({
+          listDirectory: requestWorkspaceDirectoryEntries,
+          mode: "pick",
+        }).then((root) => {
+          if (root) {
+            emitRendererEvent("codex_desktop:message-for-view", [
+              { type: "workspace-root-option-picked", root },
+            ]);
+          }
+        });
+      }
+
       if (isUnhandledAddWorkspaceRootOptionMessage(args[0])) {
+        const message = args[0];
         return openSelectWorkspaceRootDialog({
           listDirectory: requestWorkspaceDirectoryEntries,
         }).then((root) => {
@@ -457,7 +474,7 @@ export const ipcRenderer = {
             return undefined;
           }
 
-          return invokeMain(channel, [{ ...args[0], root }]);
+          return invokeMain(channel, [{ ...message, root }]);
         });
       }
     }
