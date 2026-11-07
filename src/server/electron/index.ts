@@ -3,6 +3,7 @@ type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
   close: () => void;
   on: (event: string, listener: StubListener) => unknown;
+  once: (event: string, listener: StubListener) => unknown;
   postMessage: (message: unknown) => void;
   start: () => void;
 };
@@ -88,6 +89,12 @@ function createDeepStub(pathLabel: string): StubFunction {
       return {};
     },
     get(_target, prop) {
+      // Upstream binds Electron methods before invoking them. Keep the native
+      // function helpers so binding a stub still returns a callable function.
+      if (prop === "bind" || prop === "call" || prop === "apply") {
+        return Reflect.get(_target, prop);
+      }
+
       if (prop === "then") {
         return undefined;
       }
