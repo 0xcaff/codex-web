@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial-6350d04672d0.js
-+++ b/webview/assets/app-initial-6350d04672d0.js
-@@ -506602,6 +506602,7 @@
- function DQs(e) {
-   let t = {
-     ...zQs,
-+    overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
-     enableLiveValuesAutoRefresh: !0,
-     ...(e === !0 ? {} : { disableStorage: !0, loggingEnabled: `disabled` }),
-   };
+--- a/webview/assets/async/182735.bb2cb0d2af.js
++++ b/webview/assets/async/182735.bb2cb0d2af.js
+@@ -213037,6 +213037,7 @@
+     function nU(e) {
+       let t = {
+         ...nA,
++        overrideAdapter: window.__ELECTRON_SHIM__.overrideAdapter,
+         enableLiveValuesAutoRefresh: !0,
+         ...(!0 === e && !(0, L.l)()
+           ? {}
