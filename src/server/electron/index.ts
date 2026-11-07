@@ -774,6 +774,10 @@ class Tray {
 }
 
 class Notification {
+  static isSupported(): boolean {
+    return false;
+  }
+
   constructor(...args: unknown[]) {
     log("new Notification", args);
   }
