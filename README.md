@@ -75,6 +75,12 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
 '
 ```
 
+the helper runs `app-server --print-startup-config` with the real `codex` CLI,
+preserving config overrides and startup flags, so Desktop can load its startup
+requirements. the Nix package includes the pinned CLI; when using the script
+directly, ensure a compatible `codex` is on `PATH`. ordinary app-server
+connections still use `CODEX_UNIX_SOCKET`.
+
 `codex app-server proxy --sock ...` is a raw stdio protocol bridge for another
 program to use; when run directly in a terminal it will wait for protocol input
 rather than opening an interactive prompt.
