@@ -139,11 +139,10 @@ flake-utils.lib.eachSystem systems (
 
         codex_remote_proxy = pkgs.writeShellApplication {
           name = "codex_remote_proxy";
-          runtimeInputs = [
-            codex
-            pkgs.bash
-            pkgs.coreutils
-            pkgs.websocat
+          runtimeInputs = with pkgs; [
+            bash
+            coreutils
+            websocat
           ];
           text = builtins.readFile ./scripts/codex_remote_proxy;
         };
