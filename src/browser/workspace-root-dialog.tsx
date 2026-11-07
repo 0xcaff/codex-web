@@ -32,6 +32,7 @@ function errorMessage(error: unknown): string {
 
 function WorkspaceRootDialog({
   listDirectory,
+  mode = "add",
   onClose,
 }: WorkspaceRootDialogOptions & {
   onClose: (value: string | null) => void;
@@ -66,19 +67,33 @@ function WorkspaceRootDialog({
   }
 
   useEffect(() => {
+    const host = dialogRef.current?.parentElement;
+    function handleFocusOut(event: FocusEvent): void {
+      if (
+        event.relatedTarget instanceof Node &&
+        host?.contains(event.relatedTarget)
+      ) {
+        // Let focus leave the underlying modal without its focus trap pulling it back.
+        event.stopPropagation();
+      }
+    }
+    document.addEventListener("focusout", handleFocusOut, true);
     dialogRef.current?.focus();
+    return () => document.removeEventListener("focusout", handleFocusOut, true);
   }, []);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopPropagation();
         onClose(null);
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    // Handle Escape before the underlying modal's document capture listener.
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [onClose]);
 
   const selectedPath = userSelectedPath ?? directoryQuery.data?.directoryPath;
@@ -102,11 +117,10 @@ function WorkspaceRootDialog({
           "codex-dialog-overlay",
           "fixed",
           "inset-0",
-          "z-50",
         ].join(" ")}
         data-state="open"
         onClick={() => onClose(null)}
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: "auto", zIndex: 0 }}
       />
       <div
         aria-describedby={DESCRIPTION_ID}
@@ -116,7 +130,6 @@ function WorkspaceRootDialog({
           "codex-dialog",
           "left-1/2",
           "top-1/2",
-          "z-50",
           "-translate-x-1/2",
           "-translate-y-1/2",
           "outline-none",
@@ -135,7 +148,7 @@ function WorkspaceRootDialog({
         data-state="open"
         ref={dialogRef}
         role="dialog"
-        style={{ pointerEvents: "auto" }}
+        style={{ pointerEvents: "auto", zIndex: 1 }}
         tabIndex={-1}
       >
         <form
@@ -186,10 +199,10 @@ function WorkspaceRootDialog({
                     ].join(" ")}
                     id={TITLE_ID}
                   >
-                    Add remote project
+                    {mode === "pick" ? "Select folder" : "Add remote project"}
                   </div>
                   <div className={["sr-only"].join(" ")} id={DESCRIPTION_ID}>
-                    Choose a folder on the Codex Web host to add as a project.
+                    Choose a folder on the Codex Web host for your project.
                   </div>
                 </div>
               </div>
@@ -482,7 +495,7 @@ function WorkspaceRootDialog({
                   disabled={!selectedPath || isBusy}
                   type="submit"
                 >
-                  Add project
+                  {mode === "pick" ? "Select folder" : "Add project"}
                 </button>
               </div>
             </div>
@@ -522,12 +535,32 @@ function ensureHost(): HTMLElement {
   if (!element) {
     element = document.createElement("div");
     element.id = DIALOG_ID;
+    Object.assign(element.style, {
+      inset: "0",
+      isolation: "isolate",
+      pointerEvents: "none",
+      position: "fixed",
+      zIndex: "var(--max-app-overlay-z-index, 10000)",
+    });
+    // The project form stays open underneath. Keep its modal focus and scroll
+    // handlers from intercepting interactions with this separate React root.
+    for (const eventName of [
+      "click",
+      "focusin",
+      "mousedown",
+      "pointerdown",
+      "touchmove",
+      "wheel",
+    ] as const) {
+      element.addEventListener(eventName, (event) => event.stopPropagation());
+    }
     document.body.append(element);
   }
   return element;
 }
 
 type WorkspaceRootDialogOptions = {
+  mode?: "add" | "pick";
   listDirectory: (
     directoryPath: string | null,
   ) => Promise<WorkspaceDirectoryEntries>;
@@ -535,6 +568,7 @@ type WorkspaceRootDialogOptions = {
 
 export async function openSelectWorkspaceRootDialog({
   listDirectory,
+  mode,
 }: WorkspaceRootDialogOptions): Promise<string | null> {
   const activeElement = document.activeElement;
 
@@ -564,7 +598,11 @@ export async function openSelectWorkspaceRootDialog({
   const reactRoot = createRoot(ensureHost());
   reactRoot.render(
     <QueryClientProvider client={queryClient}>
-      <WorkspaceRootDialog listDirectory={listDirectory} onClose={resolveFn} />
+      <WorkspaceRootDialog
+        listDirectory={listDirectory}
+        mode={mode}
+        onClose={resolveFn}
+      />
     </QueryClientProvider>,
   );
 
