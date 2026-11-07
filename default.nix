@@ -86,56 +86,88 @@ flake-utils.lib.eachSystem systems (
             runHook postInstall
           '';
         };
-      in
-      {
-        default = pkgs.buildNpmPackage {
-          HOSTED_CODEX_APP_ZIP = codexZip;
 
-          pname = "codex-web";
-          version = "1.0.0";
-          src = ./.;
+        preparedApp = pkgs.buildNpmPackage {
+          pname = "codex-web-prepared-app";
+          version = appVersion;
+          HOSTED_CODEX_APP_ZIP = codexZip;
+          src = pkgs.lib.fileset.toSource {
+            root = ./.;
+            fileset = pkgs.lib.fileset.unions [
+              ./package.json
+              ./package-lock.json
+              ./scripts/prepare_asar
+              ./assets
+              ./patches
+              ./src/browser
+              ./vite.browser.config.ts
+            ];
+          };
 
           inherit npmDeps;
-
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
-          npmBuildScript = "build";
           npmRebuildFlags = [ "--ignore-scripts" ];
-          npmPruneFlags = [ "--ignore-scripts" ];
-
           nativeBuildInputs = [
             pkgs.unzip
             pkgs.patch
           ];
 
-          preBuild = ''
+          buildPhase = ''
+            runHook preBuild
             patchShebangs scripts
+            npm run prepare:asar
+            npm run build:browser
+            runHook postBuild
           '';
 
-          preInstall = ''
-            # npm pack always runs the package prepare lifecycle. Nix already ran
-            # the explicit build script above, so remove prepare in the sandbox.
-            node -e '
-              const fs = require("fs");
-              const packageJsonPath = "package.json";
-              const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-              delete packageJson.scripts.prepare;
-              fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-            '
-
-            # Keep only extracted asar artifacts for packaging.
-            rm -rf scratch/ChatGPT.app
-
-            # npm pack drops directories named node_modules, so rename the nested
-            # asar tree in-place to keep it in the package output.
-            mv scratch/asar/node_modules scratch/asar/asar_node_modules
+          installPhase = ''
+            runHook preInstall
+            mv scratch/asar "$out"
+            runHook postInstall
           '';
 
-          postInstall = ''
-            mv $out/lib/node_modules/codex-web/scratch/asar/{asar_,}node_modules
+          # The final package performs fixup after assembling its runtime files.
+          dontFixup = true;
+        };
+      in
+      {
+        prepared-app = preparedApp;
 
-            addon="$out/lib/node_modules/codex-web/node_modules/better-sqlite3"
+        default = pkgs.buildNpmPackage {
+          pname = "codex-web";
+          version = "1.0.0";
+          src = ./.;
+
+          inherit npmDeps;
+          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
+          npmBuildScript = "build:server";
+          npmInstallFlags = [ "--omit=dev" ];
+          npmRebuildFlags = [ "--ignore-scripts" ];
+
+          installPhase = ''
+            runHook preInstall
+
+            packageOut="$out/lib/node_modules/codex-web"
+            mkdir -p "$packageOut/src" "$packageOut/scratch" "$out/bin"
+
+            echo "Installing server and package metadata"
+            cp package.json README.md "$packageOut/"
+            cp -r src/server "$packageOut/src/"
+            find "$packageOut/src/server" -type f ! -name '*.js' -delete
+
+            echo "Installing cached upstream app"
+            cp -r --no-preserve=mode ${preparedApp} "$packageOut/scratch/asar"
+
+            echo "Installing production dependencies"
+            cp -r node_modules "$packageOut/node_modules"
+            addon="$packageOut/node_modules/better-sqlite3"
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
+
+            makeWrapper ${pkgs.lib.getExe pkgs.nodejs} "$out/bin/codex-web" \
+              --add-flags "$packageOut/src/server/main.js"
+
+            runHook postInstall
           '';
         };
 
