@@ -24,6 +24,10 @@ there are a few places to update next.
 
 1. `appVersion` in default.nix and `hash` in `codexZip`.
 2. `APP_VERSION` in ./scripts/prepare
+3. The Chromium version in `ensureElectronLikeProcessContext` in
+   `src/server/main.ts`, matching the version under
+   `ChatGPT.app/Contents/Frameworks/Codex Framework.framework/Versions/`.
+4. `PWA_SOURCE_ICON` in `scripts/prepare_asar` if the upstream icon filename changed.
 
 then temporarily comment out the patch lines in ./scripts/prepare_asar and run
 

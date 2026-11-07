@@ -1,10 +1,10 @@
---- a/webview/assets/app-initial-6350d04672d0.js
-+++ b/webview/assets/app-initial-6350d04672d0.js
-@@ -144501,6 +144501,7 @@
-     n = rpe(e.appVersion),
-     r = e.buildFlavor !== `prod`;
-   (E1n({
-+    enabled: !1,
-     beforeBreadcrumb: CLe,
-     beforeSend: pNe,
-     dsn: e.dsn,
+--- a/webview/assets/async/182735.bb2cb0d2af.js
++++ b/webview/assets/async/182735.bb2cb0d2af.js
+@@ -385263,6 +385263,7 @@
+           delete e.initialScope,
+           t(e));
+       })({
++        enabled: !1,
+         beforeBreadcrumb: at.SKH,
+         beforeSend: ar.tM,
+         dsn: e.dsn,

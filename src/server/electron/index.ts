@@ -6,6 +6,7 @@ type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
   close: () => void;
   on: (event: string, listener: StubListener) => unknown;
+  once: (event: string, listener: StubListener) => unknown;
   postMessage: (message: unknown) => void;
   start: () => void;
 };
@@ -101,6 +102,12 @@ function createDeepStub(pathLabel: string): StubFunction {
       return {};
     },
     get(_target, prop) {
+      // Upstream binds Electron methods before invoking them. Keep the native
+      // function helpers so binding a stub still returns a callable function.
+      if (prop === "bind" || prop === "call" || prop === "apply") {
+        return Reflect.get(_target, prop);
+      }
+
       if (prop === "then") {
         return undefined;
       }
@@ -833,7 +840,8 @@ const nativeImage = {
   createFromPath(imagePath: string): { isEmpty: () => boolean } {
     log("nativeImage.createFromPath", [imagePath]);
     return {
-      isEmpty: () => !imagePath,
+      // Image decoding is unsupported in the headless host.
+      isEmpty: () => true,
     };
   },
 };

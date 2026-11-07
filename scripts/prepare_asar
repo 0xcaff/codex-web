@@ -1,10 +1,28 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
+build_cores="${NIX_BUILD_CORES:-0}"
+if ((build_cores <= 0)); then
+  build_cores="$(node -p 'require("node:os").availableParallelism()')"
+fi
+
+extract_zip() {
+  local archive="$1" destination="$2"
+  shift 2
+
+  if command -v ripunzip >/dev/null 2>&1; then
+    RAYON_NUM_THREADS="$build_cores" ripunzip unzip-file -d "$destination" "$archive" "$@"
+  else
+    unzip -o "$archive" "$@" -d "$destination"
+  fi
+}
+
+extract_zip "$HOSTED_CODEX_APP_ZIP" scratch/ \
+  'ChatGPT.app/Contents/Resources/app.asar' \
+  'ChatGPT.app/Contents/Resources/app.asar.unpacked/*'
 asar extract "scratch/ChatGPT.app/Contents/Resources/app.asar" "scratch/asar"
 cp assets/* scratch/asar/webview/
-PWA_SOURCE_ICON="scratch/asar/webview/assets/app-f483cb0295ed.png"
+PWA_SOURCE_ICON="scratch/asar/webview/assets/app.7771f23f03.png"
 PWA_TARGET_ICON="scratch/asar/webview/assets/pwa-icon-512.png"
 PWA_ICON_SIZE=512
 PWA_TOTAL_PADDING_PERCENT=25
@@ -22,7 +40,8 @@ else
   done < <(
     awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
   )
-  prettier --ignore-path /dev/null --ignore-unknown --write "${patched_files[@]}"
+  printf '%s\0' "${patched_files[@]}" | xargs -0 -n 1 -P "$build_cores" \
+    prettier --ignore-path /dev/null --ignore-unknown --write
 fi
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-style.patch
