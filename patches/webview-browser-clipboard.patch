@@ -1,0 +1,18 @@
+--- a/webview/assets/app-shared-8bd9d0399038.js
++++ b/webview/assets/app-shared-8bd9d0399038.js
+@@ -279806,6 +279806,15 @@
+ async function qli() {
+   (($3 = Uli(Vli)),
+     (e6 = await $3.services),
++    // Clipboard access belongs to the browser, not the remote desktop host.
++    (e6.clipboard = {
++      async readText() {
++        return navigator.clipboard.readText();
++      },
++      async writeText(e) {
++        await navigator.clipboard.writeText(e);
++      },
++    }),
+     $3.onRpcBroken(Gli(e6.histogramCollector)),
+     e6.threadReadState != null &&
+       (await Vli.threadReadState.initialize(e6.threadReadState)),
