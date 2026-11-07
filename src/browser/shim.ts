@@ -365,9 +365,6 @@ function requestWorkspaceDirectoryEntries(
 }
 
 const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
-const mobileMediaQuery = matchMedia("(max-width: 768px)");
-const initialSidebarState = !mobileMediaQuery.matches;
-const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 Object.assign(globalThis, {
@@ -380,76 +377,83 @@ Object.assign(globalThis, {
   },
 });
 
-// Keep device-local services in the browser while forwarding other services to the host.
-electronShim.services = {
-  clipboard: {
-    async readText(): Promise<string> {
-      return navigator.clipboard.readText();
+function makeElectronShim(): ElectronShimState {
+  const mobileMediaQuery = matchMedia("(max-width: 768px)");
+  const initialRoute = mapBrowserPathToInitialRoute(
+    window.location.pathname,
+    window.location.search,
+  );
+
+  if (initialRoute.browserPath) {
+    window.history.pushState(undefined, "", initialRoute.browserPath);
+  }
+
+  const electronShim: ElectronShimState = {
+    // Keep device-local services in the browser while forwarding other services to the host.
+    services: {
+      clipboard: {
+        async readText(): Promise<string> {
+          return navigator.clipboard.readText();
+        },
+        async writeText(text: string): Promise<void> {
+          await navigator.clipboard.writeText(text);
+        },
+      },
     },
-    async writeText(text: string): Promise<void> {
-      await navigator.clipboard.writeText(text);
+    overrideAdapter: {
+      getGateOverride(evaluation) {
+        if (evaluation.name === "2911712394") {
+          return {
+            ...evaluation,
+            value: true,
+          };
+        }
+
+        if (evaluation.name === "1042620455") {
+          // Remote control (Slingshot).
+          return {
+            ...evaluation,
+            value: true,
+          };
+        }
+
+        return null;
+      },
     },
-  },
-};
+    initialRoute: initialRoute.memoryPath,
+    initialSidebarState: !mobileMediaQuery.matches,
+    onMemoryNavigationChanged(navigation) {
+      const path = navigation.location.pathname;
+      if (
+        navigation.action !== "POP" &&
+        mobileMediaQuery.matches &&
+        shouldCloseSidebarForMemoryPath(path)
+      ) {
+        electronShim.closeSidebar?.();
+      }
 
-electronShim.overrideAdapter = {
-  getGateOverride(evaluation) {
-    if (evaluation.name === "2911712394") {
-      return {
-        ...evaluation,
-        value: true,
-      };
-    }
+      const browserPath = mapMemoryPathToBrowserPath(path);
+      if (browserPath == null) {
+        return;
+      }
 
-    if (evaluation.name === "1042620455") {
-      // Remote control (Slingshot).
-      return {
-        ...evaluation,
-        value: true,
-      };
-    }
+      if (browserPath.titleChange) {
+        document.title = browserPath.titleChange;
+      }
 
-    return null;
-  },
-};
+      if (window.location.pathname === browserPath.path) {
+        window.history.replaceState(undefined, "", browserPath.path);
+        return;
+      }
 
-const initialRoute = mapBrowserPathToInitialRoute(
-  window.location.pathname,
-  window.location.search,
-);
-electronShim.initialRoute = initialRoute.memoryPath;
+      window.history.pushState(undefined, "", browserPath.path);
+    },
+  };
 
-if (initialRoute.browserPath) {
-  window.history.pushState(undefined, "", initialRoute.browserPath);
+  return electronShim;
 }
 
-electronShim.initialSidebarState = initialSidebarState;
-electronShim.onMemoryNavigationChanged = (navigation) => {
-  const path = navigation.location.pathname;
-  if (
-    navigation.action !== "POP" &&
-    mobileMediaQuery.matches &&
-    shouldCloseSidebarForMemoryPath(path)
-  ) {
-    electronShim.closeSidebar?.();
-  }
-
-  const browserPath = mapMemoryPathToBrowserPath(path);
-  if (browserPath == null) {
-    return;
-  }
-
-  if (browserPath.titleChange) {
-    document.title = browserPath.titleChange;
-  }
-
-  if (window.location.pathname === browserPath.path) {
-    window.history.replaceState(undefined, "", browserPath.path);
-    return;
-  }
-
-  window.history.pushState(undefined, "", browserPath.path);
-};
+window.__ELECTRON_SHIM__ = makeElectronShim();
 
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
