@@ -16,10 +16,10 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.1103.32239";
+    appVersion = "26.1007.30912";
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-aNq8st/ukdJF5XDFzEVVLJbz63Gd7cmMkH76ZBl/pA0=";
+      hash = "sha256-tpmowtWi8jysWdxnOI4lr0v1/C+2qzD/okOpaOT4FaM=";
     };
     codex = self.packages.${system}.codex;
   in
@@ -139,11 +139,10 @@ flake-utils.lib.eachSystem systems (
 
         codex_remote_proxy = pkgs.writeShellApplication {
           name = "codex_remote_proxy";
-          runtimeInputs = [
-            codex
-            pkgs.bash
-            pkgs.coreutils
-            pkgs.websocat
+          runtimeInputs = with pkgs; [
+            bash
+            coreutils
+            websocat
           ];
           text = builtins.readFile ./scripts/codex_remote_proxy;
         };

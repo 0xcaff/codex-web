@@ -1,12 +1,8 @@
-import { inspect } from "node:util";
-import { NetRequest } from "./net-request";
-
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
 type StubMessagePort = {
   close: () => void;
   on: (event: string, listener: StubListener) => unknown;
-  once: (event: string, listener: StubListener) => unknown;
   postMessage: (message: unknown) => void;
   start: () => void;
 };
@@ -72,18 +68,8 @@ function getIpcMainBridgeState(): IpcMainBridgeState {
   return globals.__codexElectronIpcBridge;
 }
 
-const debugShim = process.env.CODEX_WEB_DEBUG_SHIM === "1";
-
 function log(method: string, args: unknown[]): void {
-  if (!debugShim) return;
-  const details = inspect(args, {
-    depth: 2,
-    maxArrayLength: 10,
-    maxStringLength: 200,
-    breakLength: Infinity,
-    compact: true,
-  }).replaceAll("\n", " ");
-  console.log(`[electron-main-stub] ${method} ${details}`.slice(0, 2000));
+  console.log(`[electron-main-stub] ${method}`, args);
 }
 
 function createDeepStub(pathLabel: string): StubFunction {
@@ -102,12 +88,6 @@ function createDeepStub(pathLabel: string): StubFunction {
       return {};
     },
     get(_target, prop) {
-      // Upstream binds Electron methods before invoking them. Keep the native
-      // function helpers so binding a stub still returns a callable function.
-      if (prop === "bind" || prop === "call" || prop === "apply") {
-        return Reflect.get(_target, prop);
-      }
-
       if (prop === "then") {
         return undefined;
       }
@@ -816,8 +796,28 @@ const net = {
     }
     return new Response("", { status: 204 });
   },
-  request(options: ConstructorParameters<typeof NetRequest>[0]): NetRequest {
-    return new NetRequest(options);
+  request(...args: unknown[]): {
+    getHeader: (name: string) => string | undefined;
+    once: (event: string, listener: StubListener) => unknown;
+    setHeader: (name: string, value: string) => void;
+  } {
+    // log("net.request", args);
+    const headers = new Map<string, string>();
+    const request = {
+      setHeader(name: string, value: string): void {
+        // log("net.request.setHeader", [name, value]);
+        headers.set(name.toLowerCase(), value);
+      },
+      getHeader(name: string): string | undefined {
+        // log("net.request.getHeader", [name]);
+        return headers.get(name.toLowerCase());
+      },
+      once(event: string, listener: StubListener): unknown {
+        // log("net.request.once", [event, listener]);
+        return request;
+      },
+    };
+    return request;
   },
 };
 

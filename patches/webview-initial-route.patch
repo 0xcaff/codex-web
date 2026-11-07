@@ -1,34 +1,34 @@
---- a/webview/assets/async/182735.bb2cb0d2af.js
-+++ b/webview/assets/async/182735.bb2cb0d2af.js
-@@ -91034,7 +91034,7 @@
-                 },
-               ];
-             return (
--              (e = new p(m)),
-+              (e = new p(m ?? [window.__ELECTRON_SHIM__.initialRoute])),
-               (n = (t = (0, s.aE)({
-                 history: e,
-                 routes: i,
-@@ -91049,6 +91049,13 @@
-         : (t = d[1]);
-       let [v] = (0, a.useState)(t),
-         { router: y, history: E } = v;
-+      (0, a.useEffect)(() =>
-+        y.subscribe((state) => {
-+          window.__ELECTRON_SHIM__.onMemoryNavigationChanged({
-+            action: state.historyAction,
-+            location: state.location,
-+          });
-+        }), [y]);
-       return (
-         d[2] !== y
-           ? ((n = (0, r.jsx)(l, { router: y, useTransitions: !1 })),
-@@ -114260,7 +114267,7 @@
-       (e.set(q, t), J(e, t, { ...n, animate: n.animate ?? !r }));
-     }
-     function et() {
--      return !0;
-+      return window.__ELECTRON_SHIM__.initialSidebarState;
-     }
-     function en() {
-       return !0;
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -75630,7 +75630,7 @@
+   return Ch(hzt, void 0) !== void 0;
+ }
+ function czt() {
+-  return !0;
++  return window.__ELECTRON_SHIM__.initialSidebarState;
+ }
+ function lzt(e) {
+   return e === `/settings` || !!e?.startsWith(`/settings/`);
+@@ -324142,12 +324142,19 @@
+     ? (i = t[1])
+     : ((i = () =>
+         RNe([{ path: `*`, Component: qHa, ErrorBoundary: JHa }], {
+-          initialEntries: r,
++          initialEntries: r ?? [window.__ELECTRON_SHIM__.initialRoute],
+         })),
+       (t[0] = r),
+       (t[1] = i));
+-  let [a] = (0, XHa.useState)(i),
+-    o;
++  let [a] = (0, XHa.useState)(i);
++  (0, XHa.useEffect)(() =>
++    a.subscribe((state) => {
++      window.__ELECTRON_SHIM__.onMemoryNavigationChanged({
++        action: state.historyAction,
++        location: state.location,
++      });
++    }), [a]);
++  let o;
+   t[2] === a
+     ? (o = t[3])
+     : ((o = (0, ZHa.jsx)(sHa, { router: a, useTransitions: !1 })),

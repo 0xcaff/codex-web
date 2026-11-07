@@ -1,44 +1,22 @@
---- a/webview/assets/async/885188.3857056929.js
-+++ b/webview/assets/async/885188.3857056929.js
-@@ -2385,7 +2385,7 @@
+--- a/webview/assets/app-shared-8bd9d0399038.js
++++ b/webview/assets/app-shared-8bd9d0399038.js
+@@ -119861,7 +119861,7 @@
          }
-       },
-       Q = class {
--        encodingLevel = "structuredClonable";
-+        encodingLevel = "jsonCompatible";
+       }),
+       (VFt = class {
+-        encodingLevel = `structuredClonable`;
++        encodingLevel = `jsonCompatible`;
          constructor(e) {
-           ((this.#r = e),
+           ((this.#e = e),
              e.start(),
---- a/webview/assets/async/398566.8e977c1734.js
-+++ b/webview/assets/async/398566.8e977c1734.js
-@@ -9569,7 +9569,7 @@
-         }
-       },
-       G = class {
--        encodingLevel = "structuredClonable";
-+        encodingLevel = "jsonCompatible";
-         constructor(e) {
-           ((this.#r = e),
-             e.start(),
---- a/webview/assets/async/932791.1dbd17ec78.js
-+++ b/webview/assets/async/932791.1dbd17ec78.js
-@@ -4370,7 +4370,7 @@
-         }
-       },
-       _ = class {
--        encodingLevel = "structuredClonable";
-+        encodingLevel = "jsonCompatible";
-         constructor(e) {
-           ((this.#r = e),
-             e.start(),
---- a/.vite/build/early-bootstrap-920-a204a41244c4b913.js
-+++ b/.vite/build/early-bootstrap-920-a204a41244c4b913.js
-@@ -224817,7 +224817,7 @@
-         return new en.oB(n, t, r).getRemoteMain();
-       }
-       class eSM {
--        encodingLevel = "structuredClonable";
-+        encodingLevel = "jsonCompatible";
-         constructor(e) {
-           ((this.#lL = e),
-             e.start(),
+--- a/.vite/build/main-CqEoQDOU.js
++++ b/.vite/build/main-CqEoQDOU.js
+@@ -159876,7 +159876,7 @@
+   return new l.Mt(r, t, n).getRemoteMain();
+ }
+ var wXe = class {
+-    encodingLevel = `structuredClonable`;
++    encodingLevel = `jsonCompatible`;
+     constructor(e) {
+       ((this.#e = e),
+         e.start(),

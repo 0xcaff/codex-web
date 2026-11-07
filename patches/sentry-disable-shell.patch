@@ -1,20 +1,20 @@
 --- a/.vite/build/worker.js
 +++ b/.vite/build/worker.js
-@@ -105513,6 +105513,7 @@
-                         })());
-                     })(e, DC);
-                   })({
-+                    enabled: !1,
-                     dsn: e.dsn,
-                     transport: (e) => {
-                       let t = CL(e.bufferSize ?? 64);
---- a/.vite/build/early-bootstrap-339-dd3f3328d53d7b14.js
-+++ b/.vite/build/early-bootstrap-339-dd3f3328d53d7b14.js
-@@ -56670,6 +56670,7 @@
-         g && (n = +!!S);
-         let T = (0, o.nVh)(f.version);
-         (a.Ts({
-+          enabled: !1,
-           ipcMode: a.QU.Classic,
-           dsn: v.dsn,
-           transport: a.l_((e) =>
+@@ -120541,6 +120541,7 @@
+   let r = dP(e.appVersion),
+     i = e.buildFlavor !== `prod`;
+   (Ub({
++    enabled: !1,
+     dsn: e.dsn,
+     transport: (e) => {
+       let t = xu(e.bufferSize ?? 64);
+--- a/.vite/build/bootstrap-CooIJpZm.js
++++ b/.vite/build/bootstrap-CooIJpZm.js
+@@ -19758,6 +19758,7 @@
+   r && (s = +!!o);
+   let c = ve(n.version);
+   (uw({
++    enabled: !1,
+     ipcMode: wx.Classic,
+     dsn: zw.dsn,
+     transport: zC(Nw(t)),
