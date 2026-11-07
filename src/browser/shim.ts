@@ -1,3 +1,4 @@
+import { serialize, deserialize } from "@ungap/structured-clone";
 import {
   mapBrowserPathToInitialRoute,
   mapMemoryPathToBrowserPath,
@@ -29,7 +30,8 @@ type RendererToMainMessage =
   | {
       type: "message-port-message";
       portId: string;
-      data: unknown;
+      data: ReturnType<typeof serialize>;
+      portIds: string[];
     }
   | {
       type: "message-port-close";
@@ -48,6 +50,12 @@ type RendererToMainMessage =
     };
 
 type MainToRendererMessage =
+  | {
+      type: "ipc-main-post-message";
+      channel: string;
+      message: ReturnType<typeof serialize>;
+      portIds: string[];
+    }
   | {
       type: "ipc-main-event";
       channel: string;
@@ -80,7 +88,8 @@ type MainToRendererMessage =
   | {
       type: "message-port-message";
       portId: string;
-      data: unknown;
+      data: ReturnType<typeof serialize>;
+      portIds: string[];
     }
   | {
       type: "message-port-close";
@@ -155,18 +164,75 @@ function unimplemented(method: string): never {
   throw new Error(`[electron-stub] ${method} is not implemented`);
 }
 
-export function emitRendererEvent(channel: string, args: unknown[]): void {
+export function emitRendererEvent(
+  channel: string,
+  args: unknown[],
+  ports: MessagePort[] = [],
+): void {
   const listeners = rendererListeners.get(channel);
   if (!listeners || listeners.size === 0) {
     return;
   }
-  const event = { sender: null };
+  const event = { sender: null, ports };
   for (const listener of listeners) {
     listener(event, ...args);
   }
 }
 
+function bindMessagePort(portId: string, port: MessagePort): void {
+  if (messagePorts.has(portId))
+    throw new Error("Duplicate transferred MessagePort id");
+  messagePorts.set(portId, port);
+  port.addEventListener("message", (event) => {
+    enqueueMessage({
+      type: "message-port-message",
+      portId,
+      data: serialize(event.data),
+      portIds: exportMessagePorts(event.ports),
+    });
+  });
+  const close = () => {
+    if (messagePorts.delete(portId)) {
+      port.close();
+      enqueueMessage({ type: "message-port-close", portId });
+    }
+  };
+  port.addEventListener("messageerror", close);
+  port.addEventListener("close", close);
+  port.start();
+}
+
+function exportMessagePorts(ports: readonly Transferable[]): string[] {
+  return ports.map((port) => {
+    if (!(port instanceof MessagePort)) {
+      throw new TypeError(
+        "Only MessagePort transfers are supported by the browser IPC bridge.",
+      );
+    }
+    const portId = `message_port_${nextRequestId()}`;
+    bindMessagePort(portId, structuredClone(port, { transfer: [port] }));
+    return portId;
+  });
+}
+
+function importMessagePorts(ids: string[]): MessagePort[] {
+  return ids.map((id) => {
+    const channel = new MessageChannel();
+    bindMessagePort(id, channel.port1);
+    return channel.port2;
+  });
+}
+
 function handleIncomingMessage(message: MainToRendererMessage): void {
+  if (message.type === "ipc-main-post-message") {
+    emitRendererEvent(
+      message.channel,
+      [deserialize(message.message)],
+      importMessagePorts(message.portIds),
+    );
+    return;
+  }
+
   if (message.type === "ipc-main-event") {
     emitRendererEvent(message.channel, message.args);
     return;
@@ -187,7 +253,12 @@ function handleIncomingMessage(message: MainToRendererMessage): void {
   }
 
   if (message.type === "message-port-message") {
-    messagePorts.get(message.portId)?.postMessage(message.data);
+    messagePorts
+      .get(message.portId)
+      ?.postMessage(
+        deserialize(message.data),
+        importMessagePorts(message.portIds),
+      );
     return;
   }
 
@@ -514,44 +585,11 @@ export const ipcRenderer = {
     message: unknown,
     transfer?: Transferable[],
   ): void {
-    if (transfer && transfer.length > 0) {
-      const portIds = transfer.map((transferable) => {
-        if (!(transferable instanceof MessagePort)) {
-          throw new TypeError(
-            "Only MessagePort transfers are supported by the browser IPC bridge.",
-          );
-        }
-
-        const portId = `message_port_${nextRequestId()}`;
-        messagePorts.set(portId, transferable);
-        transferable.addEventListener("message", (event) => {
-          enqueueMessage({
-            type: "message-port-message",
-            portId,
-            data: event.data,
-          });
-        });
-        transferable.addEventListener("messageerror", () => {
-          messagePorts.delete(portId);
-          enqueueMessage({ type: "message-port-close", portId });
-        });
-        transferable.start();
-        return portId;
-      });
-
-      enqueueMessage({
-        type: "ipc-renderer-post-message",
-        channel,
-        message,
-        portIds,
-      });
-      return;
-    }
-
     enqueueMessage({
-      type: "ipc-renderer-send",
+      type: "ipc-renderer-post-message",
       channel,
-      args: [message],
+      message,
+      portIds: exportMessagePorts(transfer ?? []),
     });
   },
   sendSync(channel: string, ..._args: unknown[]): unknown {
@@ -605,12 +643,6 @@ ensureSocket();
 
 export const contextBridge = {
   exposeInMainWorld(_key: string, _api: unknown): void {
-    // Node workers use the existing main-process IPC bridge; Electron's
-    // direct Git MessagePort transport is unavailable in a browser.
-    if (_key === "electronBridge" && isRecord(_api)) {
-      Reflect.set(window, _key, { ..._api, connectGitWorker: undefined });
-      return;
-    }
     Reflect.set(window, _key, _api);
   },
 };

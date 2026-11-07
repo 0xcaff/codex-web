@@ -1,5 +1,7 @@
 import { inspect } from "node:util";
 import { NetRequest } from "./net-request";
+import { MessageChannelMain, type MessagePortMain } from "./message-port";
+import { utilityProcess } from "./utility-process";
 
 type StubFunction = (...args: unknown[]) => unknown;
 type StubListener = (...args: unknown[]) => void;
@@ -36,6 +38,12 @@ type IpcMainEvent = {
 };
 
 type IpcMainBridgeState = {
+  postToRenderer?: (
+    webContentsId: number,
+    channel: string,
+    message: unknown,
+    ports: MessagePortMain[],
+  ) => void;
   sendToRenderer?: (
     webContentsId: number,
     message: {
@@ -170,23 +178,6 @@ function createEmitterStub(label: string): {
   };
 
   return api;
-}
-
-function createMessagePortStub(label: string): {
-  on: (event: string, listener: StubListener) => unknown;
-  postMessage: (...args: unknown[]) => void;
-  start: () => void;
-} {
-  const emitter = createEmitterStub(label);
-  return {
-    on: emitter.on,
-    postMessage(...args: unknown[]): void {
-      log(`${label}.postMessage`, args);
-    },
-    start(): void {
-      log(`${label}.start`, []);
-    },
-  };
 }
 
 function createIpcMainEvent(
@@ -475,6 +466,18 @@ class BrowserWindow {
           log(
             `BrowserWindow#${this.id}.webContents.openDevTools`,
             openDevToolsArgs,
+          );
+        },
+        postMessage: (
+          channel: string,
+          message: unknown,
+          ports: MessagePortMain[] = [],
+        ): void => {
+          getIpcMainBridgeState().postToRenderer?.(
+            this.webContents.id as number,
+            channel,
+            message,
+            ports,
           );
         },
         send: (...sendArgs: unknown[]): void => {
@@ -1053,9 +1056,6 @@ const session = {
     return partitionSession;
   },
 };
-const utilityProcess = {
-  fork: undefined,
-};
 const webContents = {
   fromId(id: number): Record<string, unknown> | undefined {
     log("webContents.fromId", [id]);
@@ -1072,10 +1072,6 @@ const webContents = {
     return BrowserWindow.getFocusedWindow()?.webContents ?? null;
   },
 };
-class MessageChannelMain {
-  port1 = createMessagePortStub("MessageChannelMain.port1");
-  port2 = createMessagePortStub("MessageChannelMain.port2");
-}
 
 const electronModule = new Proxy(
   {
