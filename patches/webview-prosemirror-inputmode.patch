@@ -1,49 +1,47 @@
---- a/webview/assets/async/74692.9bf395a14e.js
-+++ b/webview/assets/async/74692.9bf395a14e.js
-@@ -954,16 +954,24 @@
-                     : null;
-                 },
-               })),
-+        inputModeDisabled = !1,
-+        getAttributes = () => ({
-+          "aria-multiline": "true",
-+          dir: "auto",
-+          role: "textbox",
-+          spellcheck: "true",
-+          tabindex: "0",
-+          ...(inputModeDisabled ? {} : { inputmode: "none" }),
-+        }),
-+        setPointerInputMode = (e) => {
-+          inputModeDisabled !== e &&
-+            ((inputModeDisabled = e),
-+            td.isDestroyed || td.setProps({ attributes: getAttributes }));
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -560590,14 +560590,22 @@
+             : XB({ schema: C, text: e })),
+     z != null && d != null && !p && (z = VHr(z, d, e ?? void 0)));
+   let B = d == null ? null : Ozc(p ? d : null, (e) => vzc(x, e)),
++    inputModeDisabled = !1,
++    getAttributes = () => ({
++      "aria-multiline": `true`,
++      dir: `auto`,
++      role: `textbox`,
++      spellcheck: `true`,
++      tabindex: `0`,
++      ...(inputModeDisabled ? {} : { inputmode: `none` }),
++    }),
++    setPointerInputMode = (e) => {
++      inputModeDisabled !== e &&
++        ((inputModeDisabled = e),
++        V.isDestroyed || V.setProps({ attributes: getAttributes }));
++    },
+     V = new RAe(null, {
+-      attributes: {
+-        "aria-multiline": `true`,
+-        dir: `auto`,
+-        role: `textbox`,
+-        spellcheck: `true`,
+-        tabindex: `0`,
+-      },
++      attributes: getAttributes,
+       transformPastedText: M.transformPastedText,
+       transformPastedHTML(e) {
+         if ((M.transformPastedHTML(e), e.length > 1e5)) return ` `;
+@@ -560773,7 +560781,13 @@
+       },
+       handleDOMEvents: {
+         keydown: (e, t) => M.handleKeyEvent(t),
+-        mousedown: (e, t) => M.handleMouseDown(t),
++        mousedown: (e, t) => (setPointerInputMode(!0), M.handleMouseDown(t)),
++        touchstart(e, t) {
++          return (setPointerInputMode(!0), !1);
 +        },
-         td = new h.Lz(null, {
-           domParser:
-             null == e3 ? void 0 : new eN(e6, y.S4.fromSchema(e6).rules),
--          attributes: {
--            "aria-multiline": "true",
--            dir: "auto",
--            role: "textbox",
--            spellcheck: "true",
--            tabindex: "0",
--          },
-+          attributes: getAttributes,
-           transformPastedText: tt.transformPastedText,
-           transformPastedHTML(e) {
-             if ((tt.transformPastedHTML(e), e.length > 1e5)) return " ";
-@@ -1544,7 +1552,13 @@
-           },
-           handleDOMEvents: {
-             keydown: (e, t) => tt.handleKeyEvent(t),
--            mousedown: (e, t) => tt.handleMouseDown(t),
-+            mousedown: (e, t) => (setPointerInputMode(!0), tt.handleMouseDown(t)),
-+            touchstart(e, t) {
-+              return (setPointerInputMode(!0), !1);
-+            },
-+            blur(e, t) {
-+              return (setPointerInputMode(!1), !1);
-+            },
-             keyup(e, t) {
-               tt.handleKeyEvent(t);
-               let { $from: n, empty: i } = e.state.selection;
++        blur(e, t) {
++          return (setPointerInputMode(!1), !1);
++        },
+         keyup(e, t) {
+           M.handleKeyEvent(t);
+           let { $from: n, empty: r } = e.state.selection;

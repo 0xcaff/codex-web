@@ -1,14 +1,14 @@
---- a/webview/assets/async/884779.bf167971f9.js
-+++ b/webview/assets/async/884779.bf167971f9.js
-@@ -8327,6 +8327,11 @@
-       isScrollToTopEnabled: U,
-       usesUnifiedTimeline: N,
-     }) {
-+      let codexHostedWindowTitle = (0, s._U)(g.HX, { hostId: a, threadId: t });
-+      (0, i.useEffect)(() => {
-+        let title = codexHostedWindowTitle?.trim();
-+        title && (document.title = `${title} | Codex`);
-+      }, [codexHostedWindowTitle]);
-       var L;
-       let D = (0, s.gh)(er.GD),
-         O = (0, s.Ul)(eU.o2);
+--- a/webview/assets/local-conversation-thread-c8c5e92ea89e.js
++++ b/webview/assets/local-conversation-thread-c8c5e92ea89e.js
+@@ -18850,6 +18850,11 @@
+   isScrollToTopEnabled: x,
+   usesUnifiedTimeline: C,
+ }) {
++  let codexHostedWindowTitle = X(Un, { hostId: i, threadId: t });
++  (0, $A.useEffect)(() => {
++    let title = codexHostedWindowTitle?.trim();
++    title && (document.title = `${title} | Codex`);
++  }, [codexHostedWindowTitle]);
+   let w = he(nn),
+     T = (0, $A.useContext)(hh) === `activity`;
+   X(Ua, s ? { hostId: i, threadId: t } : null);

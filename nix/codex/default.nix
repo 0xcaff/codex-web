@@ -15,24 +15,24 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    version = "0.167.0-alpha.3.2";
+    version = "0.162.0-alpha.17.2";
     platform =
       {
         aarch64-darwin = {
           npm = "darwin-arm64";
-          hash = "sha256-OyDl5IM/Rl76Uzal1fBWjcNzhSSsg30Lvu7prOmVmBw=";
+          hash = "sha256-SOCqR4SXVhIPzoWaSDJDQ77sGR61McUQ7JU2+Ter4sM=";
         };
         x86_64-darwin = {
           npm = "darwin-x64";
-          hash = "sha256-ay/D7QkXJwdOXZe2PN4zQ1XiEkOpyss5cnm6v8vWq8w=";
+          hash = "sha256-ooaJutFVxCze/gzbF2V+bim0q7RwKWBNN2/39gEvjIs=";
         };
         aarch64-linux = {
           npm = "linux-arm64";
-          hash = "sha256-XMNY7//P7JHyykltaAX0Hslu4c8HleTRYnQynj7Uj94=";
+          hash = "sha256-Is/979IeoYfOhly9BPY/5wUYRJWVuNxKOeViYPUlP3I=";
         };
         x86_64-linux = {
           npm = "linux-x64";
-          hash = "sha256-awPLOtf3x+dEvX4JBGGuBZhgvHS0MTjVkz56j9OizM4=";
+          hash = "sha256-ByvQXkSpV1I/E/McAc+AWnl6UR7FaFUCbe6SbSupd/0=";
         };
       }
       .${system};

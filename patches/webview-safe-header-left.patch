@@ -1,11 +1,11 @@
---- a/webview/assets/async/499225.6d2e47bea2.js
-+++ b/webview/assets/async/499225.6d2e47bea2.js
-@@ -7129,7 +7129,7 @@
-       let n_ = (0, T.K)(ea),
-         nA = `${tE ?? 0}px`,
-         nS = tB ? "var(--height-toolbar-sm)" : "0px",
--        nk = `${tK.left / tD + 6}px`,
-+        nk = `0px`,
-         nP = `${tK.right / tD}px`,
-         nM;
-       eM[134] !== tV ||
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -221278,7 +221278,7 @@
+   let lt = Dd(ct),
+     ut = `${B ?? 0}px`,
+     dt = re ? `var(--height-toolbar-sm)` : `0px`,
+-    ft = `${te.left / U + 6}px`,
++    ft = `0px`,
+     pt = `${te.right / U}px`,
+     mt;
+   t[102] !== le ||

@@ -1,12 +1,12 @@
---- a/webview/assets/async/499225.6d2e47bea2.js
-+++ b/webview/assets/async/499225.6d2e47bea2.js
-@@ -6836,6 +6836,9 @@
-             (eS[3] = e_))
-           : (e_ = eS[3]),
-         (eP = e_),
-+        (window.__ELECTRON_SHIM__.closeSidebar = () => {
-+          (0, ta.pK)(eU, !1, { animate: t });
-+        }),
-         (0, ts.K)("toggleSidebar", eP),
-         eS[4] !== ek || eS[5] !== eU || eS[6] !== t
-           ? ((eA = [ek, eU, t]),
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -220313,6 +220313,9 @@
+       (r[3] = a))
+     : (a = r[3]);
+   let o = a;
++  window.__ELECTRON_SHIM__.closeSidebar = () => {
++    $Rt(e, !1, { animate: t });
++  };
+   Pw(`toggleSidebar`, o);
+   let s;
+   (r[4] !== i || r[5] !== e || r[6] !== t

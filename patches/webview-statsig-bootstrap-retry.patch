@@ -1,12 +1,12 @@
---- a/webview/assets/async/182735.bb2cb0d2af.js
-+++ b/webview/assets/async/182735.bb2cb0d2af.js
-@@ -212164,7 +212164,8 @@
-                           .CODEX_POST_LOGIN_STATSIG_BOOTSTRAP_FAILURE_TYPE_REQUEST_FAILED ||
-                       !(e instanceof Error) ||
-                       !(0, nT.kh)(0, e) ||
--                      r.request >= 5
-+                      // Use the existing fallback after the first failed bootstrap request.
-+                      r.request >= 0
-                     )
-                       throw a;
-                     (await (0, E._qC)(
+--- a/webview/assets/app-initial-6350d04672d0.js
++++ b/webview/assets/app-initial-6350d04672d0.js
+@@ -506670,7 +506670,8 @@
+       (PQs = `https://ab.chatgpt.com/v1`),
+       (FQs = `https://ab.chatgpt.com/v1/sdk_exception`),
+       (IQs = 5),
+-      (LQs = 5),
++      // Use the existing fallback after the first failed bootstrap request.
++      (LQs = 0),
+       (RQs = 500),
+       (zQs = {
+         networkConfig: { api: PQs, logEventUrl: NGs, sdkExceptionUrl: FQs },

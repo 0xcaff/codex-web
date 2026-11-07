@@ -1,11 +1,11 @@
---- a/webview/assets/async/182735.bb2cb0d2af.js
-+++ b/webview/assets/async/182735.bb2cb0d2af.js
-@@ -418412,7 +418412,7 @@
-         B: function (e) {
-           var t;
-           let n;
--          return `app://fs${
-+          return `${
-             ((t = e),
-             (n = encodeURI((0, r.H7)((0, r.AQ)(t)))
-               .replaceAll("#", "%23")
+--- a/webview/assets/app-shared-8bd9d0399038.js
++++ b/webview/assets/app-shared-8bd9d0399038.js
+@@ -261189,7 +261189,7 @@
+   }))();
+ }
+ function tYr(e) {
+-  return `${iYr}${rYr(e)}`;
++  return rYr(e);
+ }
+ function nYr(e) {
+   return rYr(e);
