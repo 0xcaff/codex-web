@@ -382,7 +382,6 @@ Object.assign(globalThis, {
 
 // Keep device-local services in the browser while forwarding other services to the host.
 electronShim.services = {
-  ...electronShim.services,
   clipboard: {
     async readText(): Promise<string> {
       return navigator.clipboard.readText();
