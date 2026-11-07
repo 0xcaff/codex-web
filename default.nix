@@ -30,7 +30,7 @@ flake-utils.lib.eachSystem systems (
       packages = [
         codex
         pkgs.nodejs
-        pkgs.unzip
+        pkgs.ripunzip
         pkgs.patch
       ];
     };
@@ -96,14 +96,13 @@ flake-utils.lib.eachSystem systems (
           src = ./.;
 
           inherit npmDeps;
-
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
           npmBuildScript = "build";
+          npmInstallFlags = [ "--omit=dev" ];
           npmRebuildFlags = [ "--ignore-scripts" ];
-          npmPruneFlags = [ "--ignore-scripts" ];
 
           nativeBuildInputs = [
-            pkgs.unzip
+            pkgs.ripunzip
             pkgs.patch
           ];
 
@@ -111,31 +110,30 @@ flake-utils.lib.eachSystem systems (
             patchShebangs scripts
           '';
 
-          preInstall = ''
-            # npm pack always runs the package prepare lifecycle. Nix already ran
-            # the explicit build script above, so remove prepare in the sandbox.
-            node -e '
-              const fs = require("fs");
-              const packageJsonPath = "package.json";
-              const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf8"));
-              delete packageJson.scripts.prepare;
-              fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
-            '
+          installPhase = ''
+            runHook preInstall
 
-            # Keep only extracted asar artifacts for packaging.
-            rm -rf scratch/ChatGPT.app
+            packageOut="$out/lib/node_modules/codex-web"
+            mkdir -p "$packageOut/src" "$packageOut/scratch" "$out/bin"
 
-            # npm pack drops directories named node_modules, so rename the nested
-            # asar tree in-place to keep it in the package output.
-            mv scratch/asar/node_modules scratch/asar/asar_node_modules
-          '';
+            echo "Installing server and package metadata"
+            cp package.json README.md "$packageOut/"
+            cp -r src/server "$packageOut/src/"
+            find "$packageOut/src/server" -type f ! -name '*.js' -delete
 
-          postInstall = ''
-            mv $out/lib/node_modules/codex-web/scratch/asar/{asar_,}node_modules
+            echo "Installing upstream app"
+            mv scratch/asar "$packageOut/scratch/asar"
 
-            addon="$out/lib/node_modules/codex-web/node_modules/better-sqlite3"
+            echo "Installing production dependencies"
+            cp -r node_modules "$packageOut/node_modules"
+            addon="$packageOut/node_modules/better-sqlite3"
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
+
+            makeWrapper ${pkgs.lib.getExe pkgs.nodejs} "$out/bin/codex-web" \
+              --add-flags "$packageOut/src/server/main.js"
+
+            runHook postInstall
           '';
         };
 
