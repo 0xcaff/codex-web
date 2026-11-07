@@ -1,0 +1,14 @@
+--- a/webview/assets/app-shared-8bd9d0399038.js
++++ b/webview/assets/app-shared-8bd9d0399038.js
+@@ -279805,7 +279805,10 @@
+ }
+ async function qli() {
+   (($3 = Uli(Vli)),
+-    (e6 = await $3.services),
++    (e6 = {
++      ...(await $3.services),
++      ...window.__ELECTRON_SHIM__?.services,
++    }),
+     $3.onRpcBroken(Gli(e6.histogramCollector)),
+     e6.threadReadState != null &&
+       (await Vli.threadReadState.initialize(e6.threadReadState)),

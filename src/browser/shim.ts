@@ -108,6 +108,7 @@ type StatsigGateEvaluation = {
 };
 
 type ElectronShimState = {
+  services?: Record<string, unknown>;
   initialRoute?: string;
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
@@ -378,6 +379,19 @@ Object.assign(globalThis, {
     },
   },
 });
+
+// Keep device-local services in the browser while forwarding other services to the host.
+electronShim.services = {
+  ...electronShim.services,
+  clipboard: {
+    async readText(): Promise<string> {
+      return navigator.clipboard.readText();
+    },
+    async writeText(text: string): Promise<void> {
+      await navigator.clipboard.writeText(text);
+    },
+  },
+};
 
 electronShim.overrideAdapter = {
   getGateOverride(evaluation) {
