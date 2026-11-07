@@ -16,10 +16,11 @@ flake-utils.lib.eachSystem systems (
   system:
   let
     pkgs = import nixpkgs { inherit system; };
-    appVersion = "26.1007.30912";
+    nodejs = pkgs.nodejs_24;
+    appVersion = "26.1103.32239";
     codexZip = pkgs.fetchurl {
       url = "https://persistent.oaistatic.com/codex-app-prod/ChatGPT-darwin-arm64-${appVersion}.zip";
-      hash = "sha256-tpmowtWi8jysWdxnOI4lr0v1/C+2qzD/okOpaOT4FaM=";
+      hash = "sha256-aNq8st/ukdJF5XDFzEVVLJbz63Gd7cmMkH76ZBl/pA0=";
     };
     codex = self.packages.${system}.codex;
   in
@@ -29,7 +30,8 @@ flake-utils.lib.eachSystem systems (
 
       packages = [
         codex
-        pkgs.nodejs
+        nodejs
+        (pkgs.yarn.override { inherit nodejs; })
         pkgs.ripunzip
         pkgs.patch
       ];
@@ -37,7 +39,7 @@ flake-utils.lib.eachSystem systems (
 
     packages =
       let
-        nodeSources = pkgs.srcOnly pkgs.nodejs;
+        nodeSources = pkgs.srcOnly nodejs;
         npmDeps = pkgs.importNpmLock {
           npmRoot = ./.;
         };
@@ -59,7 +61,7 @@ flake-utils.lib.eachSystem systems (
 
           nativeBuildInputs = [
             pkgs.importNpmLock.npmConfigHook
-            pkgs.nodejs
+            nodejs
             pkgs.python3
             pkgs.removeReferencesTo
           ]
@@ -89,6 +91,7 @@ flake-utils.lib.eachSystem systems (
       in
       {
         default = pkgs.buildNpmPackage {
+          inherit nodejs;
           HOSTED_CODEX_APP_ZIP = codexZip;
 
           pname = "codex-web";
@@ -130,7 +133,7 @@ flake-utils.lib.eachSystem systems (
             rm -rf "$addon/build"
             ln -s ${betterSqlite3Native}/build "$addon/build"
 
-            makeWrapper ${pkgs.lib.getExe pkgs.nodejs} "$out/bin/codex-web" \
+            makeWrapper ${pkgs.lib.getExe nodejs} "$out/bin/codex-web" \
               --add-flags "$packageOut/src/server/main.js"
 
             runHook postInstall
@@ -139,10 +142,11 @@ flake-utils.lib.eachSystem systems (
 
         codex_remote_proxy = pkgs.writeShellApplication {
           name = "codex_remote_proxy";
-          runtimeInputs = with pkgs; [
-            bash
-            coreutils
-            websocat
+          runtimeInputs = [
+            codex
+            pkgs.bash
+            pkgs.coreutils
+            pkgs.websocat
           ];
           text = builtins.readFile ./scripts/codex_remote_proxy;
         };

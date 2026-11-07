@@ -1,6 +1,6 @@
 --- a/webview/index.html
 +++ b/webview/index.html
-@@ -131,6 +131,11 @@
+@@ -146,6 +146,11 @@
          }
        }
      </style>
@@ -9,6 +9,6 @@
 +        --spacing-token-safe-header-left: 0px;
 +      }
 +    </style>
-     <script
-       type="module"
-       crossorigin
+   </head>
+   <body tabindex="0" style="outline: none">
+     <div id="root">

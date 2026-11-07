@@ -1,22 +1,33 @@
---- a/webview/assets/app-initial-6350d04672d0.js
-+++ b/webview/assets/app-initial-6350d04672d0.js
-@@ -615740,7 +615740,7 @@
-     c = Pr(),
-     l = Cc(),
-     u = n != null,
--    d = o?.prefillPrompt,
-+    d = o?.prefillPrompt ?? new URLSearchParams(c.search).get(`prompt`),
-     f = o?.prefillPromptFormat,
-     p = o?.prefillPromptOnlyIfEmpty,
-     m = o?.prefillLibraryFolders,
---- a/webview/assets/app-primary-6f60e9ac4103.js
-+++ b/webview/assets/app-primary-6f60e9ac4103.js
-@@ -140846,7 +140846,7 @@
-   let ie =
-       g?.prefillPromptOnlyIfEmpty && g.prefillPrompt != null
-         ? void 0
--        : (g?.prefillPrompt ?? void 0),
-+        : (g?.prefillPrompt ?? new URLSearchParams(m).get(`prompt`) ?? void 0),
-     ae;
-   t[41] === m ? (ae = t[42]) : ((ae = Wg(m)), (t[41] = m), (t[42] = ae));
-   let oe = ae,
+--- a/webview/assets/async/659370.ace01a52b9.js
++++ b/webview/assets/async/659370.ace01a52b9.js
+@@ -4248,7 +4248,7 @@
+             N = (0, _.zy)(),
+             L = (0, _.Zp)(),
+             G = null != m,
+-            v = g?.prefillPrompt,
++            v = g?.prefillPrompt ?? new URLSearchParams(N.search).get("prompt"),
+             D = g?.prefillPromptFormat,
+             F = g?.prefillPromptOnlyIfEmpty,
+             y = g?.prefillLibraryFolders,
+--- a/webview/assets/async/16389.a6da06f7e4.js
++++ b/webview/assets/async/16389.a6da06f7e4.js
+@@ -5083,7 +5083,7 @@
+             j = (0, s.zy)(),
+             k = (0, s.Zp)(),
+             N = null != w,
+-            E = M?.prefillPrompt,
++            E = M?.prefillPrompt ?? new URLSearchParams(j.search).get("prompt"),
+             P = M?.prefillPromptFormat,
+             F = M?.prefillPromptOnlyIfEmpty,
+             R = M?.prefillLibraryFolders,
+--- a/webview/assets/async/605278.9a7ad6f681.js
++++ b/webview/assets/async/605278.9a7ad6f681.js
+@@ -1828,7 +1828,7 @@
+         ts =
+           eT?.prefillPromptOnlyIfEmpty && null != eT.prefillPrompt
+             ? void 0
+-            : (eT?.prefillPrompt ?? tl);
++            : (eT?.prefillPrompt ?? new URLSearchParams(ew).get("prompt") ?? tl);
+       ea[48] !== ew
+         ? ((j = (0, M.CV)(ew)), (ea[48] = ew), (ea[49] = j))
+         : (j = ea[49]);

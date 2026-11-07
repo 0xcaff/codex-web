@@ -73,18 +73,20 @@ function WorkspaceRootDialog({
     function handleKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
         event.preventDefault();
+        event.stopImmediatePropagation();
         onClose(null);
       }
     }
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [onClose]);
 
   const selectedPath = userSelectedPath ?? directoryQuery.data?.directoryPath;
 
   function handleSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
+    event.stopPropagation();
     if (selectedPath && !isBusy) {
       onClose(selectedPath);
     }
@@ -516,15 +518,27 @@ function WorkspaceRootDialog({
   );
 }
 
-function ensureHost(): HTMLElement {
-  const DIALOG_ID = "codex-web-workspace-root-dialog";
-  let element = document.getElementById(DIALOG_ID);
-  if (!element) {
-    element = document.createElement("div");
-    element.id = DIALOG_ID;
-    document.body.append(element);
-  }
-  return element;
+function createHost(activeElement: Element | null): HTMLDialogElement {
+  const host = document.createElement("dialog");
+  host.id = "codex-web-workspace-root-dialog";
+  host.setAttribute("role", "presentation");
+  Object.assign(host.style, {
+    background: "transparent",
+    border: "0",
+    padding: "0",
+    margin: "0",
+    width: "100vw",
+    height: "100vh",
+    maxWidth: "none",
+    maxHeight: "none",
+    overflow: "visible",
+  });
+  // Stay inside the upstream modal's focus/dismissal boundary. The native
+  // dialog's top layer keeps the picker independent of its parent's transform.
+  const parent = activeElement?.closest('[role="dialog"]') ?? document.body;
+  parent.append(host);
+  host.showModal();
+  return host;
 }
 
 type WorkspaceRootDialogOptions = {
@@ -561,7 +575,8 @@ export async function openSelectWorkspaceRootDialog({
     };
   })();
 
-  const reactRoot = createRoot(ensureHost());
+  const host = createHost(activeElement);
+  const reactRoot = createRoot(host);
   reactRoot.render(
     <QueryClientProvider client={queryClient}>
       <WorkspaceRootDialog listDirectory={listDirectory} onClose={resolveFn} />
@@ -571,6 +586,8 @@ export async function openSelectWorkspaceRootDialog({
   const result = await promise;
 
   reactRoot.unmount();
+  host.close();
+  host.remove();
 
   if (activeElement instanceof HTMLElement) {
     activeElement.focus();

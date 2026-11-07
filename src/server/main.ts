@@ -17,6 +17,11 @@ import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
+import { serialize, deserialize } from "@ungap/structured-clone";
+import {
+  MessagePortBridge,
+  type MessagePortMain,
+} from "./electron/message-port";
 
 type ServerOptions = {
   host: string;
@@ -47,7 +52,8 @@ type RendererToMainMessage =
   | {
       type: "message-port-message";
       portId: string;
-      data: unknown;
+      data: ReturnType<typeof serialize>;
+      portIds: string[];
     }
   | {
       type: "message-port-close";
@@ -61,6 +67,12 @@ type RendererToMainMessage =
     };
 
 type MainToRendererMessage =
+  | {
+      type: "ipc-main-post-message";
+      channel: string;
+      message: ReturnType<typeof serialize>;
+      portIds: string[];
+    }
   | {
       type: "ipc-main-event";
       channel: string;
@@ -93,7 +105,8 @@ type MainToRendererMessage =
   | {
       type: "message-port-message";
       portId: string;
-      data: unknown;
+      data: ReturnType<typeof serialize>;
+      portIds: string[];
     }
   | {
       type: "message-port-close";
@@ -114,97 +127,7 @@ type WorkspaceDirectoryEntries = {
 
 type MessagePortListener = (...args: unknown[]) => void;
 
-type BridgedMessagePort = {
-  close: () => void;
-  on: (event: string, listener: MessagePortListener) => unknown;
-  postMessage: (message: unknown) => void;
-  start: () => void;
-};
-
-class WebSocketMessagePort implements BridgedMessagePort {
-  private closed = false;
-  private readonly pendingMessages: unknown[] = [];
-  private readonly listeners = new Map<string, Set<MessagePortListener>>();
-
-  constructor(
-    private readonly portId: string,
-    private readonly sendToRenderer: (message: MainToRendererMessage) => void,
-    private readonly onClosed: () => void,
-  ) {}
-
-  on(event: string, listener: MessagePortListener): this {
-    const listeners = this.listeners.get(event) ?? new Set();
-    listeners.add(listener);
-    this.listeners.set(event, listeners);
-    if (event === "message") {
-      for (const data of this.pendingMessages.splice(0)) {
-        this.receiveMessage(data);
-      }
-    }
-
-    return this;
-  }
-
-  postMessage(data: unknown): void {
-    if (this.closed) {
-      return;
-    }
-    this.sendToRenderer({
-      type: "message-port-message",
-      portId: this.portId,
-      data,
-    });
-  }
-
-  start(): void {}
-
-  close(): void {
-    if (!this.markClosed()) {
-      return;
-    }
-    this.sendToRenderer({
-      type: "message-port-close",
-      portId: this.portId,
-    });
-  }
-
-  receiveMessage(data: unknown): void {
-    if (this.closed) {
-      return;
-    }
-    const listeners = this.listeners.get("message");
-    if (!listeners || listeners.size === 0) {
-      this.pendingMessages.push(data);
-      return;
-    }
-    for (const listener of listeners) {
-      listener({ data });
-    }
-  }
-
-  disconnect(): void {
-    if (!this.markClosed()) {
-      return;
-    }
-    this.emit("close");
-  }
-
-  private emit(event: string, ...args: unknown[]): void {
-    for (const listener of this.listeners.get(event) ?? []) {
-      listener(...args);
-    }
-  }
-
-  private markClosed(): boolean {
-    if (this.closed) {
-      return false;
-    }
-    this.closed = true;
-    this.pendingMessages.length = 0;
-    this.onClosed();
-    return true;
-  }
-}
+type BridgedMessagePort = MessagePortMain;
 
 function workspaceDirectoryEntryTypeRank(
   entry: WorkspaceDirectoryEntry,
@@ -235,9 +158,17 @@ type RendererWindow = {
   id: number;
   webContents: { id: number };
   destroy: () => void;
+  isDestroyed: () => boolean;
+  once: (event: string, listener: MessagePortListener) => unknown;
 };
 
 type IpcMainBridgeState = {
+  postToRenderer?: (
+    webContentsId: number,
+    channel: string,
+    message: unknown,
+    ports: MessagePortMain[],
+  ) => void;
   setRendererWindowFactory?: (factory: () => Promise<RendererWindow>) => void;
   sendToRenderer?: (
     webContentsId: number,
@@ -379,11 +310,21 @@ function ensureElectronLikeProcessContext(): void {
   process.env.BUILD_FLAVOR = "prod";
 
   const versions = process.versions as NodeJS.ProcessVersions & {
+    chrome?: string;
     electron?: string;
   };
   if (!versions.electron) {
     Object.defineProperty(versions, "electron", {
       value: "41.2.0",
+      configurable: true,
+      enumerable: true,
+      writable: false,
+    });
+  }
+  if (!versions.chrome) {
+    // Upstream uses the bundled Chromium version for HTTP client hints.
+    Object.defineProperty(versions, "chrome", {
+      value: "157.0.8103.39",
       configurable: true,
       enumerable: true,
       writable: false,
@@ -491,6 +432,7 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
   });
 
   const rendererSockets = new Map<number, WebSocket>();
+  const rendererPorts = new Map<number, MessagePortBridge>();
   const rendererWindowFactory = new Promise<() => Promise<RendererWindow>>(
     (resolve) => {
       bridgeState.setRendererWindowFactory = resolve;
@@ -503,19 +445,56 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     }
   };
 
+  bridgeState.postToRenderer = (
+    webContentsId,
+    channel,
+    message,
+    ports,
+  ): void => {
+    const bridge = rendererPorts.get(webContentsId);
+    if (!bridge) {
+      for (const port of ports) port.close();
+      return;
+    }
+    bridgeState.sendToRenderer?.(webContentsId, {
+      type: "ipc-main-post-message",
+      channel,
+      message: serialize(message),
+      portIds: bridge.exportPorts(ports),
+    });
+  };
+
   websocketServer.on("connection", (socket) => {
+    const portBridge = new MessagePortBridge((packet) => {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(
+          JSON.stringify(
+            packet.type === "message-port-message"
+              ? { ...packet, data: serialize(packet.data) }
+              : packet,
+          ),
+        );
+      }
+    });
     let rendererWindow: RendererWindow | undefined;
     // Each tab is a real registered app view, with its own IPC client and ownership.
     const rendererReady = rendererWindowFactory
       .then(async (createWindow) => {
         if (socket.readyState !== WebSocket.OPEN) return undefined;
         const window = await createWindow();
-        if (socket.readyState !== WebSocket.OPEN) {
+        if (socket.readyState !== WebSocket.OPEN || window.isDestroyed()) {
           window.destroy();
+          socket.close(1012, "Renderer window closed");
           return undefined;
         }
         rendererWindow = window;
+        // Workspace changes can close an app view while its browser is connected.
+        // Let the browser reconnect instead of dispatching IPC to a dead window.
+        window.once("closed", () =>
+          socket.close(1012, "Renderer window closed"),
+        );
         rendererSockets.set(window.webContents.id, socket);
+        rendererPorts.set(window.webContents.id, portBridge);
         return window;
       })
       .catch((error) => {
@@ -524,11 +503,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
         return undefined;
       });
 
-    const messagePorts = new Map<string, WebSocketMessagePort>();
     const dispatchPostMessage = (
       channel: string,
       message: unknown,
-      ports: WebSocketMessagePort[],
+      ports: MessagePortMain[],
       windowId: number,
     ): void => {
       const handler = bridgeState.handleRendererPostMessage;
@@ -546,12 +524,10 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
     };
 
     socket.on("close", () => {
-      for (const port of messagePorts.values()) {
-        port.disconnect();
-      }
-      messagePorts.clear();
+      portBridge.close();
       if (rendererWindow) {
         rendererSockets.delete(rendererWindow.webContents.id);
+        rendererPorts.delete(rendererWindow.webContents.id);
         rendererWindow.destroy();
       }
     });
@@ -576,41 +552,29 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
         return;
       }
 
-      if (message.type === "ipc-renderer-post-message") {
-        if (new Set(message.portIds).size !== message.portIds.length) {
-          console.error("[ipc-bridge] duplicate transferred MessagePort id");
-          return;
-        }
-
-        const ports = message.portIds.map((portId) => {
-          const existingPort = messagePorts.get(portId);
-          if (existingPort) {
-            existingPort.disconnect();
+      if (
+        message.type === "ipc-renderer-post-message" ||
+        message.type === "message-port-message" ||
+        message.type === "message-port-close"
+      ) {
+        try {
+          if (message.type === "ipc-renderer-post-message") {
+            const ports = portBridge.importPorts(message.portIds);
+            dispatchPostMessage(
+              message.channel,
+              message.message,
+              ports,
+              window.id,
+            );
+          } else if (message.type === "message-port-message") {
+            portBridge.receive({ ...message, data: deserialize(message.data) });
+          } else {
+            portBridge.receive(message);
           }
-          const port = new WebSocketMessagePort(
-            portId,
-            (message) => {
-              if (socket.readyState === WebSocket.OPEN) {
-                socket.send(JSON.stringify(message));
-              }
-            },
-            () => messagePorts.delete(portId),
-          );
-          messagePorts.set(portId, port);
-          return port;
-        });
-
-        dispatchPostMessage(message.channel, message.message, ports, window.id);
-        return;
-      }
-
-      if (message.type === "message-port-message") {
-        messagePorts.get(message.portId)?.receiveMessage(message.data);
-        return;
-      }
-
-      if (message.type === "message-port-close") {
-        messagePorts.get(message.portId)?.disconnect();
+        } catch (error) {
+          console.error("[ipc-bridge] invalid MessagePort payload", error);
+          socket.close(1003, "Invalid MessagePort payload");
+        }
         return;
       }
 
