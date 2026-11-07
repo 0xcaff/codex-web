@@ -1,0 +1,44 @@
+--- a/.vite/build/early-bootstrap-920-a204a41244c4b913.js
++++ b/.vite/build/early-bootstrap-920-a204a41244c4b913.js
+@@ -233847,7 +233847,8 @@
+               }),
+             },
+             o = null;
+-          if ("git" === this.id) {
++          // The web host uses the existing Node worker transport.
++          if ("git" === this.id && typeof er.utilityProcess.fork === "function") {
+             let n = new er.MessageChannelMain(),
+               i =
+                 null == this.mainRpcTarget ? null : new er.MessageChannelMain();
+--- a/webview/assets/async/182735.bb2cb0d2af.js
++++ b/webview/assets/async/182735.bb2cb0d2af.js
+@@ -424878,7 +424878,7 @@
+       constructor(e) {
+         ((this.workerId = e),
+           (this.pending = new d(e)),
+-          "git" !== e &&
++          ("git" !== e || !window.electronBridge?.connectGitWorker) &&
+             window.electronBridge?.subscribeToWorkerMessages?.(
+               this.workerId,
+               (e) => {
+@@ -424890,9 +424890,8 @@
+         var t, n, i;
+         let a = window.electronBridge;
+         if (
+-          "git" === this.workerId
+-            ? !a?.connectGitWorker
+-            : !a?.sendWorkerMessageFromView
++          !a?.sendWorkerMessageFromView &&
++          ("git" !== this.workerId || !a?.connectGitWorker)
+         )
+           return Promise.reject(Error("Electron worker bridge is unavailable"));
+         if (e.signal?.aborted) return Promise.reject((0, u.NK)());
+@@ -424955,7 +424954,7 @@
+         );
+       }
+       async sendMessage(e) {
+-        if ("git" === e.workerId) {
++        if ("git" === e.workerId && window.electronBridge?.connectGitWorker) {
+           null == this.directConnection &&
+             (this.directConnection = (function (e, t) {
+               let n = window.electronBridge;

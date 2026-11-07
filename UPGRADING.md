@@ -86,18 +86,38 @@ to validate things are still working, we'll first validate the server, then the
 client. before starting this step, make sure to wait for the
 `upgrading the codex-cli version` subagent to finish.
 
-to validate the server, run the following
+first check the runtime and build both the package and development server:
 
 ```bash
+nix develop --command node -p 'process.version + " DisposableStack=" + typeof DisposableStack'
+nix build
+nix flake check
 nix develop --command yarn server
 ```
 
-next validate the client by opening a browser window to `http://localhost:8214`
-and validating things show up on the page.
+Node must be 24 or newer and `DisposableStack` must be `function`. Keep the
+Nix development shell, package builder, native better-sqlite3 addon, and launch
+wrapper on the same Node version. A successful build alone does not validate
+upstream runtime requirements.
 
-look in the console for errors. also, look on the screen to see whether any
-error dialogs popped up. sometimes errors occur, but they're silent and exhibit
-as loading taking forever (more than 1m). look out for that case too.
+open `http://localhost:8214` in a real browser. Use a disposable local Git
+project and test profile so validation does not alter existing chats or files.
+Validate the built package too if it uses a different launch path.
 
-if there are errors, bring them to the users attention and we will decide how to
-proceed.
+* Select the local project and verify it appears in the sidebar.
+* Submit a prompt that reads a file and runs a harmless command. Wait for the
+  tool results and a completed response; typing a draft is not sufficient.
+* Send a follow-up in that chat. Have it change a disposable file and verify
+  the change appears in the diff panel. Check the branch picker and Git status.
+* Reload, reopen the chat from history, and confirm the messages and project
+  selection persist. Check the composer at a narrow viewport as well.
+* If the CLI proxy changed, validate startup-config output and a complete
+  request/response through a real proxied app-server connection.
+
+check both the browser console and server logs throughout. Look for error
+notifications and operations stuck loading for over one minute. Record the
+checks actually performed and any unresolved failures. Do not declare the
+upgrade validated while message submission or Git operations are failing.
+
+bring errors to the user's attention and resolve them within the authorized
+scope before publishing the upgrade.

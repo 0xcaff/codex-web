@@ -726,6 +726,12 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 }
 
 async function main(args: string[]) {
+  if (Number(process.versions.node.split(".")[0]) < 24) {
+    throw new Error(
+      `codex-web requires Node.js 24 or newer (running ${process.version}). Use nix run or nix develop to select the supported runtime.`,
+    );
+  }
+
   const options = parseServerArgs(args);
 
   await startIpcBridgeServer(options);

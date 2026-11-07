@@ -449,6 +449,21 @@ export const ipcRenderer = {
         return handleLocalFilePickerMessage(args[0]);
       }
 
+      if (
+        isRecord(args[0]) &&
+        args[0].type === "electron-pick-workspace-root-option"
+      ) {
+        return openSelectWorkspaceRootDialog({
+          listDirectory: requestWorkspaceDirectoryEntries,
+        }).then((root) => {
+          if (root) {
+            emitRendererEvent("codex_desktop:message-for-view", [
+              { type: "workspace-root-option-picked", root },
+            ]);
+          }
+        });
+      }
+
       if (isUnhandledAddWorkspaceRootOptionMessage(args[0])) {
         return openSelectWorkspaceRootDialog({
           listDirectory: requestWorkspaceDirectoryEntries,
@@ -590,6 +605,12 @@ ensureSocket();
 
 export const contextBridge = {
   exposeInMainWorld(_key: string, _api: unknown): void {
+    // Node workers use the existing main-process IPC bridge; Electron's
+    // direct Git MessagePort transport is unavailable in a browser.
+    if (_key === "electronBridge" && isRecord(_api)) {
+      Reflect.set(window, _key, { ..._api, connectGitWorker: undefined });
+      return;
+    }
     Reflect.set(window, _key, _api);
   },
 };

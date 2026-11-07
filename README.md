@@ -26,6 +26,8 @@ default, it listens on `127.0.0.1:8214`.
 it will use `codex` from `PATH` if available, or `CODEX_CLI_PATH` if you set
 it.
 
+Node.js 24 or newer is required. Nix selects the supported runtime automatically.
+
 run it with `npx`:
 
 ```bash
