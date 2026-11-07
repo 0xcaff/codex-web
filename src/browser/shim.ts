@@ -377,7 +377,7 @@ Object.assign(globalThis, {
   },
 });
 
-function makeElectronShim(): ElectronShimState {
+window.__ELECTRON_SHIM__ = ((): ElectronShimState => {
   const mobileMediaQuery = matchMedia("(max-width: 768px)");
   const initialRoute = mapBrowserPathToInitialRoute(
     window.location.pathname,
@@ -451,9 +451,7 @@ function makeElectronShim(): ElectronShimState {
   };
 
   return electronShim;
-}
-
-window.__ELECTRON_SHIM__ = makeElectronShim();
+})();
 
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
