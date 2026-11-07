@@ -40,7 +40,6 @@ else
   done < <(
     awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
   )
-  # Each bundle is independent; honor the same core budget as extraction.
   printf '%s\0' "${patched_files[@]}" | xargs -0 -n 1 -P "$build_cores" \
     prettier --ignore-path /dev/null --ignore-unknown --write
 fi
