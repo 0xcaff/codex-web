@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euxo pipefail
 
-# Extract only the application archive and its external files, concurrently.
-mkdir -p scratch/ChatGPT.app/Contents/Resources
-unzip -o "$HOSTED_CODEX_APP_ZIP" 'ChatGPT.app/Contents/Resources/app.asar' -d scratch/ &
-asar_zip_pid=$!
-unzip -o "$HOSTED_CODEX_APP_ZIP" 'ChatGPT.app/Contents/Resources/app.asar.unpacked/*' -d scratch/ &
-unpacked_zip_pid=$!
-wait "$asar_zip_pid"
-wait "$unpacked_zip_pid"
+build_cores="${NIX_BUILD_CORES:-0}"
+if ((build_cores <= 0)); then
+  build_cores="$(node -p 'require("node:os").availableParallelism()')"
+fi
+
+RAYON_NUM_THREADS="$build_cores" ripunzip unzip-file -d scratch/ "$HOSTED_CODEX_APP_ZIP" \
+  'ChatGPT.app/Contents/Resources/app.asar' \
+  'ChatGPT.app/Contents/Resources/app.asar.unpacked/*'
 asar extract "scratch/ChatGPT.app/Contents/Resources/app.asar" "scratch/asar"
 cp assets/* scratch/asar/webview/
 PWA_SOURCE_ICON="scratch/asar/webview/assets/app-f483cb0295ed.png"
@@ -29,8 +29,8 @@ else
   done < <(
     awk '/^\+\+\+ b\//{sub(/^\+\+\+ b\//, "scratch/asar/"); print}' patches/*.patch | sort -u
   )
-  # Each bundle is independent. Bound concurrency because these bundles are large.
-  printf '%s\0' "${patched_files[@]}" | xargs -0 -n 1 -P 4 \
+  # Each bundle is independent; honor the same core budget as extraction.
+  printf '%s\0' "${patched_files[@]}" | xargs -0 -n 1 -P "$build_cores" \
     prettier --ignore-path /dev/null --ignore-unknown --write
 fi
 patch --batch --forward --strip 1 --directory scratch/asar < patches/webview-remove-csp.patch

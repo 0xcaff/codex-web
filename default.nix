@@ -30,7 +30,7 @@ flake-utils.lib.eachSystem systems (
       packages = [
         codex
         pkgs.nodejs
-        pkgs.unzip
+        pkgs.ripunzip
         pkgs.patch
       ];
     };
@@ -87,62 +87,29 @@ flake-utils.lib.eachSystem systems (
           '';
         };
 
-        preparedApp = pkgs.buildNpmPackage {
-          pname = "codex-web-prepared-app";
-          version = appVersion;
-          HOSTED_CODEX_APP_ZIP = codexZip;
-          src = pkgs.lib.fileset.toSource {
-            root = ./.;
-            fileset = pkgs.lib.fileset.unions [
-              ./package.json
-              ./package-lock.json
-              ./scripts/prepare_asar
-              ./assets
-              ./patches
-              ./src/browser
-              ./vite.browser.config.ts
-            ];
-          };
-
-          inherit npmDeps;
-          npmConfigHook = pkgs.importNpmLock.npmConfigHook;
-          npmRebuildFlags = [ "--ignore-scripts" ];
-          nativeBuildInputs = [
-            pkgs.unzip
-            pkgs.patch
-          ];
-
-          buildPhase = ''
-            runHook preBuild
-            patchShebangs scripts
-            npm run prepare:asar
-            npm run build:browser
-            runHook postBuild
-          '';
-
-          installPhase = ''
-            runHook preInstall
-            mv scratch/asar "$out"
-            runHook postInstall
-          '';
-
-          # The final package performs fixup after assembling its runtime files.
-          dontFixup = true;
-        };
       in
       {
-        prepared-app = preparedApp;
-
         default = pkgs.buildNpmPackage {
+          HOSTED_CODEX_APP_ZIP = codexZip;
+
           pname = "codex-web";
           version = "1.0.0";
           src = ./.;
 
           inherit npmDeps;
           npmConfigHook = pkgs.importNpmLock.npmConfigHook;
-          npmBuildScript = "build:server";
+          npmBuildScript = "build";
           npmInstallFlags = [ "--omit=dev" ];
           npmRebuildFlags = [ "--ignore-scripts" ];
+
+          nativeBuildInputs = [
+            pkgs.ripunzip
+            pkgs.patch
+          ];
+
+          preBuild = ''
+            patchShebangs scripts
+          '';
 
           installPhase = ''
             runHook preInstall
@@ -155,8 +122,8 @@ flake-utils.lib.eachSystem systems (
             cp -r src/server "$packageOut/src/"
             find "$packageOut/src/server" -type f ! -name '*.js' -delete
 
-            echo "Installing cached upstream app"
-            cp -r --no-preserve=mode ${preparedApp} "$packageOut/scratch/asar"
+            echo "Installing upstream app"
+            mv scratch/asar "$packageOut/scratch/asar"
 
             echo "Installing production dependencies"
             cp -r node_modules "$packageOut/node_modules"
