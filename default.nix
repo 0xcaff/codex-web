@@ -86,7 +86,6 @@ flake-utils.lib.eachSystem systems (
             runHook postInstall
           '';
         };
-
       in
       {
         default = pkgs.buildNpmPackage {
