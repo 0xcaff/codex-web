@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+original_args=("$@")
+
 while [[ "${1:-}" == "-c" ]]; do
   if (( $# < 2 )); then
     echo "codex_remote_proxy received -c without a value" >&2
@@ -14,8 +16,18 @@ if [[ "${1:-}" != "app-server" ]]; then
   exit 64
 fi
 
-# Ignore remaining args (for compatibility with codex app-server invocations).
-shift || true
+shift
+
+# Desktop reads startup requirements before opening its long-lived connection.
+# This command must print JSON and exit, so run it with the real CLI and retain
+# config overrides and startup flags, including the optional sign-out flag.
+for arg in "$@"; do
+  if [[ "$arg" == "--print-startup-config" ]]; then
+    exec codex "${original_args[@]}"
+  fi
+done
+
+# Ignore remaining args for ordinary proxied app-server connections.
 
 # Websocat defaults to 64KiB max message size, which causes warnings and
 # message splitting for larger app-server payloads. Use a safer default while

@@ -40,6 +40,10 @@ nix run github:0xcaff/codex-web
 
 then open <http://127.0.0.1:8214> in a browser.
 
+Electron shim call tracing is disabled by default. Set
+`CODEX_WEB_DEBUG_SHIM=1` to enable bounded diagnostic traces; these can contain
+request data. Application warnings and errors remain enabled.
+
 ### sign in
 
 ensure the codex cli on the host machine is signed in before starting the
