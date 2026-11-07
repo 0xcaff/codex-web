@@ -108,6 +108,7 @@ type StatsigGateEvaluation = {
 };
 
 type ElectronShimState = {
+  services?: Record<string, unknown>;
   initialRoute?: string;
   initialSidebarState?: boolean;
   closeSidebar?: () => void;
@@ -364,9 +365,6 @@ function requestWorkspaceDirectoryEntries(
 }
 
 const themeMediaQuery = matchMedia("(prefers-color-scheme: dark)");
-const mobileMediaQuery = matchMedia("(max-width: 768px)");
-const initialSidebarState = !mobileMediaQuery.matches;
-const electronShim = (window.__ELECTRON_SHIM__ ??= {});
 const buildFlavor: "prod" | "dev" | "agent" | string = "prod";
 
 Object.assign(globalThis, {
@@ -379,64 +377,81 @@ Object.assign(globalThis, {
   },
 });
 
-electronShim.overrideAdapter = {
-  getGateOverride(evaluation) {
-    if (evaluation.name === "2911712394") {
-      return {
-        ...evaluation,
-        value: true,
-      };
-    }
+window.__ELECTRON_SHIM__ = ((): ElectronShimState => {
+  const mobileMediaQuery = matchMedia("(max-width: 768px)");
+  const initialRoute = mapBrowserPathToInitialRoute(
+    window.location.pathname,
+    window.location.search,
+  );
 
-    if (evaluation.name === "1042620455") {
-      // Remote control (Slingshot).
-      return {
-        ...evaluation,
-        value: true,
-      };
-    }
-
-    return null;
-  },
-};
-
-const initialRoute = mapBrowserPathToInitialRoute(
-  window.location.pathname,
-  window.location.search,
-);
-electronShim.initialRoute = initialRoute.memoryPath;
-
-if (initialRoute.browserPath) {
-  window.history.pushState(undefined, "", initialRoute.browserPath);
-}
-
-electronShim.initialSidebarState = initialSidebarState;
-electronShim.onMemoryNavigationChanged = (navigation) => {
-  const path = navigation.location.pathname;
-  if (
-    navigation.action !== "POP" &&
-    mobileMediaQuery.matches &&
-    shouldCloseSidebarForMemoryPath(path)
-  ) {
-    electronShim.closeSidebar?.();
+  if (initialRoute.browserPath) {
+    window.history.pushState(undefined, "", initialRoute.browserPath);
   }
 
-  const browserPath = mapMemoryPathToBrowserPath(path);
-  if (browserPath == null) {
-    return;
-  }
+  const electronShim: ElectronShimState = {
+    // Keep device-local services in the browser while forwarding other services to the host.
+    services: {
+      clipboard: {
+        async readText(): Promise<string> {
+          return navigator.clipboard.readText();
+        },
+        async writeText(text: string): Promise<void> {
+          await navigator.clipboard.writeText(text);
+        },
+      },
+    },
+    overrideAdapter: {
+      getGateOverride(evaluation) {
+        if (evaluation.name === "2911712394") {
+          return {
+            ...evaluation,
+            value: true,
+          };
+        }
 
-  if (browserPath.titleChange) {
-    document.title = browserPath.titleChange;
-  }
+        if (evaluation.name === "1042620455") {
+          // Remote control (Slingshot).
+          return {
+            ...evaluation,
+            value: true,
+          };
+        }
 
-  if (window.location.pathname === browserPath.path) {
-    window.history.replaceState(undefined, "", browserPath.path);
-    return;
-  }
+        return null;
+      },
+    },
+    initialRoute: initialRoute.memoryPath,
+    initialSidebarState: !mobileMediaQuery.matches,
+    onMemoryNavigationChanged(navigation) {
+      const path = navigation.location.pathname;
+      if (
+        navigation.action !== "POP" &&
+        mobileMediaQuery.matches &&
+        shouldCloseSidebarForMemoryPath(path)
+      ) {
+        electronShim.closeSidebar?.();
+      }
 
-  window.history.pushState(undefined, "", browserPath.path);
-};
+      const browserPath = mapMemoryPathToBrowserPath(path);
+      if (browserPath == null) {
+        return;
+      }
+
+      if (browserPath.titleChange) {
+        document.title = browserPath.titleChange;
+      }
+
+      if (window.location.pathname === browserPath.path) {
+        window.history.replaceState(undefined, "", browserPath.path);
+        return;
+      }
+
+      window.history.pushState(undefined, "", browserPath.path);
+    },
+  };
+
+  return electronShim;
+})();
 
 export const ipcRenderer = {
   invoke(channel: string, ...args: unknown[]): Promise<unknown> {
