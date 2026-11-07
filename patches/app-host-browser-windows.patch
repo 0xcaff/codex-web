@@ -1,12 +1,12 @@
---- a/.vite/build/main-CqEoQDOU.js
-+++ b/.vite/build/main-CqEoQDOU.js
-@@ -176200,6 +176200,9 @@
-     updateDockIcon: L,
-     setWindowContext: (e) => {
-       R = e;
-+      globalThis.__codexElectronIpcBridge?.setRendererWindowFactory(() =>
-+        z.createPrimaryWindow({ show: !1 }),
-+      );
-       for (let t of _.BrowserWindow.getAllWindows())
-         !t.isDestroyed() && z.isAppServiceWindow(t) && e.registerWindow(t);
-     },
+--- a/.vite/build/early-bootstrap-920-a204a41244c4b913.js
++++ b/.vite/build/early-bootstrap-920-a204a41244c4b913.js
+@@ -237078,6 +237078,9 @@
+             ...{},
+             updateDockIcon: V,
+             setWindowContext: (e) => {
++              globalThis.__codexElectronIpcBridge?.setRendererWindowFactory(() =>
++                X.createPrimaryWindow({ show: !1 }),
++              );
+               for (let t of ((Z = e), er.BrowserWindow.getAllWindows()))
+                 !t.isDestroyed() &&
+                   X.isAppServiceWindow(t) &&

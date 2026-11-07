@@ -117,6 +117,7 @@ type MessagePortListener = (...args: unknown[]) => void;
 type BridgedMessagePort = {
   close: () => void;
   on: (event: string, listener: MessagePortListener) => unknown;
+  once: (event: string, listener: MessagePortListener) => unknown;
   postMessage: (message: unknown) => void;
   start: () => void;
 };
@@ -145,6 +146,14 @@ class WebSocketMessagePort implements BridgedMessagePort {
     return this;
   }
 
+  once(event: string, listener: MessagePortListener): this {
+    const wrapped: MessagePortListener = (...args) => {
+      this.listeners.get(event)?.delete(wrapped);
+      listener(...args);
+    };
+    return this.on(event, wrapped);
+  }
+
   postMessage(data: unknown): void {
     if (this.closed) {
       return;
@@ -166,6 +175,7 @@ class WebSocketMessagePort implements BridgedMessagePort {
       type: "message-port-close",
       portId: this.portId,
     });
+    this.emit("close");
   }
 
   receiveMessage(data: unknown): void {
@@ -235,6 +245,8 @@ type RendererWindow = {
   id: number;
   webContents: { id: number };
   destroy: () => void;
+  isDestroyed: () => boolean;
+  once: (event: string, listener: MessagePortListener) => unknown;
 };
 
 type IpcMainBridgeState = {
@@ -379,11 +391,21 @@ function ensureElectronLikeProcessContext(): void {
   process.env.BUILD_FLAVOR = "prod";
 
   const versions = process.versions as NodeJS.ProcessVersions & {
+    chrome?: string;
     electron?: string;
   };
   if (!versions.electron) {
     Object.defineProperty(versions, "electron", {
       value: "41.2.0",
+      configurable: true,
+      enumerable: true,
+      writable: false,
+    });
+  }
+  if (!versions.chrome) {
+    // Upstream uses the bundled Chromium version for HTTP client hints.
+    Object.defineProperty(versions, "chrome", {
+      value: "157.0.8103.39",
       configurable: true,
       enumerable: true,
       writable: false,
@@ -510,11 +532,15 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
       .then(async (createWindow) => {
         if (socket.readyState !== WebSocket.OPEN) return undefined;
         const window = await createWindow();
-        if (socket.readyState !== WebSocket.OPEN) {
+        if (socket.readyState !== WebSocket.OPEN || window.isDestroyed()) {
           window.destroy();
+          socket.close(1012, "Renderer window closed");
           return undefined;
         }
         rendererWindow = window;
+        // Workspace changes can close an app view while its browser is connected.
+        // Let the browser reconnect instead of dispatching IPC to a dead window.
+        window.once("closed", () => socket.close(1012, "Renderer window closed"));
         rendererSockets.set(window.webContents.id, socket);
         return window;
       })

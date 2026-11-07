@@ -4,7 +4,7 @@ set -euxo pipefail
 unzip -o "$HOSTED_CODEX_APP_ZIP" -d scratch/
 asar extract "scratch/ChatGPT.app/Contents/Resources/app.asar" "scratch/asar"
 cp assets/* scratch/asar/webview/
-PWA_SOURCE_ICON="scratch/asar/webview/assets/app-f483cb0295ed.png"
+PWA_SOURCE_ICON="scratch/asar/webview/assets/app.7771f23f03.png"
 PWA_TARGET_ICON="scratch/asar/webview/assets/pwa-icon-512.png"
 PWA_ICON_SIZE=512
 PWA_TOTAL_PADDING_PERCENT=25
