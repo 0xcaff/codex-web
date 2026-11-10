@@ -1,0 +1,32 @@
+--- a/.vite/build/application-network-startup-CfAQmSYg.js
++++ b/.vite/build/application-network-startup-CfAQmSYg.js
+@@ -13756,6 +13756,7 @@
+         t = Ot.resolve(e, { env: this.options.env }) ?? e,
+         n = (0, d.spawn)(t, this.options.spawnArgs ?? this.options.args, {
+           stdio: [`pipe`, `pipe`, `pipe`],
++          windowsHide: true,
+           env: this.options.env,
+           cwd: this.options.cwd,
+         });
+--- a/.vite/build/worker.js
++++ b/.vite/build/worker.js
+@@ -106559,7 +106559,7 @@
+         signal: e.signal,
+         spawnInsideWsl: this.runsInsideWsl,
+         streamStdin: !0,
+-        windowsHide: e.windowsHide,
++        windowsHide: e.windowsHide ?? true,
+         stderrChunkHandler: (e) => {
+           (c(`stderr`, e), r.enqueue(e));
+         },
+--- a/.vite/build/src-BJv5Mk7n.js
++++ b/.vite/build/src-BJv5Mk7n.js
+@@ -73895,7 +73895,7 @@
+         signal: e.signal,
+         spawnInsideWsl: this.runsInsideWsl,
+         streamStdin: !0,
+-        windowsHide: e.windowsHide,
++        windowsHide: e.windowsHide ?? true,
+         stderrChunkHandler: (e) => {
+           (u(`stderr`, e), r.enqueue(e));
+         },
