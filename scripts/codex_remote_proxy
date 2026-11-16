@@ -17,10 +17,34 @@ fi
 # Ignore remaining args (for compatibility with codex app-server invocations).
 shift || true
 
+if ! command -v websocat >/dev/null 2>&1; then
+  echo "codex_remote_proxy: required command 'websocat' was not found in PATH. Install websocat with your package manager (for example, 'brew install websocat' or 'nix shell nixpkgs#websocat') and ensure it is in PATH." >&2
+  exit 127
+fi
+
+if [[ -z "${CODEX_UNIX_SOCKET:-}" ]]; then
+  echo "codex_remote_proxy: CODEX_UNIX_SOCKET must be set to the app-server control Unix socket path." >&2
+  exit 78
+fi
+
+if [[ ! -e "$CODEX_UNIX_SOCKET" ]]; then
+  echo "codex_remote_proxy: socket path '$CODEX_UNIX_SOCKET' does not exist or cannot be accessed. Ensure the app-server is running, verify CODEX_UNIX_SOCKET, and check parent directory search permissions." >&2
+  exit 69
+fi
+
+if [[ ! -S "$CODEX_UNIX_SOCKET" ]]; then
+  echo "codex_remote_proxy: path '$CODEX_UNIX_SOCKET' is not a Unix domain socket. Set CODEX_UNIX_SOCKET to the app-server control Unix socket." >&2
+  exit 78
+fi
+
+if [[ ! -r "$CODEX_UNIX_SOCKET" || ! -w "$CODEX_UNIX_SOCKET" ]]; then
+  echo "codex_remote_proxy: insufficient permissions to access socket '$CODEX_UNIX_SOCKET'. Check the socket ownership and grant the current user read and write access." >&2
+  exit 77
+fi
+
 # Websocat defaults to 64KiB max message size, which causes warnings and
 # message splitting for larger app-server payloads. Use a safer default while
 # still allowing runtime override.
 CODEX_BUFFER_SIZE="${CODEX_BUFFER_SIZE:-104857600}"
-CODEX_UNIX_SOCKET="${CODEX_UNIX_SOCKET:?CODEX_UNIX_SOCKET must be set}"
 
 exec websocat -E -t -B "${CODEX_BUFFER_SIZE}" - "ws-c:unix:${CODEX_UNIX_SOCKET}"
