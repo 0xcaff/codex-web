@@ -83,6 +83,15 @@ nix shell github:0xcaff/codex-web github:0xcaff/codex-web#codex_remote_proxy -c 
 program to use; when run directly in a terminal it will wait for protocol input
 rather than opening an interactive prompt.
 
+### Developing codex-web locally
+
+If you want to modify the `codex-web` source code while connecting to an
+already-running `app-server`, see
+[Developing codex-web Locally with an Existing app-server](docs/development/local-development.md).
+
+This setup runs Vite and the Node.js backend separately, allowing frontend and
+backend development without restarting the existing `app-server`.
+
 ## security
 
 run `codex-web` only on trusted networks. treat anyone who can reach the
