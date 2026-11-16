@@ -10,6 +10,7 @@
   ],
   "bin": "src/server/main.js",
   "scripts": {
+    "test": "node --test scripts/tests/*.test.cjs",
     "prepare": "./scripts/prepare && npm run build:browser && npm run build:server",
     "build": "npm run prepare:asar && npm run build:browser && npm run build:server",
     "launch:unpacked:server": "http-server ./scratch/asar/webview -a localhost -p 5175 -c-1",
@@ -19,7 +20,7 @@
     "build:server": "cd src/server && tsc",
     "prepare:asar": "./scripts/prepare_asar",
     "preserver": "npm run build:server && npm run build:browser",
-    "server": "CODEX_CLI_PATH=$(which codex) node src/server/main.js"
+    "server": "CODEX_CLI_PATH=\"${CODEX_CLI_PATH:-$(command -v codex)}\" node src/server/main.js"
   },
   "repository": "git@github.com:0xcaff/codex-web.git",
   "author": "martin <martincharles07@gmail.com>",

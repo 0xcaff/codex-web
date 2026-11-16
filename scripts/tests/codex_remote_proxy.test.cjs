@@ -94,6 +94,33 @@ test("missing websocat reports the dependency and installation guidance", async 
   );
 });
 
+test("--preflight validates without invoking websocat", async (t) => {
+  const fixture = await setup(t);
+  // A listening socket is sufficient; no app-server protocol is needed.
+  const result = fixture.run({}, ["--preflight"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "");
+  assert.equal(result.stderr, "");
+  assert.equal(fs.existsSync(fixture.log), false);
+});
+
+test("--preflight retains dependency and socket diagnostics", async (t) => {
+  const fixture = await setup(t);
+  assertFailure(
+    fixture,
+    fixture.run({ CODEX_UNIX_SOCKET: undefined }, ["--preflight"]),
+    78,
+    /CODEX_UNIX_SOCKET must be set/,
+  );
+  fs.unlinkSync(path.join(fixture.bin, "websocat"));
+  assertFailure(
+    fixture,
+    fixture.run({}, ["--preflight"]),
+    127,
+    /websocat.*not found in PATH/,
+  );
+});
+
 for (const value of [undefined, ""]) {
   test(`CODEX_UNIX_SOCKET ${value === undefined ? "unset" : "empty"} reports how to configure it`, async (t) => {
     const fixture = await setup(t);

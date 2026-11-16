@@ -17,6 +17,7 @@ import Fastify from "fastify";
 import fastifyMultipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import { installModuleAliasHook } from "./module";
+import { validateCodexExecutable } from "./preflight";
 
 type ServerOptions = {
   host: string;
@@ -702,7 +703,11 @@ async function startIpcBridgeServer(options: ServerOptions): Promise<void> {
 async function main(args: string[]) {
   const options = parseServerArgs(args);
 
+  await validateCodexExecutable();
   await startIpcBridgeServer(options);
 }
 
-main(process.argv.slice(2));
+main(process.argv.slice(2)).catch((error: unknown) => {
+  console.error(`[codex-web] Startup failed: ${errorMessage(error)}`);
+  process.exit(1);
+});
